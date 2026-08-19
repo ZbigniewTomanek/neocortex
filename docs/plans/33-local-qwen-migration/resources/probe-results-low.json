@@ -1,0 +1,692 @@
+{
+  "concurrency": 6,
+  "effort": "low",
+  "model": "local:qwen3.8-27b",
+  "records": [
+    {
+      "agent": "ontology",
+      "attempt": 1,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 1,
+      "elapsed_s": 30.014,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 1,
+      "elapsed_s": 30.012,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 1,
+      "elapsed_s": 30.009,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 1,
+      "elapsed_s": 30.008,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 1,
+      "elapsed_s": 30.005,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 1,
+      "elapsed_s": 30.002,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 1,
+      "elapsed_s": 30.003,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 1,
+      "elapsed_s": 30.013,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 1,
+      "elapsed_s": 30.023,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 1,
+      "elapsed_s": 30.02,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 1,
+      "elapsed_s": 30.022,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 2,
+      "elapsed_s": 30.002,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 2,
+      "elapsed_s": 30.002,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 2,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 2,
+      "elapsed_s": 26.839,
+      "episode": "E1",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.9,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text describes a system architecture and data-flow detail: NeoCortex uses PostgreSQL for its memory graph, and an extraction worker stores episodes and links them to the database. This is primarily technical knowledge about tools, storage, and engineering design."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer user's request: classify knowledge text into domains. Need use final_result tool. Need think in English? User English. Need produce JSON via tool. Text: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\" This is about a system architecture, tool usage, technical knowledge. Could also be work_context if NeoCortex is ongoing project? It describes architecture: uses PostgreSQL, extraction worker stores episode and links to DB. Most specific technical_knowledge. Maybe domain_knowledge? No. work_context? It mentions project component but not ongoing task/deadline/team. It's technical architecture. So matched_domains technical_knowledge high 0.9. No proposed domain. Need final_result with domain_slug technical_knowledge, confidence 0.9, reasoning.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 172,
+          "text_tokens": 99
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 172,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 2,
+      "elapsed_s": 30.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 2,
+      "elapsed_s": 30.014,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 2,
+      "elapsed_s": 30.003,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 2,
+      "elapsed_s": 30.003,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 2,
+      "elapsed_s": 30.002,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 2,
+      "elapsed_s": 30.018,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 2,
+      "elapsed_s": 30.001,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 2,
+      "elapsed_s": 30.0,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "elapsed_s": 30.003,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "elapsed_s": 30.002,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "elapsed_s": 30.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "elapsed_s": 30.01,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "elapsed_s": 30.001,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "elapsed_s": 26.668,
+      "episode": "E2",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.95,
+            "domain_slug": "work_context",
+            "reasoning": "The text describes a specific migration task, its scheduled vs. actual landing date (14 Aug vs. 15 Aug), and a correction recorded in a release note. This is clearly about an ongoing project/task timeline, a professional activity, and a decision/correction to the record."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nThe knowledge text is about a migration that was scheduled for 15 August but actually landed on 14 August. This is about a specific event/task/project timeline - a migration landing date correction.\n\nLet me analyze which domains fit:\n\n1. **work_context**: This is about an ongoing project/task - a migration that was scheduled and landed. It involves specific dates, a release note, and a correction to the timeline. This is clearly about professional activities, tasks, and decisions. Strong match.\n\n2. **technical_knowledge**: A \"migration\" could be technical (database migration, system migration), but the content here is really about the scheduling and timing of the event, not about the technical details of how the migration works. Weak match at best.\n\n3. **domain_knowledge**: This is not general factual knowledge - it's a specific event correction. Poor fit.\n\n4. **user_profile**: No personal preferences or habits here. Poor fit.\n\nThe strongest match is **work_context** - it's about a specific task (migration), its timeline (scheduled vs actual), and a correction to the record. This is clearly professional activity knowledge.\n\nConfidence for work_context: 0.95 - very strong match.\nI don't think a new domain is needed here.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 268,
+          "text_tokens": 124
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 268,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "elapsed_s": 30.002,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "elapsed_s": 30.001,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "elapsed_s": 30.001,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "elapsed_s": 30.001,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 4,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 4,
+      "elapsed_s": 30.003,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 4,
+      "elapsed_s": 30.003,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 4,
+      "elapsed_s": 24.432,
+      "episode": "E1",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.92,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The statement describes a system architecture detail: NeoCortex uses PostgreSQL for its memory graph, and an extraction worker stores and links episodes to the database. This is technical knowledge about databases, system components, and data flow."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer user's classification request. Need classify knowledge text: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\"\n\nNeed use final_result tool. Need determine domains. It mentions NeoCortex uses PostgreSQL for memory graph, extraction worker stores episode and links to PostgreSQL database. This is technical knowledge about architecture, tools, database, system design. Could also be work_context? It's about ongoing project? NeoCortex likely a system/project. But statement is factual about system architecture: uses PostgreSQL, extraction worker. Most specific technical_knowledge. Maybe domain_knowledge? No. Could be work_context if it's about project being worked on, but not explicitly user's work. It describes system. So technical_knowledge high confidence 0.9. Could also work_context low? If NeoCortex is a project, knowledge about its architecture may be work_context. But guidelines: work_context ongoing projects, tasks, decisions, professional activities. This is more technical system fact. Multi-label possible but prefer specific. I'd only technical_knowledge. No proposed domain.\n\nNeed final_result with matched_domains array. Ensure JSON schema. confidence 0.9, reasoning.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 252,
+          "text_tokens": 96
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 252,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 4,
+      "elapsed_s": 30.001,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 4,
+      "elapsed_s": 30.012,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 4,
+      "elapsed_s": 30.006,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 4,
+      "elapsed_s": 30.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 4,
+      "elapsed_s": 30.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 4,
+      "elapsed_s": 30.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 4,
+      "elapsed_s": 30.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 4,
+      "elapsed_s": 30.001,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 5,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 5,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 5,
+      "elapsed_s": 30.002,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 5,
+      "elapsed_s": 29.963,
+      "episode": "E1",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.9,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text describes a system architecture detail: NeoCortex uses PostgreSQL for its memory graph, and an extraction worker stores an episode and links it to the PostgreSQL database. This is technical knowledge about components, data storage, and system design."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer user's classification request. Need classify knowledge text: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\"\n\nNeed decide domains. It's about a system NeoCortex, its architecture: uses PostgreSQL for memory graph, extraction worker stores episode and links to DB. This is technical knowledge: architecture, tools, database, components. Also work_context? It mentions ongoing project? It says NeoCortex uses... could be project-specific architecture. But domain tree: technical_knowledge includes architecture patterns, tools, technical concepts, how they work. work_context includes ongoing projects, tasks, decisions, professional activities. This is a factual statement about a system architecture, not necessarily ongoing work. Could match technical_knowledge strongly. Maybe domain_knowledge? No, not general. Could also work_context if it's about project NeoCortex? But no specific team/deadline/task, just system design. Prefer most specific: technical_knowledge. Confidence maybe 0.9. Could add work_context 0.3? The guideline multi-label. Since it's a project-specific technical fact, maybe work_context with 0.35? But \"knowledge about what is being worked on, by whom, and when\" not really. It's a system component fact. I'd only technical_knowledge. Need final_result tool.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 284,
+          "text_tokens": 98
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 284,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 5,
+      "elapsed_s": 30.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 5,
+      "elapsed_s": 30.015,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 5,
+      "elapsed_s": 30.003,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 5,
+      "elapsed_s": 30.001,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 5,
+      "elapsed_s": 30.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 5,
+      "elapsed_s": 30.004,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 5,
+      "elapsed_s": 30.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 5,
+      "elapsed_s": 30.004,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    }
+  ],
+  "repeats": 5
+}

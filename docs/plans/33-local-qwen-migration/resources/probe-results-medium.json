@@ -1,0 +1,929 @@
+{
+  "concurrency": 6,
+  "effort": "medium",
+  "model": "local:qwen3.8-27b",
+  "records": [
+    {
+      "agent": "ontology",
+      "attempt": 1,
+      "elapsed_s": 60.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 1,
+      "elapsed_s": 37.499,
+      "episode": "E1",
+      "raw_output": "You are a knowledge extraction specialist. Extract entities and relations from the given text, aligned to the provided ontology types.\nEvery entity must use an existing node type name.\nEvery relation must use an existing edge type name.\nUse the text as the only evidence source \u2014 do not invent facts.\nPrefer canonical, normalized names for entities.\nAssign an importance score (0.0-1.0) to each entity:\n  0.0-0.3: Peripheral, contextual detail\n  0.3-0.6: Standard factual entity\n  0.6-0.8: Central concept referenced multiple times\n  0.8-1.0: Critical domain entity (core drug, disease, mechanism)\n\n## Temporal Corrections\nWhen the text contains signals that new information CORRECTS or SUPERSEDES\nprevious knowledge, you MUST populate the `supersedes` and `temporal_signal`\nfields on the relevant entity:\n\n- CORRECTION signals: 'CORRECTION', 'actually', 'error', 'bug fix',\n  'misconception', 'wrong', 'incorrect'\n  \u2192 Set temporal_signal='CORRECTS', supersedes='<old entity name>'\n\n- SUPERSESSION signals: 'UPDATE', 'REVERSAL', 'instead of', 'no longer',\n  'changed to', 'replaced by', 'switched from', 'new strategy',\n  'decided to switch', 'moving from X to Y'\n  \u2192 Set temporal_signal='SUPERSEDES', supersedes='<old entity name>'\n\nWhen a correction is detected, use a VERSIONED name for the new entity:\n  - Old: 'Metaphone3' \u2192 New: 'Metaphone3 Hybrid Strategy'\n  - Old: 'Jonas Weber' role \u2192 New entity: 'Jonas Weber Security Role'\nThis prevents the librarian from merging the new entity into the old one.\nExtract entities and relations from:\n\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nLet me analyze the text carefully:\n\n\"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\"\n\nAvailable node types:\n- Database\n- SoftwareComponent\n- Date\n- Location\n- Vehicle\n- Presentation\n\nAvailable edge types:\n- USES\n- LOCATED_IN\n- CORRECTS\n- SUPERSEDES\n\nLet me identify entities:\n\n1. **NeoCortex** - This is a software system/component that uses PostgreSQL. It fits \"SoftwareComponent\".\n2. **PostgreSQL** - This is a database. It fits \"Database\".\n3. **Extraction worker** - This is a software component. It fits \"SoftwareComponent\".\n\nNow relations:\n- NeoCortex USES PostgreSQL \u2192 \"NeoCortex uses PostgreSQL for its memory graph\"\n- Extraction worker USES PostgreSQL \u2192 \"links it to the PostgreSQL database\" - this is about storing/linking to the database. The extraction worker uses the PostgreSQL database to store episodes.\n\nLet me think about whether \"memory graph\" should be an entity. It's a concept within NeoCortex but doesn't clearly fit any of the node types. It's not a Database, not a SoftwareComponent per se (it's more of a data structure/concept). I'll skip it.\n\n\"Episode\" - this is a data item being stored. It doesn't clearly fit any node type. I'll skip it.\n\nLet me finalize:\n\nEntities:\n1. NeoCortex - SoftwareComponent - importance 0.7 (central concept referenced)\n2. PostgreSQL - Database - importance 0.7 (referenced multiple times)\n3. Extraction Worker - SoftwareComponent - importance 0.5 (standard factual entity)\n\nRelations:\n1. NeoCortex USES PostgreSQL - evidence: \"NeoCortex uses PostgreSQL for its memory graph\"\n2. Extraction Worker USES PostgreSQL - evidence: \"links it to the PostgreSQL database\" / \"stores an episode and links it to the PostgreSQL database\"\n\nNo temporal corrections detected in this text.\n\nFinal result processed.",
+      "refusal_mode": false,
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 436,
+          "text_tokens": 346
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 436,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "librarian",
+      "attempt": 1,
+      "elapsed_s": 60.001,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 1,
+      "elapsed_s": 45.94,
+      "episode": "E1",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.92,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text describes a technical architecture: PostgreSQL as the database for a memory graph, and an extraction worker component that stores episodes and links them to the database. This is clearly about how a system is technically designed and how specific technologies (PostgreSQL) are used within an architecture."
+          },
+          {
+            "confidence": 0.3,
+            "domain_slug": "work_context",
+            "reasoning": "NeoCortex appears to be a specific project or product, and the text describes its internal components (extraction worker, memory graph). However, the content is purely architectural rather than describing project activities, team members, deadlines, or decisions, so this is a weak secondary match."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nLet me analyze this knowledge text:\n\n\"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\"\n\nThis is about:\n1. NeoCortex - a specific system/product\n2. PostgreSQL - a database technology\n3. Memory graph - a technical architecture concept\n4. Extraction worker - a technical component\n5. How these components work together - technical architecture\n\nLet me consider the domains:\n\n- **technical_knowledge**: This is clearly about technical architecture - PostgreSQL as a database, a memory graph architecture, an extraction worker component. This is knowledge about how a system is technically designed and how technologies are used. Strong match.\n\n- **work_context**: This could be about an ongoing project (NeoCortex). It describes what's being worked on - a system that uses PostgreSQL for memory graphs. However, it's more about the technical architecture than about who's working on it, deadlines, etc. It's borderline - it does reference a specific project/system, but the content is primarily technical.\n\n- **domain_knowledge**: This is too specific/technical for general domain knowledge. Not a good fit.\n\n- **user_profile**: No personal preferences or user information here. Not a match.\n\nThe primary match is **technical_knowledge** - it's about how a system is architecturally designed (PostgreSQL for memory graph, extraction worker storing episodes and linking to the database).\n\nThere's a secondary consideration for **work_context** since NeoCortex appears to be a specific project/system, but the content is purely about technical architecture rather than project management aspects. I'll give it a low confidence or skip it.\n\nActually, let me reconsider. \"NeoCortex\" seems to be a specific project or product. The statement describes its technical architecture. This is primarily technical_knowledge. The work_context angle is weak because there's no mention of team, deadlines, decisions, or ongoing work - just a technical description of how the system works.\n\nI'll go with:\n- technical_knowledge: high confidence (0.9) - it's about database technology, system architecture, and how components work together\n- work_context: low confidence (0.3) - it references a specific system/project (NeoCortex), but the content is purely technical\n\nActually, I think work_context at 0.3 is borderline. The mention of NeoCortex as a project does give it some work context flavor. I'll include it at a low confidence.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 518,
+          "text_tokens": 199
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 518,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 1,
+      "elapsed_s": 60.005,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 1,
+      "elapsed_s": 60.012,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 1,
+      "elapsed_s": 60.003,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 1,
+      "elapsed_s": 22.517,
+      "episode": "E2",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.92,
+            "domain_slug": "work_context",
+            "reasoning": "The text describes a specific migration task with a scheduled date (15 August), a correction to the actual landing date (14 August), and a release note recording that correction. This is clearly about an ongoing project/task, a deadline, and professional documentation (release notes), all of which fall squarely under work_context."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nLet me analyze this knowledge text:\n\n\"The migration was scheduled to land on 15 August. **Correction: it actually landed on 14 August, not the 15th.** The release note records the corrected date.\"\n\nThis is about:\n- A migration that was scheduled for a specific date\n- A correction to the actual landing date\n- A release note recording the corrected date\n\nThis is clearly about a work-related event - a migration (likely a data/system migration) that was scheduled and then actually landed on a different date. This involves:\n- A specific project/task (the migration)\n- A deadline/schedule (15 August vs 14 August)\n- A release note (professional documentation)\n\nThis fits best into **work_context** - it's about an ongoing project/task, a deadline, and a professional activity (release notes).\n\nCould it also be technical_knowledge? The migration itself might be technical, but the knowledge here is specifically about the scheduling and correction of dates, not about how the migration works technically. So it's more about the work context than the technical details.\n\nI don't think domain_knowledge applies here - this isn't general factual knowledge.\nuser_profile doesn't apply either.\n\nSo the primary match is work_context with high confidence.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 270,
+          "text_tokens": 115
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 270,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 1,
+      "elapsed_s": 60.004,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 1,
+      "elapsed_s": 60.01,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 1,
+      "elapsed_s": 60.005,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 1,
+      "elapsed_s": 60.007,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 2,
+      "elapsed_s": 60.002,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 2,
+      "elapsed_s": 60.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 2,
+      "elapsed_s": 60.003,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 2,
+      "elapsed_s": 43.666,
+      "episode": "E1",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.95,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The statement describes system architecture and data storage: NeoCortex uses PostgreSQL for a memory graph, and an extraction worker stores an episode and links it to the database."
+          },
+          {
+            "confidence": 0.4,
+            "domain_slug": "work_context",
+            "reasoning": "It references a specific project/system component (NeoCortex and its extraction worker), which may be relevant to ongoing project context."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer user's classification. Need classify knowledge text: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\" Need return final_result tool. Need think in English (same language user). Need determine domains. It's about system architecture, technical stack, data storage, worker. Likely technical_knowledge strong. Also work_context? It mentions NeoCortex, extraction worker, stores episode, links to PostgreSQL database. Could be ongoing project/system architecture, but it's a factual description of how system works, not task/deadline/team. Could be technical_knowledge. Maybe domain_knowledge? No. Need maybe propose? No. matched_domains: technical_knowledge confidence 0.95. Maybe work_context 0.35? Since NeoCortex likely a project and extraction worker part of professional activity? But statement is architecture/factual about system. Guidelines prefer specific. Could include work_context low? It's knowledge about what is being worked on? \"NeoCortex uses...\" could be project context. But more technical. Multi-label allowed. I'd output technical_knowledge only or with work_context 0.4? Need be careful: domain_knowledge not catch-all. The text is about a system's data layer and worker behavior. technical_knowledge: programming languages, frameworks, tools, architecture patterns, APIs, technical concepts. Yes. work_context: ongoing projects, tasks, decisions, professional activities. It names NeoCortex, extraction worker, episode. Could be project-specific architecture, but not necessarily ongoing work. I'd say technical_knowledge 0.95, work_context 0.4 maybe because project-specific. But if only one strong, maybe no need. The instructions: single knowledge may belong to multiple. I think include work_context with 0.4 because it describes a specific system/project component. But is that too broad? If NeoCortex is a product/project, work_context fits. Confidence >=0.3 for relevant. Let's produce final_result.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 420,
+          "text_tokens": 146
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 420,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 2,
+      "elapsed_s": 60.001,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 2,
+      "elapsed_s": 60.001,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 2,
+      "elapsed_s": 60.003,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 2,
+      "elapsed_s": 18.962,
+      "episode": "E2",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.92,
+            "domain_slug": "work_context",
+            "reasoning": "The text concerns a migration's scheduled and actual landing date, a correction, and a release note, which are professional project/task details."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nWe need answer user's request. Need classify knowledge text. Need use final_result tool. Need think. Text: \"The migration was scheduled to land on 15 August. **Correction: it actually landed on 14 August, not the 15th.** The release note records the corrected date.\"\n\nThis is about a migration, scheduled landing date, correction, release note. It seems work_context: ongoing projects, tasks, deadlines, decisions, professional activities. Specific: migration landing date and correction. Could also domain_knowledge? It's not general factual knowledge. It's likely work_context only. Confidence high 0.9. No new domain. Need call final_result with matched_domains. Ensure schema.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 148,
+          "text_tokens": 78
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 148,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 2,
+      "elapsed_s": 60.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 2,
+      "elapsed_s": 60.004,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 2,
+      "elapsed_s": 60.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 2,
+      "elapsed_s": 47.278,
+      "episode": "E3",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.9,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text discusses system implementation details such as PostgreSQL event sourcing, an API gateway, and a B47 engine, and gives guidance about reusable technical/ontology types like Database and SoftwareComponent. This fits technical concepts, architecture patterns, and engineering/data-modeling best practices."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nDishGreg was served at LocationSalCapeVerde during a technical demonstration of\nDreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and\nan API gateway. These are individual names and implementation details, not reusable\nontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle,\nDatabase, and SoftwareComponent.\nWe need respond to user. Need classify knowledge. User text: \"DishGreg was served at LocationSalCapeVerde during a technical demonstration of DreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and an API gateway. These are individual names and implementation details, not reusable ontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle, Database, and SoftwareComponent.\"\n\nWe need produce final_result with matched_domains. Need analyze domains.\nContent includes: specific event: DishGreg served at LocationSalCapeVerde during technical demonstration of DreamAiPresentation. System used PostgreSQL event sourcing, B47 engine, API gateway. Also guidance about ontology types: prefer reusable types Dish, Location, Presentation, Vehicle, Database, SoftwareComponent. This is knowledge about data modeling / ontology / technical architecture? It mentions PostgreSQL, event sourcing, API gateway, software components. Also says individual names and implementation details not reusable ontology types. Could be technical_knowledge (programming frameworks, tools, architecture patterns, APIs, technical concepts, best practices, engineering approaches). Also domain_knowledge? General factual? Not really. user_profile? no. work_context? maybe ongoing project? It names specific entities and demonstration, but not clearly user's work. Could be work_context if it's about a demonstration event/project? But seems more like semantic classification/ontology guidance. The text itself is meta-knowledge about how to classify entities into reusable ontology types. That is technical knowledge about data modeling / ontology design. Maybe also domain_knowledge because domain-specific expertise? But technical_knowledge is specific. Need maybe match technical_knowledge high 0.85. Could also match domain_knowledge low? The instruction says multi-label, specific prefer child. There is no child ontology. domain_knowledge is broad. If technical fits, no need domain. But text includes reusable ontology types like Dish, Location, Presentation, Vehicle, Database, SoftwareComponent, which are domain concepts? It is about knowledge representation, technical. I'd output technical_knowledge confidence 0.85. Maybe work_context 0.3? \"DishGreg was served... during technical demonstration\" could be a work event. But the main knowledge is implementation details and ontology type guidance. If we include work_context, reason: mentions specific demonstration and system components possibly project context. But guidelines: prefer specific. Could be both technical_knowledge and work_context? The text says \"These are individual names and implementation details, not reusable ontology types; prefer reusable types...\" This is likely a rule for knowledge base, not work. I'd only technical_knowledge. Confidence 0.9. No proposed domain. Need ensure schema: matched_domains array with domain_slug, confidence, reasoning. final_result.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 565,
+          "text_tokens": 105
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 565,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "elapsed_s": 60.003,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "elapsed_s": 43.455,
+      "episode": "E1",
+      "raw_output": "You are a knowledge extraction specialist. Extract entities and relations from the given text, aligned to the provided ontology types.\nEvery entity must use an existing node type name.\nEvery relation must use an existing edge type name.\nUse the text as the only evidence source \u2014 do not invent facts.\nPrefer canonical, normalized names for entities.\nAssign an importance score (0.0-1.0) to each entity:\n  0.0-0.3: Peripheral, contextual detail\n  0.3-0.6: Standard factual entity\n  0.6-0.8: Central concept referenced multiple times\n  0.8-1.0: Critical domain entity (core drug, disease, mechanism)\n\n## Temporal Corrections\nWhen the text contains signals that new information CORRECTS or SUPERSEDES\nprevious knowledge, you MUST populate the `supersedes` and `temporal_signal`\nfields on the relevant entity:\n\n- CORRECTION signals: 'CORRECTION', 'actually', 'error', 'bug fix',\n  'misconception', 'wrong', 'incorrect'\n  \u2192 Set temporal_signal='CORRECTS', supersedes='<old entity name>'\n\n- SUPERSESSION signals: 'UPDATE', 'REVERSAL', 'instead of', 'no longer',\n  'changed to', 'replaced by', 'switched from', 'new strategy',\n  'decided to switch', 'moving from X to Y'\n  \u2192 Set temporal_signal='SUPERSEDES', supersedes='<old entity name>'\n\nWhen a correction is detected, use a VERSIONED name for the new entity:\n  - Old: 'Metaphone3' \u2192 New: 'Metaphone3 Hybrid Strategy'\n  - Old: 'Jonas Weber' role \u2192 New entity: 'Jonas Weber Security Role'\nThis prevents the librarian from merging the new entity into the old one.\nExtract entities and relations from:\n\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nLet me analyze the text carefully.\n\nText: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\"\n\nAvailable node types:\n- Database\n- SoftwareComponent\n- Date\n- Location\n- Vehicle\n- Presentation\n\nAvailable edge types:\n- USES\n- LOCATED_IN\n- CORRECTS\n- SUPERSEDES\n\nEntities I can identify:\n1. **NeoCortex** - This is a software system/component. Type: SoftwareComponent\n2. **PostgreSQL** - This is a database. Type: Database\n3. **Extraction Worker** - This is a software component. Type: SoftwareComponent\n\nRelations:\n1. NeoCortex USES PostgreSQL - \"NeoCortex uses PostgreSQL for its memory graph\"\n2. Extraction Worker USES PostgreSQL - \"The extraction worker stores an episode and links it to the PostgreSQL database\"\n\nWait, let me think about whether \"Extraction Worker\" is a separate entity from NeoCortex. The text says \"The extraction worker stores an episode and links it to the PostgreSQL database.\" This seems like a component of NeoCortex, but it's described as a separate actor. I'll treat it as a separate SoftwareComponent.\n\nActually, looking more carefully - \"NeoCortex uses PostgreSQL for its memory graph\" and \"The extraction worker stores an episode and links it to the PostgreSQL database.\" The extraction worker could be a component of NeoCortex, but since we don't have a \"HAS_PART\" or \"PART_OF\" edge type, I'll just note both relationships to PostgreSQL.\n\nLet me check: Is there a relationship between NeoCortex and Extraction Worker? The text doesn't explicitly state one, but it's implied. However, since we don't have a \"PART_OF\" or \"HAS_COMPONENT\" edge type, I should omit that relation per the rules.\n\nNo temporal corrections or supersessions detected in this text.\n\nLet me finalize:\n\nEntities:\n1. NeoCortex - SoftwareComponent - importance: 0.7 (central concept, referenced as the main system)\n2. PostgreSQL - Database - importance: 0.7 (central, referenced multiple times)\n3. Extraction Worker - SoftwareComponent - importance: 0.5 (standard factual entity, one mention)\n\nRelations:\n1. NeoCortex USES PostgreSQL - evidence: \"NeoCortex uses PostgreSQL for its memory graph\"\n2. Extraction Worker USES PostgreSQL - evidence: \"The extraction worker stores an episode and links it to the PostgreSQL database\"\n\nFinal result processed.",
+      "refusal_mode": false,
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 537,
+          "text_tokens": 341
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 537,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "elapsed_s": 60.003,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "elapsed_s": 27.663,
+      "episode": "E1",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.92,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text describes system architecture and technical components: NeoCortex's memory graph, PostgreSQL usage, an extraction worker, and data storage/linking behavior."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer user's request: classify knowledge text into domains. Need use final_result tool. Need analyze. Text: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\" This is about a system architecture/technical implementation: PostgreSQL database, memory graph, extraction worker, episodes, links. Likely technical_knowledge strong. Could also be work_context if NeoCortex is ongoing project? It says uses PostgreSQL for its memory graph; extraction worker stores episode and links to PostgreSQL database. This sounds project-specific architecture/implementation. Domain tree: technical_knowledge includes programming languages, frameworks, tools, architecture patterns, APIs, technical concepts, best practices, engineering approaches. PostgreSQL is tool, memory graph architecture, worker. So technical_knowledge high. domain_knowledge? General factual? Not really. work_context? Ongoing projects, tasks, decisions, professional activities. \"NeoCortex uses...\" could be a project fact about what is being worked on. But knowledge is more technical architecture. If it's about a specific system's implementation, could be both technical_knowledge and work_context? Guidelines prefer most specific matching domain. Multi-label allowed. Confidence: technical_knowledge 0.9. work_context maybe 0.4 if it's project-specific. But the text doesn't mention team, deadlines, decisions, ongoing work; just describes system. I'd match technical_knowledge only. Need final_result with matched_domains. No proposed domain. Ensure JSON? The tool call expects parameters object. We'll call final_result.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 321,
+          "text_tokens": 96
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 321,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "elapsed_s": 60.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "elapsed_s": 60.002,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "elapsed_s": 60.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "elapsed_s": 39.72,
+      "episode": "E2",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.92,
+            "domain_slug": "work_context",
+            "reasoning": "The text describes a specific work event (a migration), its scheduled vs. actual completion date, a correction to that date, and a release note recording the correction. This is knowledge about a professional activity \u2014 what happened, when, and how the record was updated \u2014 which fits squarely in work_context."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nThe user wants me to classify a piece of knowledge into semantic domains.\n\nLet me analyze the text:\n\"The migration was scheduled to land on 15 August. **Correction: it actually landed on 14 August, not the 15th.** The release note records the corrected date.\"\n\nThis is about:\n- A migration (likely a data migration, system migration, or similar technical/operational task)\n- A scheduled date (15 August) vs actual date (14 August)\n- A correction being noted\n- A release note recording the corrected date\n\nThis is clearly about a specific work event - a migration that happened, its timing, and a correction to the record. This fits:\n\n1. **work_context**: This is about an ongoing project/task - specifically a migration that was scheduled and then actually completed. It involves dates, a correction to a record, and a release note. This is knowledge about \"what is being worked on, by whom, and when.\" Strong match.\n\n2. **technical_knowledge**: A \"migration\" could be technical (database migration, system migration, etc.), but the knowledge here is really about the *event* and its timing/correction, not about how migrations work technically. Weak match at best.\n\n3. **domain_knowledge**: Not really general factual knowledge. It's a specific work event.\n\nThe strongest match is **work_context** - this is about a specific task (migration), its timeline (scheduled vs actual), and a correction being recorded in a release note. This is professional activity knowledge.\n\nI don't think this warrants a new domain proposal. It fits well into work_context.\n\nLet me assign confidence:\n- work_context: 0.9 (strong match - specific work event, timeline, correction, release note)\n- technical_knowledge: maybe 0.3 at most, since \"migration\" is a technical term, but the knowledge is about the event not the technology itself. Actually, I'll skip this or give it very low confidence. The content is really about the scheduling/correction of a work event, not about migration technology. I'll leave it out or give it 0.2-0.3.\n\nI think I'll just go with work_context at high confidence.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 476,
+          "text_tokens": 125
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 476,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "elapsed_s": 60.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "elapsed_s": 60.006,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "elapsed_s": 60.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "elapsed_s": 60.004,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 4,
+      "elapsed_s": 60.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 4,
+      "elapsed_s": 60.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 4,
+      "elapsed_s": 60.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 4,
+      "elapsed_s": 60.002,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 4,
+      "elapsed_s": 60.003,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 4,
+      "elapsed_s": 60.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 4,
+      "elapsed_s": 60.002,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 4,
+      "elapsed_s": 57.513,
+      "episode": "E2",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.92,
+            "domain_slug": "work_context",
+            "reasoning": "The text describes a specific project milestone (a migration), its scheduled vs. actual completion date (15 Aug corrected to 14 Aug), and a release note recording the correction. This is clearly about ongoing professional work: what was done, when it happened, and how the record was updated."
+          },
+          {
+            "confidence": 0.3,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The subject matter involves a technical 'migration' (likely a software or data migration), but the knowledge captured here is about the scheduling/date correction rather than any technical methodology or implementation detail, so the match is weak."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nLet me analyze this knowledge text:\n\n\"The migration was scheduled to land on 15 August. **Correction: it actually landed on 14 August, not the 15th.** The release note records the corrected date.\"\n\nThis is about:\n- A migration (likely a software/data migration) that was scheduled\n- A correction to the actual landing date (14 August vs 15 August)\n- A release note recording the corrected date\n\nLet me consider the domains:\n\n1. **work_context**: This is about an ongoing project/task - a migration that was scheduled and then actually completed. It mentions a specific date, a release note, and a correction to the schedule. This is clearly about professional activity - what was worked on and when. This is a strong match.\n\n2. **technical_knowledge**: A \"migration\" could be a technical process (database migration, system migration, etc.), but the content here is really about the scheduling and date correction, not about the technical aspects of the migration itself. The knowledge is about when it happened, not how it works. Weak match at best.\n\n3. **domain_knowledge**: This doesn't really fit. It's not general factual knowledge, industry concepts, or scientific facts.\n\n4. **user_profile**: No personal preferences or habits here.\n\nThe strongest match is **work_context** - it's about a specific project milestone (a migration), its scheduled vs actual completion date, and a release note. This is professional activity knowledge about what was worked on and when.\n\nI don't think a new domain is needed here. work_context fits well.\n\nConfidence:\n- work_context: 0.9 (very strong match - specific project task with dates, release notes, corrections)\n- technical_knowledge: maybe 0.2-0.3 at most, since \"migration\" is a technical term but the content is about scheduling, not technical details. I'll include it at a low confidence since it does involve a technical migration.\n\nActually, let me reconsider. The content is primarily about a work event (the migration landing on a specific date, the correction, the release note). The \"migration\" is a work task/project deliverable. I think work_context is the clear primary match. I'll give it high confidence.\n\nI'll include technical_knowledge at a low confidence since it involves a technical migration, but the focus is on the scheduling/date aspect.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 507,
+          "text_tokens": 191
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 507,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 4,
+      "elapsed_s": 60.002,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 4,
+      "elapsed_s": 60.004,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 4,
+      "elapsed_s": 60.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 4,
+      "elapsed_s": 32.002,
+      "episode": "E3",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.85,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text describes a technical demonstration, system components such as PostgreSQL event sourcing, an engine, and an API gateway, and gives guidance about modeling reusable technical/ontology types versus individual implementation names."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nDishGreg was served at LocationSalCapeVerde during a technical demonstration of\nDreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and\nan API gateway. These are individual names and implementation details, not reusable\nontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle,\nDatabase, and SoftwareComponent.\nWe need answer user's classification request. Need classify knowledge text into domains. Text: \"DishGreg was served at LocationSalCapeVerde during a technical demonstration of DreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and an API gateway. These are individual names and implementation details, not reusable ontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle, Database, and SoftwareComponent.\"\n\nNeed determine domains. It mentions technical demonstration, system used PostgreSQL event sourcing, B47 engine, API gateway, implementation details, ontology types. This is likely technical_knowledge because programming/tech concepts, architecture patterns, tools, APIs, engineering approaches. Also domain_knowledge? It's about ontology modeling, reusable types vs individual names, maybe knowledge about domain modeling / data modeling. But specific? technical_knowledge strong. user_profile no. work_context? It could be about a demonstration event, but no ongoing project/task/team. It's a statement of what happened, maybe work_context? \"DishGreg was served at LocationSalCapeVerde during a technical demonstration of DreamAiPresentation\" could be event/professional activity? But likely not ongoing work, just factual event. The instruction says classify incoming knowledge into semantic domains. The main content is technical and ontology modeling. Could include technical_knowledge confidence high. Maybe domain_knowledge moderate because reusable ontology types are general conceptual knowledge? But guideline says prefer specific. technical_knowledge covers architecture patterns, APIs, technical concepts, best practices. The phrase \"prefer reusable types such as Dish, Location, Presentation, Vehicle, Database, and SoftwareComponent\" is about data modeling/ontology best practices, technical. So only technical_knowledge.\n\nNeed final JSON via final_result. matched_domains: [{domain_slug: \"technical_knowledge\", confidence: 0.85, reasoning: ...}]. proposed_domain null. Ensure schema.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 392,
+          "text_tokens": 104
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 392,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 5,
+      "elapsed_s": 60.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 5,
+      "elapsed_s": 51.327,
+      "episode": "E1",
+      "raw_output": "You are a knowledge extraction specialist. Extract entities and relations from the given text, aligned to the provided ontology types.\nEvery entity must use an existing node type name.\nEvery relation must use an existing edge type name.\nUse the text as the only evidence source \u2014 do not invent facts.\nPrefer canonical, normalized names for entities.\nAssign an importance score (0.0-1.0) to each entity:\n  0.0-0.3: Peripheral, contextual detail\n  0.3-0.6: Standard factual entity\n  0.6-0.8: Central concept referenced multiple times\n  0.8-1.0: Critical domain entity (core drug, disease, mechanism)\n\n## Temporal Corrections\nWhen the text contains signals that new information CORRECTS or SUPERSEDES\nprevious knowledge, you MUST populate the `supersedes` and `temporal_signal`\nfields on the relevant entity:\n\n- CORRECTION signals: 'CORRECTION', 'actually', 'error', 'bug fix',\n  'misconception', 'wrong', 'incorrect'\n  \u2192 Set temporal_signal='CORRECTS', supersedes='<old entity name>'\n\n- SUPERSESSION signals: 'UPDATE', 'REVERSAL', 'instead of', 'no longer',\n  'changed to', 'replaced by', 'switched from', 'new strategy',\n  'decided to switch', 'moving from X to Y'\n  \u2192 Set temporal_signal='SUPERSEDES', supersedes='<old entity name>'\n\nWhen a correction is detected, use a VERSIONED name for the new entity:\n  - Old: 'Metaphone3' \u2192 New: 'Metaphone3 Hybrid Strategy'\n  - Old: 'Jonas Weber' role \u2192 New entity: 'Jonas Weber Security Role'\nThis prevents the librarian from merging the new entity into the old one.\nExtract entities and relations from:\n\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nLet me analyze the text to extract entities and relations aligned to the given ontology.\n\nText: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\"\n\nAvailable node types:\n- Database\n- SoftwareComponent\n- Date\n- Location\n- Vehicle\n- Presentation\n\nAvailable edge types:\n- USES\n- LOCATED_IN\n- CORRECTS\n- SUPERSEDES\n\nEntities I can identify:\n1. **NeoCortex** - This appears to be a software system/component. \u2192 SoftwareComponent\n2. **PostgreSQL** - This is a database. \u2192 Database\n3. **Extraction worker** - This is a software component. \u2192 SoftwareComponent\n4. **Memory graph** - This could be a software component (it's a data structure/graph within the system). \u2192 SoftwareComponent\n\nRelations:\n1. NeoCortex USES PostgreSQL - \"NeoCortex uses PostgreSQL for its memory graph\"\n2. Extraction worker USES PostgreSQL - \"links it to the PostgreSQL database\" (the extraction worker links to PostgreSQL)\n3. NeoCortex USES Memory graph - \"NeoCortex uses PostgreSQL for its memory graph\" (the memory graph is part of NeoCortex)\n\nWait, let me reconsider. The sentence says \"NeoCortex uses PostgreSQL for its memory graph.\" This means NeoCortex uses PostgreSQL as the backend for its memory graph. So:\n- NeoCortex USES PostgreSQL (evidence: \"NeoCortex uses PostgreSQL for its memory graph\")\n\n\"The extraction worker stores an episode and links it to the PostgreSQL database.\"\n- Extraction worker USES PostgreSQL (evidence: \"links it to the PostgreSQL database\")\n\nDoes the extraction worker relate to NeoCortex? The text says \"The extraction worker\" - it's likely part of NeoCortex but the text doesn't explicitly state that relationship in a way that fits the ontology. I'll omit that since there's no clear edge type for \"part of\" or \"component of\".\n\nActually, let me reconsider \"memory graph\" - is it a distinct entity or just a description? It's described as \"its memory graph\" belonging to NeoCortex. It could be a SoftwareComponent. But it's quite peripheral - it's just a description of what PostgreSQL is used for. I'll include it as a low-importance entity.\n\nLet me also consider: \"episode\" - this is something stored, but it doesn't fit neatly into any of the available node types. It's not a database, software component, date, location, vehicle, or presentation. I'll omit it.\n\nNo temporal corrections detected in this text.\n\nLet me finalize:\n\nEntities:\n1. NeoCortex - SoftwareComponent, importance 0.8 (central concept, the main system)\n2. PostgreSQL - Database, importance 0.7 (important, referenced twice)\n3. Extraction Worker - SoftwareComponent, importance 0.5 (standard factual entity)\n4. Memory Graph - SoftwareComponent, importance 0.3 (peripheral, just a descriptor)\n\nRelations:\n1. NeoCortex USES PostgreSQL - evidence: \"NeoCortex uses PostgreSQL for its memory graph\"\n2. Extraction Worker USES PostgreSQL - evidence: \"links it to the PostgreSQL database\"\n\nI think that covers it. Let me format the response.\n\nFinal result processed.",
+      "refusal_mode": false,
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 706,
+          "text_tokens": 411
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 706,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "librarian",
+      "attempt": 5,
+      "elapsed_s": 60.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 5,
+      "elapsed_s": 31.718,
+      "episode": "E1",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.9,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The statement describes a system architecture and implementation detail: NeoCortex's memory graph, an extraction worker, and use of PostgreSQL for storing and linking episodes. This fits technical knowledge about tools, data systems, and architecture patterns."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer user's request: classify knowledge text into domains. Need use final_result tool. Need think in English (same language user request? user English). Need produce tool call. Knowledge: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\" This is about a system architecture/technical implementation: NeoCortex, PostgreSQL, memory graph, extraction worker, episodes. It's technical knowledge (frameworks, tools, architecture patterns, how technologies work). Could also be work_context if ongoing project? It describes a system and component behavior, likely technical_knowledge. Maybe domain_knowledge? No. Could be work_context if it's about a specific project's architecture? The text mentions NeoCortex, extraction worker, PostgreSQL database. It's factual about system design. The domain tree: technical_knowledge includes architecture patterns, tools, APIs, technical concepts. Strong match. work_context: ongoing projects, tasks, decisions, professional activities; knowledge about what is being worked on, by whom, when. This is not about tasks/deadlines/team, just architecture. Could be low confidence maybe 0.2? Guidelines set >=0.3 for relevant domains. If not relevant don't include. So matched: technical_knowledge confidence 0.9. Reasoning: describes system components and data storage architecture, PostgreSQL. No proposed domain.\nNeed final tool only? The final answer likely just tool. Ensure JSON schema. matched_domains array with domain_slug, confidence, reasoning. proposed_domain null.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 318,
+          "text_tokens": 110
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 318,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 5,
+      "elapsed_s": 60.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 5,
+      "elapsed_s": 60.003,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 5,
+      "elapsed_s": 60.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 5,
+      "elapsed_s": 32.66,
+      "episode": "E2",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.95,
+            "domain_slug": "work_context",
+            "reasoning": "The text describes a specific project event (a migration), its scheduled vs. actual landing date, and a release note recording the correction. This is clearly about ongoing work, project timelines, and professional activity documentation."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nThe user is asking me to classify a piece of knowledge into semantic domains. Let me analyze the text:\n\n\"The migration was scheduled to land on 15 August. **Correction: it actually landed on 14 August, not the 15th.** The release note records the corrected date.\"\n\nThis is about:\n- A migration (likely a software/data migration) that was scheduled for a specific date\n- A correction to the actual landing date\n- A release note that records the corrected date\n\nThis is clearly about a work context - it's about an ongoing project/task (a migration), specific dates, and a release note. It's about what was worked on, when it happened, and the correction to the timeline.\n\nLet me consider each domain:\n- domain_knowledge: Not really general factual knowledge. It's about a specific project event.\n- technical_knowledge: It mentions \"migration\" and \"release note\" which are technical terms, but the content is more about the scheduling/timeline of a specific project event rather than technical knowledge about how migrations work.\n- user_profile: No personal preferences or goals here.\n- work_context: Yes, this fits well. It's about a specific project (a migration), its timeline (scheduled date vs actual date), and a release note documenting the correction. This is clearly about professional activities, decisions, and what was worked on and when.\n\nThe primary match is work_context. There's a slight technical element (migration, release note), but the core content is about project scheduling and timeline correction, which is squarely work_context.\n\nI'll classify this as work_context with high confidence. I don't think technical_knowledge is a strong enough secondary match here since the focus is on the date correction, not on the technical details of the migration itself.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 374,
+          "text_tokens": 107
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 374,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 5,
+      "elapsed_s": 60.004,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 5,
+      "elapsed_s": 60.004,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 5,
+      "elapsed_s": 58.142,
+      "episode": "E3",
+      "raw_output": "You are a knowledge graph curator. You receive extracted entities and relations from a text, and your job is to integrate them into the existing knowledge graph using the tools available to you.\n\n## Workflow\nFor each extracted entity:\n  1. Use find_similar_nodes to check if it already exists.\n     This checks exact name, aliases, fuzzy matches, and semantic similarity.\n  2. If a match is found (any match_type): compare the extracted description\n     with the existing content.\n     - If new info ADDS knowledge: use create_or_update_node with a\n       COMPREHENSIVE updated description merging old + new.\n     - If new info includes QUANTITATIVE UPDATES (numbers, percentages,\n       dates, versions): ALWAYS update the node content to reflect the\n       new values. Include both old and new values with context\n       (e.g., 'precision improved from 87% to 94.2%').\n     - If new info CONTRADICTS existing: update with correct info and\n       note the contradiction in properties.\n  3. If no match is found: use create_or_update_node to create it.\n  4. When creating a new node with a name that has known variants\n     (e.g., 'Apache Kafka' when 'Kafka' might be used later),\n     mention the variants in the node content.\n\nFor each extracted relation:\n  1. Use get_edges_between to check for existing relationships\n  2. If an edge exists with a similar meaning (even different type name),\n     keep it \u2014 do NOT create a duplicate.\n  3. If an edge is now WRONG, use remove_edge and create the correct one.\n  4. If no relevant edge exists, use create_or_update_edge.\n\n## Quantitative Update Rules\nWhen an extracted entity contains updated numbers, percentages, dates,\nor version strings, you MUST update the node content to reflect the new\nvalues. This is non-negotiable. Examples:\n- 'precision: 87%' \u2192 'precision: 94.2%' \u2192 node content MUST say '94.2%'\n- 'launch: June' \u2192 'launch: August 1' \u2192 node content MUST say 'August 1'\n- 'v2.3' \u2192 'v3.0' \u2192 node content MUST say 'v3.0'\n\n## Temporal Corrections (MANDATORY)\nWhen an extracted entity has `supersedes` set (non-null):\n\n  1. DO NOT merge this entity into the existing node with the superseded name.\n  2. Create a NEW node with the extracted name (versioned name).\n  3. Create an edge of the type specified in `temporal_signal`\n     (either 'CORRECTS' or 'SUPERSEDES') FROM the new node TO the old node.\n  4. Report both the new node creation and the temporal edge in your actions.\n\nThis is non-negotiable. Temporal correction edges are critical for recall quality.\nIf you merge a correction into an existing node, the temporal signal is lost.\n\nEven without explicit `supersedes` fields, watch for these signals in the\nepisode text and create temporal edges when appropriate:\n  - 'CORRECTION', 'UPDATE', 'REVERSAL', 'actually', 'instead',\n    'no longer', 'changed to', 'replaced by', 'switched from'\n\n## Rules\n- ALWAYS provide comprehensive content when creating/updating nodes.\n- ALWAYS check for existing entities before creating new ones.\n- Prefer updating existing nodes over creating duplicates.\n- Normalize names to canonical form (proper casing, full names).\n- When in doubt about type assignment, match the existing node's type.\n\n## Shared Graph Context\nYou may be curating a shared knowledge graph where multiple agents contribute.\nWhen you find an existing node via find_similar_nodes:\n- The node may have been created by a different agent.\n- You MUST still merge your new knowledge into it \u2014 do NOT skip updates\n  because the node \"belongs\" to someone else.\n- When merging, produce a COMPREHENSIVE description that combines the existing\n  content with the new information. Never discard existing facts.\n- Include both perspectives when they differ (e.g., \"Backend team reports X.\n  ML team reports Y.\").\n\nAfter all curation actions, return a CurationSummary describing what you did.\nCurate the extracted knowledge into the graph.\nLet's start by checking the existing graph for these entities. I'll search for PostgreSQL and NeoCortex.\n\nNo results for PostgreSQL. Let me check NeoCortex.\n\nNeither entity exists in the graph. Let's also do a broader search to check if there are related entities like \"B47\", \"DreamAiPresentation\", \"LocationSalCapeVerde\", \"DishGreg\", or \"API gateway\". In fact, the extracted entities are only PostgreSQL and NeoCortex. But just to be safe, let's check a few more.\n\nActually, the extracted entities are just these two:\n1. PostgreSQL [SoftwareComponent]\n2. NeoCortex [SoftwareComponent]\n\nAnd the relation: NeoCortex --[USES]--> PostgreSQL\n\nBoth are new. Let's create them.\n\nRegarding PostgreSQL's content: the source text says \"DishGreg was served at LocationSalCapeVerde during a technical demonstration of DreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and an API gateway.\" The extracted content is a bit noisy (it includes meta-text about ontology types). The canonical description should be clean: PostgreSQL is a software component used as the event sourcing database in a system that includes the B47 engine and API gateway; used in the NeoCortex memory system.\n\nRegarding NeoCortex: \"Memory system\" \u2014 a software component that is a memory system and uses PostgreSQL for event sourcing.\n\nLet's create both nodes, then create the edge.\n\nPostgreSQL has been created. Next, I'll create NeoCortex.\n\nBoth nodes have been created. Next, I'll check the edge between NeoCortex and PostgreSQL, and then create it.\n\nNo existing edge. Creating the edge NeoCortex --[USES]--> PostgreSQL.\n\nAll done. Next, I'll return the CurationSummary.\n\nFinal result processed.",
+      "refusal_mode": false,
+      "status": "success",
+      "tool_calls": [
+        "find_similar_nodes",
+        "find_similar_nodes",
+        "create_or_update_node",
+        "create_or_update_node",
+        "get_edges_between",
+        "create_or_update_edge",
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 393,
+          "text_tokens": 673
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 393,
+        "requests": 7
+      }
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 5,
+      "elapsed_s": 26.367,
+      "episode": "E3",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.95,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text discusses technical system components and architecture concepts, including PostgreSQL event sourcing, an API gateway, a B47 engine, and reusable software/ontology types such as Database and SoftwareComponent."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nDishGreg was served at LocationSalCapeVerde during a technical demonstration of\nDreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and\nan API gateway. These are individual names and implementation details, not reusable\nontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle,\nDatabase, and SoftwareComponent.\nWe need to classify knowledge text. User asks in English. We need use final_result tool. Need analyze.\n\nText: \"DishGreg was served at LocationSalCapeVerde during a technical demonstration of DreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and an API gateway. These are individual names and implementation details, not reusable ontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle, Database, and SoftwareComponent.\"\n\nWe need classify into domains. It's about knowledge representation/ontology design, technical architecture: PostgreSQL event sourcing, B47 engine, API gateway, reusable types. Also mentions specific entity names and demonstration. Could be technical_knowledge strong: programming/DB/API architecture patterns, event sourcing, API gateway, software components, ontology types. Also domain_knowledge? It's not general factual; more technical. Work_context? \"technical demonstration\" maybe ongoing professional activity? But seems not about user's projects/tasks/deadlines; it's a statement of knowledge. User profile no.\n\nNeed multi-label maybe technical_knowledge 0.95. Maybe domain_knowledge low? The instruction says domain_knowledge not catch-all. This is specific technical. Could include domain_knowledge? \"industry concepts, domain-specific expertise\" maybe but technical more specific. Prefer specific. So only technical_knowledge.\n\nNo proposed domain. Need final_result with matched_domains. Confidence maybe 0.95. Reasoning: mentions PostgreSQL event sourcing, API gateway, B47 engine, software component/ontology types, reusable types; technical architecture and engineering concepts. Could mention that specific names are implementation details. Ensure schema: domain_slug, confidence, reasoning.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 350,
+          "text_tokens": 90
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 350,
+        "requests": 1
+      }
+    }
+  ],
+  "repeats": 5
+}

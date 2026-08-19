@@ -50,6 +50,7 @@ class AgentDomainClassifier:
         self._model_name = model_name
         self._thinking_effort = thinking_effort
         self._local_endpoint = local_endpoint
+        self._last_run_result = None
 
     async def classify(self, text: str, domains: list[SemanticDomain]) -> ClassificationResult:
         if not domains:
@@ -90,6 +91,8 @@ class AgentDomainClassifier:
             text,
             model_settings=build_model_settings(self._thinking_effort, self._model_name, self._local_endpoint),
         )
+        # Retain the result for diagnostics (the public API continues to return only the model output).
+        self._last_run_result = result
         logger.debug(
             "classification_result",
             matched_count=len(result.output.matched_domains),

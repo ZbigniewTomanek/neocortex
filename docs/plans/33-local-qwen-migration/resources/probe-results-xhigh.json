@@ -1,0 +1,641 @@
+{
+  "concurrency": 6,
+  "effort": "xhigh",
+  "model": "local:qwen3.8-27b",
+  "records": [
+    {
+      "agent": "ontology",
+      "attempt": 1,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 1,
+      "elapsed_s": 30.005,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 1,
+      "elapsed_s": 30.003,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 1,
+      "elapsed_s": 30.012,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 1,
+      "elapsed_s": 30.014,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 1,
+      "elapsed_s": 30.011,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 1,
+      "elapsed_s": 30.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 1,
+      "elapsed_s": 30.001,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 1,
+      "elapsed_s": 30.005,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 1,
+      "elapsed_s": 30.011,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 1,
+      "elapsed_s": 30.008,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 1,
+      "elapsed_s": 30.009,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 2,
+      "elapsed_s": 30.001,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 2,
+      "elapsed_s": 29.38,
+      "episode": "E1",
+      "raw_output": "You are a knowledge extraction specialist. Extract entities and relations from the given text, aligned to the provided ontology types.\nEvery entity must use an existing node type name.\nEvery relation must use an existing edge type name.\nUse the text as the only evidence source \u2014 do not invent facts.\nPrefer canonical, normalized names for entities.\nAssign an importance score (0.0-1.0) to each entity:\n  0.0-0.3: Peripheral, contextual detail\n  0.3-0.6: Standard factual entity\n  0.6-0.8: Central concept referenced multiple times\n  0.8-1.0: Critical domain entity (core drug, disease, mechanism)\n\n## Temporal Corrections\nWhen the text contains signals that new information CORRECTS or SUPERSEDES\nprevious knowledge, you MUST populate the `supersedes` and `temporal_signal`\nfields on the relevant entity:\n\n- CORRECTION signals: 'CORRECTION', 'actually', 'error', 'bug fix',\n  'misconception', 'wrong', 'incorrect'\n  \u2192 Set temporal_signal='CORRECTS', supersedes='<old entity name>'\n\n- SUPERSESSION signals: 'UPDATE', 'REVERSAL', 'instead of', 'no longer',\n  'changed to', 'replaced by', 'switched from', 'new strategy',\n  'decided to switch', 'moving from X to Y'\n  \u2192 Set temporal_signal='SUPERSEDES', supersedes='<old entity name>'\n\nWhen a correction is detected, use a VERSIONED name for the new entity:\n  - Old: 'Metaphone3' \u2192 New: 'Metaphone3 Hybrid Strategy'\n  - Old: 'Jonas Weber' role \u2192 New entity: 'Jonas Weber Security Role'\nThis prevents the librarian from merging the new entity into the old one.\nExtract entities and relations from:\n\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nLet me analyze the text and extract entities and relations aligned to the given ontology.\n\nText: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\"\n\nAvailable node types:\n- Database\n- SoftwareComponent\n- Date\n- Location\n- Vehicle\n- Presentation\n\nAvailable edge types:\n- USES\n- LOCATED_IN\n- CORRECTS\n- SUPERSEDES\n\nEntities I can identify:\n\n1. **NeoCortex** - This appears to be a software component (a system/application). Type: SoftwareComponent\n2. **PostgreSQL** - This is a database. Type: Database\n3. **Extraction worker** - This is a software component (a worker process). Type: SoftwareComponent\n\nRelations:\n1. NeoCortex USES PostgreSQL - \"NeoCortex uses PostgreSQL for its memory graph\"\n2. Extraction worker USES PostgreSQL - \"The extraction worker stores an episode and links it to the PostgreSQL database\"\n\nLet me think about importance:\n- NeoCortex: It's the main system mentioned, central to the text. Importance: 0.7\n- PostgreSQL: A database used by the system. Importance: 0.6\n- Extraction worker: A component of the system. Importance: 0.5\n\nNo temporal correction signals in this text, so no supersedes or temporal_signal needed.\n\nLet me finalize:\n\nEntities:\n1. NeoCortex - SoftwareComponent - importance 0.7\n2. PostgreSQL - Database - importance 0.6\n3. Extraction Worker - SoftwareComponent - importance 0.5\n\nRelations:\n1. NeoCortex -> PostgreSQL (USES) - evidence: \"NeoCortex uses PostgreSQL for its memory graph\"\n2. Extraction Worker -> PostgreSQL (USES) - evidence: \"The extraction worker stores an episode and links it to the PostgreSQL database\"\n\nFinal result processed.",
+      "refusal_mode": false,
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 401,
+          "text_tokens": 314
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 401,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "librarian",
+      "attempt": 2,
+      "elapsed_s": 30.003,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 2,
+      "elapsed_s": 30.01,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 2,
+      "elapsed_s": 30.008,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 2,
+      "elapsed_s": 30.009,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 2,
+      "elapsed_s": 30.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 2,
+      "elapsed_s": 30.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 2,
+      "elapsed_s": 30.002,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 2,
+      "elapsed_s": 30.007,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 2,
+      "elapsed_s": 30.002,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 2,
+      "elapsed_s": 30.002,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "elapsed_s": 30.003,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "elapsed_s": 30.002,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "elapsed_s": 30.001,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "elapsed_s": 30.005,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "elapsed_s": 30.015,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "elapsed_s": 30.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "elapsed_s": 30.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "elapsed_s": 30.001,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "elapsed_s": 30.002,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "elapsed_s": 30.001,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "elapsed_s": 30.001,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 4,
+      "elapsed_s": 30.002,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 4,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 4,
+      "elapsed_s": 30.003,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 4,
+      "elapsed_s": 30.001,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 4,
+      "elapsed_s": 30.003,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 4,
+      "elapsed_s": 30.009,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 4,
+      "elapsed_s": 30.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 4,
+      "elapsed_s": 30.004,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 4,
+      "elapsed_s": 30.001,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 4,
+      "elapsed_s": 30.005,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 4,
+      "elapsed_s": 30.001,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 4,
+      "elapsed_s": 30.002,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 5,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 5,
+      "elapsed_s": 30.004,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 5,
+      "elapsed_s": 30.002,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 5,
+      "elapsed_s": 30.001,
+      "episode": "E1",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "ontology",
+      "attempt": 5,
+      "elapsed_s": 30.003,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 5,
+      "elapsed_s": 30.006,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 5,
+      "elapsed_s": 30.002,
+      "episode": "E2",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 5,
+      "elapsed_s": 28.518,
+      "episode": "E2",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.95,
+            "domain_slug": "work_context",
+            "reasoning": "The text describes a specific project milestone (a migration's scheduled vs. actual landing date) and references a release note recording the correction. This is clearly about an ongoing project/task with a deadline and professional activity, fitting work_context precisely."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nThe knowledge text is about a migration that was scheduled to land on 15 August, but actually landed on 14 August. This is a correction about a specific event/date related to a migration project.\n\nLet me analyze this:\n- \"The migration was scheduled to land on 15 August\" - This is about a specific project/task/event\n- \"Correction: it actually landed on 14 August, not the 15th\" - This is a correction to the date\n- \"The release note records the corrected date\" - This references a release note\n\nThis is clearly about a work-related event - a migration project, its scheduled vs actual completion date, and a release note. This fits squarely into `work_context` which covers \"Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities.\"\n\nThis is a specific project milestone (a migration landing date) with a correction. It's not general domain knowledge, not technical knowledge about how something works, not user profile information. It's clearly work context - a specific project event with a date correction.\n\nConfidence: Very high for work_context, probably 0.95+.\n\nFinal result processed.",
+      "status": "success",
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": null,
+        "details": {
+          "reasoning_tokens": 247,
+          "text_tokens": 112
+        },
+        "prompt_tokens": null,
+        "reasoning_tokens": 247,
+        "requests": 1
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 5,
+      "elapsed_s": 30.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "extractor",
+      "attempt": 5,
+      "elapsed_s": 30.003,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "librarian",
+      "attempt": 5,
+      "elapsed_s": 30.002,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 5,
+      "elapsed_s": 30.004,
+      "episode": "E3",
+      "exception_type": "TimeoutError",
+      "raw_output": "timeout before a result was returned",
+      "status": "timeout",
+      "tool_calls": []
+    }
+  ],
+  "repeats": 5
+}
