@@ -18,6 +18,7 @@ from neocortex.graph_router import GraphRouter
 from neocortex.graph_service import GraphService
 from neocortex.mcp_settings import MCPSettings
 from neocortex.migrations import MigrationRunner
+from neocortex.model_factory import LocalEndpoint
 from neocortex.permissions import InMemoryPermissionService, PostgresPermissionService
 from neocortex.permissions.protocol import PermissionChecker
 from neocortex.postgres_service import PostgresService
@@ -36,6 +37,7 @@ class ServiceContext(TypedDict):
     permissions: PermissionChecker
     domain_router: DomainRouter | None
     seed_generator: SeedGenerator | None
+    local_endpoint: LocalEndpoint
 
 
 async def create_services(settings: MCPSettings) -> ServiceContext:
@@ -44,6 +46,7 @@ async def create_services(settings: MCPSettings) -> ServiceContext:
     When ``settings.mock_db`` is True, returns an in-memory repository
     with ``None`` for all PostgreSQL-backed services.
     """
+    local_endpoint = LocalEndpoint.from_settings(settings)
     if settings.mock_db:
         mem_permissions = InMemoryPermissionService(settings.bootstrap_admin_id)
         await mem_permissions.ensure_admin(settings.bootstrap_admin_id)
@@ -69,6 +72,8 @@ async def create_services(settings: MCPSettings) -> ServiceContext:
             mock_seed_gen = SeedGenerator(
                 domain_service=domain_svc,
                 model=settings.domain_classifier_model,
+                thinking_effort=settings.seed_generator_thinking_effort,
+                local_endpoint=local_endpoint,
             )
 
             domain_router = DomainRouter(
@@ -93,6 +98,7 @@ async def create_services(settings: MCPSettings) -> ServiceContext:
             permissions=permissions,
             domain_router=domain_router,
             seed_generator=mock_seed_gen,
+            local_endpoint=local_endpoint,
         )
 
     pg_config = PostgresConfig()
@@ -130,6 +136,7 @@ async def create_services(settings: MCPSettings) -> ServiceContext:
         domain_classifier = AgentDomainClassifier(
             model_name=settings.domain_classifier_model,
             thinking_effort=settings.domain_classifier_thinking_effort,
+            local_endpoint=local_endpoint,
         )
 
     await migration_runner.run_graph_schemas()
@@ -154,6 +161,8 @@ async def create_services(settings: MCPSettings) -> ServiceContext:
         pg_seed_gen = SeedGenerator(
             domain_service=domain_svc,
             model=settings.domain_classifier_model,
+            thinking_effort=settings.seed_generator_thinking_effort,
+            local_endpoint=local_endpoint,
         )
 
         pg_domain_router = DomainRouter(
@@ -178,6 +187,7 @@ async def create_services(settings: MCPSettings) -> ServiceContext:
         permissions=pg_permissions,
         domain_router=pg_domain_router,
         seed_generator=pg_seed_gen,
+        local_endpoint=local_endpoint,
     )
 
     # Make services available to Procrastinate task handlers

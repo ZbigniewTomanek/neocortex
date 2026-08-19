@@ -13,8 +13,10 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 from pydantic_ai import Agent
+from pydantic_ai.settings import ThinkingLevel
 
 from neocortex.domains.ontology_seeds import DOMAIN_SEEDS, DomainOntologySeed
+from neocortex.model_factory import LocalEndpoint, build_model, build_model_settings
 
 if TYPE_CHECKING:
     from neocortex.domains.protocol import DomainService
@@ -26,10 +28,15 @@ class SeedGenerator:
     def __init__(
         self,
         domain_service: DomainService,
+        # Plan 33 introduces an opt-in local: model route; Stage 9 changes defaults after the gate.
         model: str = "openai-responses:gpt-5.4-mini",
+        thinking_effort: ThinkingLevel = "medium",
+        local_endpoint: LocalEndpoint | None = None,
     ) -> None:
         self._domain_service = domain_service
         self._model = model
+        self._thinking_effort = thinking_effort
+        self._local_endpoint = local_endpoint
         self._cache: dict[str, DomainOntologySeed] = {}
 
     async def resolve_seed(self, slug: str) -> DomainOntologySeed:
@@ -117,12 +124,13 @@ class SeedGenerator:
         )
 
         agent: Agent[None, DomainOntologySeed] = Agent(  # ty: ignore[invalid-assignment]
-            self._model,
+            build_model(self._model, self._local_endpoint),
             output_type=DomainOntologySeed,
             system_prompt=prompt,
         )
 
         result = await agent.run(
             f"Generate ontology seed types for: {domain_name} - {domain_desc}",
+            model_settings=build_model_settings(self._thinking_effort, self._model, self._local_endpoint),
         )
         return result.output

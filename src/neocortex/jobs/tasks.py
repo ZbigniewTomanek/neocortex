@@ -76,14 +76,17 @@ async def extract_episode(
         ontology_config=AgentInferenceConfig(
             model_name=settings.ontology_model,
             thinking_effort=settings.ontology_thinking_effort,
+            local_endpoint=services.get("local_endpoint"),
         ),
         extractor_config=AgentInferenceConfig(
             model_name=settings.extractor_model,
             thinking_effort=settings.extractor_thinking_effort,
+            local_endpoint=services.get("local_endpoint"),
         ),
         librarian_config=AgentInferenceConfig(
             model_name=settings.librarian_model,
             thinking_effort=settings.librarian_thinking_effort,
+            local_endpoint=services.get("local_endpoint"),
         ),
         librarian_use_tools=settings.librarian_use_tools,
         tool_calls_limit=settings.extraction_tool_calls_limit,

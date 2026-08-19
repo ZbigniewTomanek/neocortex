@@ -128,6 +128,15 @@ class MCPSettings(BaseSettings):
     extractor_thinking_effort: ThinkingLevel = "low"
     librarian_model: str = "openai-responses:gpt-5.4-mini"
     librarian_thinking_effort: ThinkingLevel = "low"
+    # Local OpenAI-compatible endpoint (LiteLLM / vLLM / SGLang / Ollama).
+    # Any *_model value prefixed "local:" is routed here instead of to a hosted provider.
+    local_model_base_url: str | None = None
+    local_model_api_key_env: str = "VLLM_API_KEY"
+    local_model_temperature: float = 0.6
+    local_model_top_p: float = 0.95
+    local_model_temperature_nothink: float = 0.3
+    local_model_top_p_nothink: float = 0.9
+    local_model_timeout_s: float = 600.0
     extraction_tool_calls_limit: int = 150
     ontology_tool_calls_limit: int = 30
     ontology_max_new_types: int = 3
@@ -141,6 +150,7 @@ class MCPSettings(BaseSettings):
     domain_routing_enabled: bool = True
     domain_classifier_model: str = "openai-responses:gpt-5.4-mini"
     domain_classifier_thinking_effort: ThinkingLevel = "medium"
+    seed_generator_thinking_effort: ThinkingLevel = "medium"
     domain_classification_threshold: float = 0.3
 
     # Admin

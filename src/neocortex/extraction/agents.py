@@ -11,8 +11,11 @@ from typing import TYPE_CHECKING, Literal
 
 from loguru import logger
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.models import Model
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.settings import ModelSettings, ThinkingLevel
+
+from neocortex.model_factory import LocalEndpoint, build_model, build_model_settings
 
 if TYPE_CHECKING:
     from neocortex.db.protocol import MemoryRepository
@@ -27,6 +30,7 @@ from neocortex.extraction.schemas import (
     OntologyProposal,
 )
 
+# Plan 33 introduces an opt-in local: model route; Stage 9 changes defaults after the gate.
 DEFAULT_MODEL_NAME = "openai-responses:gpt-5.4-mini"
 DEFAULT_THINKING_EFFORT = "low"
 
@@ -38,22 +42,23 @@ class AgentInferenceConfig:
     model_name: str = DEFAULT_MODEL_NAME
     thinking_effort: ThinkingLevel | None = DEFAULT_THINKING_EFFORT
     use_test_model: bool = False
+    local_endpoint: LocalEndpoint | None = None
 
     @property
     def model_settings(self) -> ModelSettings | None:
         """Build pydantic-ai model_settings dict for agent.run()."""
         if self.thinking_effort is not None:
-            return ModelSettings(thinking=self.thinking_effort)
+            return build_model_settings(self.thinking_effort, self.model_name, self.local_endpoint)
         return None
 
 
-def _build_model(config: AgentInferenceConfig) -> str | TestModel:
+def _build_model(config: AgentInferenceConfig) -> str | Model:
     """Build the LLM model from inference config."""
     if config.use_test_model:
         logger.debug("Using TestModel for extraction agents")
         return TestModel()
     logger.debug("Using model={}", config.model_name)
-    return config.model_name
+    return build_model(config.model_name, config.local_endpoint)
 
 
 # ── Ontology Agent ──

@@ -342,7 +342,7 @@ remain a useful long-term aspiration; they are not a valid instrument for a mode
 
 | # | Stage | Status | Notes | Commit |
 |---|-------|--------|-------|--------|
-| 1 | [Local provider routing](stages/01-local-provider-routing.md) | PENDING | | |
+| 1 | [Local provider routing](stages/01-local-provider-routing.md) | DONE | Added per-agent `local:` OpenAI-compatible routing, local sampling/timeout settings, classifier and seed-generator wiring, and unit coverage. Full suite: 911 passed, 11 skipped. | 3b1d8af |
 | 2 | [Per-agent capability probes](stages/02-capability-probes.md) | PENDING | | |
 | 3 | [Prompt hardening](stages/03-prompt-hardening.md) | PENDING | | |
 
@@ -486,6 +486,8 @@ Leave empty until execution surfaces something.
 
 | # | Stage | Symptom | Root Cause | Resolution | Fixed By |
 |---|-------|---------|-----------|------------|----------|
+| 1 | 1 | Full suite failed in `test_extract_episode_calls_run_extraction` with `KeyError: 'local_endpoint'` | The test uses a minimal pre-existing fake service context without the new optional context field | Task wiring now uses `services.get("local_endpoint")`, preserving hosted behavior for older/minimal contexts while production services provide the resolved endpoint | inline |
+| 2 | 1 | Pre-commit `ty` rejected `_build_model` return annotation | The annotation predated the new local `Model` return path | Annotated the delegate as `str | Model`; formatting and lint hooks also passed after re-staging | inline |
 
 ---
 

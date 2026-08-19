@@ -10,13 +10,14 @@ from typing import Protocol, runtime_checkable
 
 from loguru import logger
 from pydantic_ai import Agent
-from pydantic_ai.settings import ModelSettings, ThinkingLevel
+from pydantic_ai.settings import ThinkingLevel
 
 from neocortex.domains.models import (
     ClassificationResult,
     DomainClassification,
     SemanticDomain,
 )
+from neocortex.model_factory import LocalEndpoint, build_model, build_model_settings
 
 
 @runtime_checkable
@@ -41,11 +42,14 @@ class AgentDomainClassifier:
 
     def __init__(
         self,
+        # Plan 33 introduces an opt-in local: model route; Stage 9 changes defaults after the gate.
         model_name: str = "openai-responses:gpt-5.4-mini",
         thinking_effort: ThinkingLevel = "medium",
+        local_endpoint: LocalEndpoint | None = None,
     ) -> None:
-        self._model = model_name
-        self._model_settings = ModelSettings(thinking=thinking_effort)
+        self._model_name = model_name
+        self._thinking_effort = thinking_effort
+        self._local_endpoint = local_endpoint
 
     async def classify(self, text: str, domains: list[SemanticDomain]) -> ClassificationResult:
         if not domains:
@@ -77,12 +81,15 @@ class AgentDomainClassifier:
         )
 
         agent: Agent[None, ClassificationResult] = Agent(  # ty: ignore[invalid-assignment]
-            self._model,
+            build_model(self._model_name, self._local_endpoint),
             output_type=ClassificationResult,
             system_prompt=prompt,
         )
 
-        result = await agent.run(text, model_settings=self._model_settings)
+        result = await agent.run(
+            text,
+            model_settings=build_model_settings(self._thinking_effort, self._model_name, self._local_endpoint),
+        )
         logger.debug(
             "classification_result",
             matched_count=len(result.output.matched_domains),
