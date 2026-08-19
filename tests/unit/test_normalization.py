@@ -257,6 +257,11 @@ def test_normalize_edge_type_rejects_too_long(bad_name: str) -> None:
         "MetricUpdating142000KmId47",
         # I5: JS method name leakage (Plan 29)
         "BrandfunctionNameCreateOrUpdateNode",
+        "Entity<think>",
+        "Entity</think>",
+        "Entity<tool_call>",
+        "Entity<function=",
+        "Entity<parameter=",
     ],
 )
 def test_normalize_node_type_rejects_tool_call_artifacts(bad_name: str) -> None:

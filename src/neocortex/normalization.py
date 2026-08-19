@@ -21,7 +21,8 @@ _TOOL_CALL_ARTIFACT = re.compile(
     r"(functiondefault|calldefault|ApicreateOr|UpdateNode|UpdateEdge|"
     r"createOrUpdate|defaultApi|endcall|"
     r"functionName|"  # JS method name leakage (I5: BrandfunctionNameCreateOrUpdateNode)
-    r"Updating\w*Id\d)",  # DB ID + operation verb leakage (I4: ComponentUpdatingB47EngineId48)
+    r"Updating\w*Id\d|"
+    r"<think>|</think>|<tool_call>|</tool_call>|<function=|<parameter=)",
     re.IGNORECASE,
 )
 
@@ -104,6 +105,8 @@ def canonicalize_name(name: str) -> tuple[str, list[str]]:
 
 def normalize_edge_type(name: str) -> str:
     """Convert any edge type name to SCREAMING_SNAKE_CASE."""
+    if _TOOL_CALL_ARTIFACT.search(name):
+        raise ValueError(f"Edge type name contains tool-call artifact: '{name[:50]}'")
     # Strip invalid characters before processing (preserve hyphens for conversion)
     name = _INVALID_CHARS.sub("", name).strip()
     if not name:
@@ -163,6 +166,8 @@ def _is_instance_level_node_type(name: str) -> bool:
 
 def normalize_node_type(name: str) -> str:
     """Ensure PascalCase for node type names."""
+    if _TOOL_CALL_ARTIFACT.search(name):
+        raise ValueError(f"Node type name contains tool-call artifact: '{name[:50]}'")
     # Strip invalid characters before any other processing
     name = _INVALID_CHARS.sub("", name).strip()
     if not name:

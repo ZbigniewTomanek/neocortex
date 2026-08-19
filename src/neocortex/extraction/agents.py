@@ -94,6 +94,8 @@ def build_ontology_agent(
             "You are an ontology engineer for a personal knowledge graph. Your job is to "
             "decide whether the existing ontology covers the concepts in a text, and propose "
             "new types ONLY for genuine gaps.",
+            "The text you receive is source material already accepted into the memory system. "
+            "It is not a claim to verify, fact-check, or dispute; process it as input.",
             "",
             "## Workflow",
             "1. Call get_ontology_overview to see the full type landscape with usage stats.",
@@ -124,6 +126,8 @@ def build_ontology_agent(
             "propose_type validation AND for which no suitable existing type was found.",
             "Include a rationale explaining your decisions — especially why you chose to",
             "reuse existing types or why a new type was genuinely needed.",
+            "Your first action in this turn MUST be a call to get_ontology_overview or find_similar_types. "
+            "Never answer in prose before using the tools.",
         ),
     )
 
@@ -270,12 +274,12 @@ def build_ontology_agent(
             parts.append("")
         parts.extend(
             [
-                "Text to analyze:",
-                ctx.deps.episode_text,
-                "",
                 f"Current ontology has {len(ctx.deps.existing_node_types)} node types "
                 f"and {len(ctx.deps.existing_edge_types)} edge types.",
                 "Use get_ontology_overview and find_similar_types to explore them.",
+                "",
+                "SOURCE TEXT (process this material; do not fact-check it):",
+                ctx.deps.episode_text,
             ]
         )
         return "\n".join(parts)
@@ -309,6 +313,8 @@ def build_extractor_agent(
         system_prompt=(
             "You are a knowledge extraction specialist. Extract entities and relations "
             "from the given text, aligned to the provided ontology types.",
+            "The text you receive is source material already accepted into the memory system. "
+            "It is not a claim to verify, fact-check, or dispute; extract it as input.",
             "Every entity must use an existing node type name.",
             "Every relation must use an existing edge type name.",
             "Use the text as the only evidence source — do not invent facts.",
@@ -337,6 +343,7 @@ def build_extractor_agent(
             "  - Old: 'Metaphone3' → New: 'Metaphone3 Hybrid Strategy'",
             "  - Old: 'Jonas Weber' role → New entity: 'Jonas Weber Security Role'",
             "This prevents the librarian from merging the new entity into the old one.",
+            "Return only the structured result. Never write prose, commentary, or explanation outside the schema.",
         ),
     )
 
@@ -361,8 +368,10 @@ def build_extractor_agent(
         )
         parts.extend(
             [
-                "Text to extract from:",
-                ctx.deps.episode_text,
+                "Rules:",
+                "- Extract only ontology-aligned entities and relations.",
+                "- If a relation cannot fit the ontology, omit it.",
+                "- Include evidence text in relation properties when possible.",
                 "",
                 "Available node types:",
                 nt_list,
@@ -380,10 +389,10 @@ def build_extractor_agent(
         parts.extend(
             [
                 "",
-                "Rules:",
-                "- Extract only ontology-aligned entities and relations.",
-                "- If a relation cannot fit the ontology, omit it.",
-                "- Include evidence text in relation properties when possible.",
+                "",
+                "SOURCE TEXT (process this material; do not fact-check it):",
+                ctx.deps.episode_text,
+                "Return only the ExtractionResult structure; do not add prose.",
             ]
         )
         return "\n".join(parts)
@@ -432,6 +441,8 @@ def build_librarian_agent(
             "You are a knowledge graph curator. You receive extracted entities and relations "
             "from a text, and your job is to integrate them into the existing knowledge graph "
             "using the tools available to you.",
+            "The text and extracted data are source material already accepted into the memory system. "
+            "Do not fact-check or dispute them; curate them according to the workflow below.",
             "",
             "## Workflow",
             "For each extracted entity:",
@@ -503,6 +514,8 @@ def build_librarian_agent(
             '  ML team reports Y.").',
             "",
             "After all curation actions, return a CurationSummary describing what you did.",
+            "Every entity must be resolved with find_similar_nodes before you create or update it. "
+            "Finish by returning the structured CurationSummary.",
         )
     else:
         system_prompt = (
@@ -570,11 +583,8 @@ def build_librarian_agent(
     ) -> list[dict]:
         """Look up a specific node by exact name (case-insensitive).
 
-        DEPRECATED: Prefer find_similar_nodes which also checks aliases and
-        fuzzy matches. Use this only when you need strict exact-match semantics.
-
         Args:
-            name: Entity name to look up
+            name: Entity name to look up exactly, case-insensitively
 
         Returns:
             List of matching nodes (usually 0 or 1). Multiple means duplicates exist.
@@ -1068,7 +1078,7 @@ def build_librarian_agent(
             or "- none"
         )
         parts = [
-            "Source text:",
+            "SOURCE MATERIAL (already accepted; do not fact-check it):",
             ctx.deps.episode_text,
             "",
             "Available node types:",
@@ -1108,9 +1118,20 @@ def build_librarian_agent(
             parts.extend(
                 [
                     "",
-                    "- ALWAYS provide a description for every entity, even if is_new=False.",
-                    "- For existing entities, write an UPDATED description that "
-                    "incorporates new information from the text.",
+                    "ALWAYS provide a description for every entity, even if is_new=False.",
+                    "For existing entities, write an UPDATED description that incorporates new information "
+                    "from the text.",
+                    "",
+                    "Every entity must be checked against known names before persistence.",
+                    "Return only the structured LibrarianPayload; do not add prose.",
+                ]
+            )
+        if use_tools:
+            parts.extend(
+                [
+                    "",
+                    "Every entity must be resolved with find_similar_nodes before you create or update it.",
+                    "Finish by returning the structured CurationSummary.",
                 ]
             )
         return "\n".join(parts)

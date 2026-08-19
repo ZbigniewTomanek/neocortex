@@ -396,15 +396,15 @@ def test_librarian_prompt_uses_find_similar_nodes():
     assert "find_similar_nodes" in prompt_text
 
 
-def test_find_node_by_name_deprecation_notice():
-    """find_node_by_name tool docstring contains deprecation notice."""
+def test_find_node_by_name_has_exact_match_contract():
+    """find_node_by_name remains available for strict exact-match lookups."""
     from neocortex.extraction.agents import AgentInferenceConfig, build_librarian_agent
 
     agent = build_librarian_agent(AgentInferenceConfig(use_test_model=True), use_tools=True)
     tool = agent._function_toolset.tools.get("find_node_by_name")
     assert tool is not None
     assert tool.description is not None
-    assert "DEPRECATED" in tool.description
+    assert "exact name" in tool.description
 
 
 # ── Stage 5: create_or_update_node alias registration tests ──

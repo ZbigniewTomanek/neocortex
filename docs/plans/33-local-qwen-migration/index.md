@@ -344,7 +344,7 @@ remain a useful long-term aspiration; they are not a valid instrument for a mode
 |---|-------|--------|-------|--------|
 | 1 | [Local provider routing](stages/01-local-provider-routing.md) | DONE | Added per-agent `local:` OpenAI-compatible routing, local sampling/timeout settings, classifier and seed-generator wiring, and unit coverage. Full suite: 911 passed, 11 skipped. | 3e3c85f |
 | 2 | [Per-agent capability probes](stages/02-capability-probes.md) | DONE | Added fixed three-episode corpus, bounded-concurrency real-agent probe harness, 60 records per effort at low/medium/high/xhigh, and per-agent findings. Medium used a 60s cap for the completed sweep; see findings for timeout caveat and repository limitation. Full suite: 911 passed, 11 skipped. | 82f4580 |
-| 3 | [Prompt hardening](stages/03-prompt-hardening.md) | PENDING | | |
+| 3 | [Prompt hardening](stages/03-prompt-hardening.md) | DONE | Added source-text framing, terminal structured-output/tool contracts, reordered dynamic context, removed duplicate episode user messages, removed the misleading exact-match deprecation notice, and extended artifact rejection. Full suite: 916 passed, 11 skipped. Hosted E2E and open-dict variant experiment deferred to Backlog #6–#7. | |
 
 **Phase B — The bake-off**
 
@@ -489,6 +489,8 @@ Leave empty until execution surfaces something.
 | 1 | 1 | Full suite failed in `test_extract_episode_calls_run_extraction` with `KeyError: 'local_endpoint'` | The test uses a minimal pre-existing fake service context without the new optional context field | Task wiring now uses `services.get("local_endpoint")`, preserving hosted behavior for older/minimal contexts while production services provide the resolved endpoint | inline |
 | 2 | 1 | Pre-commit `ty` rejected `_build_model` return annotation | The annotation predated the new local `Model` return path | Annotated the delegate as `str | Model`; formatting and lint hooks also passed after re-staging | inline |
 | 3 | 2 | Required `poetry run pytest` command was unavailable | This checkout uses `uv` and does not have the Poetry executable installed | Ran the repository-equivalent `uv run pytest` successfully: 911 passed, 11 skipped | inline |
+| 4 | 3 | New Qwen marker tests did not raise because `<…>` was stripped first | Normalization checked `_TOOL_CALL_ARTIFACT` only after removing invalid characters | Check the raw type name before sanitization; added regression cases for all five new marker families and reran the full suite | inline |
+| 5 | 3 | Pre-commit rejected two prompt lines with E501 | Added terminal contracts exceeded the repository's 120-column lint limit | Wrapped the prompt strings without changing their text; pre-commit passed on retry | inline |
 
 ---
 
@@ -505,6 +507,8 @@ state the symptom, where it came from, and a concrete lead for resolving it.
 | 3 | `embedding_service.py` silently returns `None` without `GOOGLE_API_KEY` | pre-existing | med | Unrelated to this migration, but it will corrupt a bake-off arm by silently degrading recall to text-only with no error | Make the embedding service fail loudly at startup when `GOOGLE_API_KEY` is absent and `mock_db` is false. Note it reads `os.environ["GOOGLE_API_KEY"]` directly and has no `settings` reference, so this needs a constructor change. Stage 4 must assert embeddings are live before either arm runs | OPEN |
 | 4 | Artifact-rejected entities are silently discarded, not quarantined | pre-review | med | A product issue this plan only *measures* (Tier 1c). When `normalize_node_type` rejects a name, `get_or_create_node_type` returns `None` and `pipeline.py:448` does `continue` — the entity is dropped with a WARNING and nothing surfaces it to the caller or the graph. Any model that leaks markers loses data quietly, on any provider | Give `run_extraction` a `rejected: list[...]` in its result and surface a count on the job record, so a rejection is visible without log archaeology. Consider a retry that strips the artifact and re-normalizes rather than dropping the entity | OPEN |
 | 5 | Probe tool backend is not PostgreSQL-backed | 2 | med | The completed capability sweep uses `InMemoryRepository` to avoid mutating the shared development graph. This exercises the real PydanticAI agents and tool functions but does not measure PostgreSQL query/permission behavior or production graph latency | Before any bake-off interpretation, run a small repeat of ontology/librarian probes with the production repository and isolated probe schema, or explicitly document why the mock backend is sufficient | OPEN |
+| 6 | Hosted no-regression E2E not run after prompt hardening | 3 | med | The required hosted E2E needs a running hosted-configured service and the runner uses `start --fresh`, which would destroy the persisted development graph; no truthful result was available without that environment decision | Run `./scripts/run_e2e.sh scripts/e2e_extraction_pipeline_test.py` in the dedicated hosted baseline environment, snapshot first, and record the exit/output before Stage 5 | OPEN |
+| 7 | Extractor open-dict schema experiment not isolated | 3 | med | The existing probe harness only runs the committed schema and has no agent-selection or temporary-schema variant; changing `properties` in place would confound the shared bake-off schema and alter stored data semantics | Add a bounded extractor-only probe mode or temporary schema variants, measure open `dict`, `dict[str, str]`, and omitted properties with latency and token counts, then retain the committed schema unless hosted validation also passes | OPEN |
 
 Statuses: `OPEN` -> `IN_PROGRESS` -> `RESOLVED`. When an item is resolved, flip its
 status and summarize the fix in **Fixed Issues**. Heavy items may warrant their own
@@ -613,3 +617,17 @@ overhead. The normal per-call timeout remains 300 seconds; the completed effort 
 30 seconds for low/high/xhigh and 60 seconds for medium to produce bounded evidence. Those
 caps are part of the findings and are not quality gates; the bake-off uses its own prescribed
 timeouts and worker concurrency.
+
+**D14 — Preserve open extractor properties until an isolated experiment exists.**
+Stage 3 did not change `ExtractedEntity.properties` or `ExtractedRelation.properties`: those fields
+carry real graph data, and the existing probe harness cannot compare schema variants without changing
+the shared bake-off contract. The known open-dict baseline remains recorded (124.8 s / 3350 reasoning
+tokens in the earlier real-schema probe); the isolated comparison is Backlog #7.
+
+## Execution Notes
+
+Stage 3 prompt source sizes were not tokenized because the repository has no prompt-token counter.
+The extractor's duplicate episode user message was removed, so its largest variable is now injected
+once through instructions; the added framing and terminal contracts are short static lines. The
+hosted E2E was not run against the persisted local services because the prescribed runner starts a
+fresh environment; see Backlog #6.

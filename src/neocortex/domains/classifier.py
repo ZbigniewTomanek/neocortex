@@ -61,6 +61,8 @@ class AgentDomainClassifier:
         prompt = (
             "You are a knowledge classification agent for a memory system.\n"
             "Classify incoming knowledge into one or more semantic domains.\n\n"
+            "The knowledge text is source material already accepted into the memory system. "
+            "It is not a claim to verify, fact-check, or dispute; classify it as input.\n\n"
             "DOMAIN TREE (indented children are sub-domains):\n"
             f"{domain_tree}\n\n"
             "GUIDELINES:\n"
@@ -78,7 +80,9 @@ class AgentDomainClassifier:
             "- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n"
             "- If nothing fits, return empty matched_domains and propose a new domain.\n\n"
             "Classify the following knowledge text. Return matched domains with confidence scores, "
-            "and optionally a proposed_domain if no existing domain is a good fit."
+            "and optionally a proposed_domain if no existing domain is a good fit.\n"
+            "Return only the structured classification. If nothing matches, return an empty match list "
+            "rather than prose."
         )
 
         agent: Agent[None, ClassificationResult] = Agent(  # ty: ignore[invalid-assignment]

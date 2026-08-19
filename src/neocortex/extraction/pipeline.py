@@ -144,7 +144,7 @@ async def run_extraction(
         else:
             seed = DOMAIN_SEEDS.get(domain_slug or "")
         ontology_result = await ontology_agent.run(
-            f"Analyze this text and propose ontology extensions:\n\n{text}",
+            "Analyze the source text and propose ontology extensions.",
             deps=OntologyAgentDeps(
                 episode_text=text,
                 existing_node_types=[t.name for t in node_types],
@@ -230,7 +230,7 @@ async def run_extraction(
         # 4. Extraction stage
         t0 = time.monotonic()
         extraction_result = await extractor_agent.run(
-            f"Extract entities and relations from:\n\n{text}",
+            "Extract entities and relations from the source text.",
             deps=ExtractorAgentDeps(
                 episode_text=text,
                 node_types=[t.name for t in node_types],
