@@ -352,7 +352,7 @@ remain a useful long-term aspiration; they are not a valid instrument for a mode
 |---|-------|--------|-------|--------|
 | 4 | [Measurement harness](stages/04-measurement-harness.md) | DONE | Added corpus loader, recall scorer, live-regex metrics emitter, structured usage/timing/rejection audit events, and full arm orchestrator with pre-flight assertions and derived timeout polling. Dry-run/parser checks pass; full suite: 916 passed, 11 skipped. Live DB/API reproduction and end-to-end timeout assertion deferred to Backlog #8. | |
 | 5 | [Baseline arm — GPT-5.4-mini](stages/05-baseline-arm.md) | BLOCKED | Run 1 corpus arm completed cleanly and was snapshotted; run 2 remained at two `doing` extraction jobs for >30 minutes with no finished events, so variance, E2E gates, and resolved thresholds are NOT MEASURED. See Backlog #9. | 89e7f95 |
-| 6 | [Qwen arm — all four agents](stages/06-qwen-arm.md) | PENDING | | |
+| 6 | [Qwen arm — all four agents](stages/06-qwen-arm.md) | BLOCKED | Stage 5 is BLOCKED because baseline run 2 did not complete; the required baseline variance, E2E gates, and resolved thresholds are not measured. See Backlog #9. | |
 | 6b | [Isolation arms (conditional)](stages/06b-isolation-arms.md) | PENDING | | |
 
 **Phase C — Gate and cutover**
