@@ -360,7 +360,7 @@ remain a useful long-term aspiration; they are not a valid instrument for a mode
 | # | Stage | Status | Notes | Commit |
 |---|-------|--------|-------|--------|
 | 7 | [Quality gate evaluation](stages/07-quality-gate.md) | BLOCKED | Stage 5 is BLOCKED because baseline run 2 did not complete; Stages 6 and 6b therefore cannot provide the required Qwen comparison or attribution evidence. See Backlog #9. | |
-| 8 | [Thinking-effort tuning](stages/08-thinking-effort-tuning.md) | PENDING | | |
+| 8 | [Thinking-effort tuning](stages/08-thinking-effort-tuning.md) | BLOCKED | Stage 7 is BLOCKED because Stage 5 baseline run 2 did not complete; no agent has a validated MIGRATE verdict to tune. See Backlog #9. | 9475829 |
 | 9 | [Cutover, docs, rollback](stages/09-cutover-and-docs.md) | PENDING | | |
 
 Statuses: `PENDING` -> `IN_PROGRESS` -> `DONE` | `BLOCKED` | `SKIPPED`
