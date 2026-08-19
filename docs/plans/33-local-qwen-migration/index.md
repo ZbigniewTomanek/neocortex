@@ -342,7 +342,7 @@ remain a useful long-term aspiration; they are not a valid instrument for a mode
 
 | # | Stage | Status | Notes | Commit |
 |---|-------|--------|-------|--------|
-| 1 | [Local provider routing](stages/01-local-provider-routing.md) | DONE | Added per-agent `local:` OpenAI-compatible routing, local sampling/timeout settings, classifier and seed-generator wiring, and unit coverage. Full suite: 911 passed, 11 skipped. | 3b1d8af |
+| 1 | [Local provider routing](stages/01-local-provider-routing.md) | DONE | Added per-agent `local:` OpenAI-compatible routing, local sampling/timeout settings, classifier and seed-generator wiring, and unit coverage. Full suite: 911 passed, 11 skipped. | 3e3c85f |
 | 2 | [Per-agent capability probes](stages/02-capability-probes.md) | PENDING | | |
 | 3 | [Prompt hardening](stages/03-prompt-hardening.md) | PENDING | | |
 
