@@ -359,7 +359,7 @@ remain a useful long-term aspiration; they are not a valid instrument for a mode
 
 | # | Stage | Status | Notes | Commit |
 |---|-------|--------|-------|--------|
-| 7 | [Quality gate evaluation](stages/07-quality-gate.md) | PENDING | | |
+| 7 | [Quality gate evaluation](stages/07-quality-gate.md) | BLOCKED | Stage 5 is BLOCKED because baseline run 2 did not complete; Stages 6 and 6b therefore cannot provide the required Qwen comparison or attribution evidence. See Backlog #9. | |
 | 8 | [Thinking-effort tuning](stages/08-thinking-effort-tuning.md) | PENDING | | |
 | 9 | [Cutover, docs, rollback](stages/09-cutover-and-docs.md) | PENDING | | |
 
