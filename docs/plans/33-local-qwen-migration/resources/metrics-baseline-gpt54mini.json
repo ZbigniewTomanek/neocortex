@@ -1,0 +1,4835 @@
+{
+  "arm": "baseline-gpt54mini",
+  "phase": "corpus",
+  "generated_at": "2026-08-19T14:08:45.791647+02:00",
+  "artifact_regex": "(functiondefault|calldefault|ApicreateOr|UpdateNode|UpdateEdge|createOrUpdate|defaultApi|endcall|functionName|Updating\\w*Id\\d|<think>|</think>|<tool_call>|</tool_call>|<function=|<parameter=)",
+  "schemas": {
+    "ncx_admin__personal": {
+      "active_node_types": 21,
+      "active_edge_types": 23,
+      "unused_edge_type_pct": "20.7",
+      "garbage_types": 0,
+      "type_reuse_ratio": "12.2",
+      "instance_type_candidates": [],
+      "invalid_type_names": [
+        "RELATES_TO",
+        "CAUSED_BY",
+        "DERIVED_FROM",
+        "HAS_GOAL",
+        "WORKS_ON",
+        "WORKS_FOR",
+        "LOCATED_AT",
+        "PART_OF",
+        "ESTIMATED_BY",
+        "EXACT_MATCH"
+      ],
+      "stored_leaks": []
+    },
+    "ncx_shared__domain_knowledge": {
+      "active_node_types": 4,
+      "active_edge_types": 7,
+      "unused_edge_type_pct": "69.6",
+      "garbage_types": 0,
+      "type_reuse_ratio": "5.5",
+      "instance_type_candidates": [],
+      "invalid_type_names": [
+        "RELATES_TO",
+        "CAUSED_BY",
+        "DERIVED_FROM",
+        "HAS_GOAL",
+        "WORKS_ON",
+        "WORKS_FOR",
+        "LOCATED_AT",
+        "PART_OF"
+      ],
+      "stored_leaks": []
+    },
+    "ncx_shared__knowledge": {
+      "active_node_types": 0,
+      "active_edge_types": 0,
+      "unused_edge_type_pct": "100.0",
+      "garbage_types": 0,
+      "type_reuse_ratio": null,
+      "instance_type_candidates": [],
+      "invalid_type_names": [
+        "RELATES_TO",
+        "CAUSED_BY",
+        "DERIVED_FROM",
+        "HAS_GOAL",
+        "WORKS_ON",
+        "WORKS_FOR",
+        "LOCATED_AT",
+        "PART_OF"
+      ],
+      "stored_leaks": []
+    },
+    "ncx_shared__technical_knowledge": {
+      "active_node_types": 14,
+      "active_edge_types": 22,
+      "unused_edge_type_pct": "18.5",
+      "garbage_types": 0,
+      "type_reuse_ratio": "21.2",
+      "instance_type_candidates": [],
+      "invalid_type_names": [
+        "RELATES_TO",
+        "CAUSED_BY",
+        "DERIVED_FROM",
+        "HAS_GOAL",
+        "WORKS_ON",
+        "WORKS_FOR",
+        "LOCATED_AT",
+        "PART_OF",
+        "EXACT_MATCH",
+        "CONTRASTS_WITH"
+      ],
+      "stored_leaks": []
+    },
+    "ncx_shared__user_profile": {
+      "active_node_types": 0,
+      "active_edge_types": 0,
+      "unused_edge_type_pct": "100.0",
+      "garbage_types": 0,
+      "type_reuse_ratio": null,
+      "instance_type_candidates": [],
+      "invalid_type_names": [
+        "RELATES_TO",
+        "CAUSED_BY",
+        "DERIVED_FROM",
+        "HAS_GOAL",
+        "WORKS_ON",
+        "WORKS_FOR",
+        "LOCATED_AT",
+        "PART_OF"
+      ],
+      "stored_leaks": []
+    },
+    "ncx_shared__work_context": {
+      "active_node_types": 13,
+      "active_edge_types": 19,
+      "unused_edge_type_pct": "24.0",
+      "garbage_types": 0,
+      "type_reuse_ratio": "12.9",
+      "instance_type_candidates": [],
+      "invalid_type_names": [
+        "RELATES_TO",
+        "CAUSED_BY",
+        "DERIVED_FROM",
+        "HAS_GOAL",
+        "WORKS_ON",
+        "WORKS_FOR",
+        "LOCATED_AT",
+        "PART_OF",
+        "HAS_ROLE"
+      ],
+      "stored_leaks": []
+    },
+    "ncx_telegrambot__personal": {
+      "active_node_types": 0,
+      "active_edge_types": 0,
+      "unused_edge_type_pct": "100.0",
+      "garbage_types": 0,
+      "type_reuse_ratio": null,
+      "instance_type_candidates": [],
+      "invalid_type_names": [
+        "RELATES_TO",
+        "CAUSED_BY",
+        "DERIVED_FROM",
+        "HAS_GOAL",
+        "WORKS_ON",
+        "WORKS_FOR",
+        "LOCATED_AT",
+        "PART_OF"
+      ],
+      "stored_leaks": []
+    }
+  },
+  "audit": {
+    "invalid_type_rejections": 0,
+    "entity_attempts": 0,
+    "invalid_type_rejection_rate": null,
+    "audit_event_counts": {
+      "node_fuzzy_matched": 1163,
+      "node_homonym_detected": 510,
+      "librarian_tool_call": 3387,
+      "curation_complete": 109,
+      "domain_classification_result": 42,
+      "domain_routing_completed": 42,
+      "route_episode_completed": 42,
+      "ontology_agent_complete": 113,
+      "recall_with_graph_traversal": 12,
+      "edge_type_drift_caught": 15,
+      "extraction_enqueued": 64,
+      "domain_routing_enqueued": 59,
+      "node_type_drift_caught": 9,
+      "stage_timing": 461,
+      "agent_usage": 262
+    },
+    "stage_timings": [
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.17
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.25
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.07
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.27
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.08
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.05
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 9.94
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.05
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.76
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.12
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.04
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 10.03
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 10.23
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.69
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.37
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 9.65
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.34
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 17.66
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 20.54
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.03
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.14
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.28
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 11.09
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.32
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 30.73
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 34.5
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.16
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 10.13
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 9.4
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.8
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.28
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 40.6
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 37.16
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.31
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.28
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.04
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 10.15
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 14.17
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 4.68
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.32
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.2
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.27
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 33.96
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.03
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 35.53
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 6.84
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 18.31
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.45
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.32
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.46
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.33
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 38.92
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 65.92
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 44.93
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 39.78
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 43.19
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.35
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.31
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 27.1
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.03
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 52.69
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 39.4
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.58
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.4
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.89
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.37
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 19.87
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 58.35
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.59
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.33
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.15
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.33
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 38.52
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.04
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 46.63
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.31
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 39.73
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 13.59
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.76
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.35
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 40.28
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 13.4
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 11.36
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.43
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.3
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 7.08
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 9.92
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.36
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.37
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.29
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 39.44
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.03
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 35.96
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.03
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 55.62
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 42.25
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 13.36
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 11.27
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 8.22
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.94
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.32
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 9.39
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.29
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 10.1
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.35
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 10.75
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.48
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.3
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 37.02
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 41.35
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 37.81
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.03
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 10.9
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 23.33
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 8.13
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 4.73
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.3
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.41
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.28
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 62.79
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.23
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.27
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.04
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 8.14
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.85
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.27
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 23.82
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 28.78
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.04
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 33.39
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.03
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 7.9
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 12.07
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 7.98
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.28
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.33
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 25.5
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.52
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.26
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.03
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.94
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.28
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 11.73
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 14.77
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.03
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.02
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.29
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 24.2
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.13
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 9.0
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.38
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.32
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 12.01
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.33
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.29
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 43.42
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.03
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 18.91
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 32.02
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 8.98
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 12.14
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.4
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.32
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.35
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.26
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 22.17
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 15.79
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 11.1
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.37
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 41.73
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 11.14
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 14.8
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 10.32
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.27
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.98
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.27
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 40.72
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 18.69
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.64
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.31
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 36.06
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 39.3
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 12.18
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 9.07
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 73.56
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 11.23
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.32
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 8.97
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 13.13
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.36
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.17
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.28
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 44.69
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 22.69
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 11.07
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.35
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.28
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 34.29
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 7.79
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 26.3
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.81
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.35
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 43.72
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.22
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.29
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 28.37
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 8.33
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.93
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.4
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 15.22
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.67
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.28
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 38.74
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 47.21
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 9.09
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 37.41
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 11.75
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 9.0
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.4
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 32.1
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 10.79
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 9.86
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.3
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 9.75
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.48
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.27
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.33
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.33
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 35.78
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 12.36
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.02
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 46.84
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.89
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.34
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 13.07
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.05
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.35
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 56.97
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 22.57
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 11.22
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 12.04
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.31
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.42
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.28
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 48.35
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 31.7
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 8.88
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 13.84
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 9.55
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.31
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 39.15
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.65
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.29
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 41.32
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 18.91
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 12.55
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.0
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.34
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.14
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.27
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 41.68
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 9.53
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 27.53
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.28
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 50.61
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.33
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 33.7
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 9.66
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 14.31
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 10.27
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.67
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.31
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.87
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.36
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 16.31
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.36
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 30.13
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 55.15
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 7.97
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 11.36
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 45.58
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 7.86
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.85
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.34
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.31
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 11.26
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 59.99
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.8
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.28
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 13.22
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 36.14
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 9.27
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.34
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 23.54
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 11.04
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 12.04
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.24
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.27
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 57.09
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 13.7
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.36
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 22.67
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 30.52
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 50.98
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 10.79
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.36
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 10.0
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 12.15
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 6.01
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.32
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 10.04
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.3
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 46.62
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 12.6
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 5.73
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.32
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 31.32
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 29.82
+      },
+      {
+        "action_log": true,
+        "stage": "metadata_fetch",
+        "elapsed_s": 0.01
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 10.67
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 59.57
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 8.71
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.36
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "elapsed_s": 16.66
+      },
+      {
+        "action_log": true,
+        "stage": "type_persist",
+        "elapsed_s": 0.0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "elapsed_s": 9.17
+      },
+      {
+        "action_log": true,
+        "stage": "embedding_precompute",
+        "elapsed_s": 0.38
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 37.62
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 40.53
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "elapsed_s": 40.17
+      }
+    ],
+    "usage": [
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 742,
+        "output_tokens": 186,
+        "reasoning_tokens": 57
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 762,
+        "output_tokens": 147,
+        "reasoning_tokens": 64
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 722,
+        "output_tokens": 252,
+        "reasoning_tokens": 98
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 750,
+        "output_tokens": 191,
+        "reasoning_tokens": 109
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 783,
+        "output_tokens": 153,
+        "reasoning_tokens": 77
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 793,
+        "output_tokens": 155,
+        "reasoning_tokens": 80
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 786,
+        "output_tokens": 200,
+        "reasoning_tokens": 121
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 767,
+        "output_tokens": 161,
+        "reasoning_tokens": 90
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 8,
+        "input_tokens": 6307,
+        "output_tokens": 1022,
+        "reasoning_tokens": 686
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 774,
+        "output_tokens": 246,
+        "reasoning_tokens": 118
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 742,
+        "output_tokens": 208,
+        "reasoning_tokens": 86
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 722,
+        "output_tokens": 172,
+        "reasoning_tokens": 71
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 762,
+        "output_tokens": 193,
+        "reasoning_tokens": 58
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6081,
+        "output_tokens": 820,
+        "reasoning_tokens": 508
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 6,
+        "input_tokens": 6118,
+        "output_tokens": 871,
+        "reasoning_tokens": 565
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1509,
+        "output_tokens": 1217,
+        "reasoning_tokens": 14
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1529,
+        "output_tokens": 1086,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 12,
+        "input_tokens": 9596,
+        "output_tokens": 1587,
+        "reasoning_tokens": 1125
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 12,
+        "input_tokens": 8636,
+        "output_tokens": 2485,
+        "reasoning_tokens": 1820
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1647,
+        "output_tokens": 952,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1537,
+        "output_tokens": 2078,
+        "reasoning_tokens": 416
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 65,
+        "input_tokens": 33927,
+        "output_tokens": 4133,
+        "reasoning_tokens": 253
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 750,
+        "output_tokens": 155,
+        "reasoning_tokens": 69
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 7,
+        "tool_calls": 70,
+        "input_tokens": 41936,
+        "output_tokens": 4640,
+        "reasoning_tokens": 570
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 783,
+        "output_tokens": 173,
+        "reasoning_tokens": 102
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 7,
+        "input_tokens": 9038,
+        "output_tokens": 834,
+        "reasoning_tokens": 539
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 6,
+        "input_tokens": 6514,
+        "output_tokens": 875,
+        "reasoning_tokens": 593
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1881,
+        "output_tokens": 1258,
+        "reasoning_tokens": 134
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 9,
+        "tool_calls": 59,
+        "input_tokens": 65334,
+        "output_tokens": 4528,
+        "reasoning_tokens": 827
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 793,
+        "output_tokens": 144,
+        "reasoning_tokens": 61
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 93,
+        "input_tokens": 70385,
+        "output_tokens": 5432,
+        "reasoning_tokens": 847
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1947,
+        "output_tokens": 838,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 786,
+        "output_tokens": 150,
+        "reasoning_tokens": 77
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 5464,
+        "output_tokens": 974,
+        "reasoning_tokens": 648
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 11,
+        "input_tokens": 9889,
+        "output_tokens": 1539,
+        "reasoning_tokens": 1115
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1940,
+        "output_tokens": 737,
+        "reasoning_tokens": 13
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1921,
+        "output_tokens": 878,
+        "reasoning_tokens": 204
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 7,
+        "tool_calls": 67,
+        "input_tokens": 72295,
+        "output_tokens": 4255,
+        "reasoning_tokens": 468
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 767,
+        "output_tokens": 173,
+        "reasoning_tokens": 100
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 40,
+        "input_tokens": 60750,
+        "output_tokens": 3812,
+        "reasoning_tokens": 1392
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 774,
+        "output_tokens": 277,
+        "reasoning_tokens": 154
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 5489,
+        "output_tokens": 653,
+        "reasoning_tokens": 363
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 6,
+        "tool_calls": 9,
+        "input_tokens": 15032,
+        "output_tokens": 1048,
+        "reasoning_tokens": 650
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1916,
+        "output_tokens": 864,
+        "reasoning_tokens": 259
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1946,
+        "output_tokens": 770,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 9,
+        "tool_calls": 43,
+        "input_tokens": 65098,
+        "output_tokens": 4557,
+        "reasoning_tokens": 1319
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 744,
+        "output_tokens": 190,
+        "reasoning_tokens": 84
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 12,
+        "tool_calls": 61,
+        "input_tokens": 114215,
+        "output_tokens": 5368,
+        "reasoning_tokens": 1566
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 35,
+        "input_tokens": 59232,
+        "output_tokens": 3596,
+        "reasoning_tokens": 1158
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 3,
+        "input_tokens": 6861,
+        "output_tokens": 4020,
+        "reasoning_tokens": 3722
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 48,
+        "input_tokens": 69517,
+        "output_tokens": 4193,
+        "reasoning_tokens": 1070
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1615,
+        "output_tokens": 988,
+        "reasoning_tokens": 8
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 49,
+        "input_tokens": 44044,
+        "output_tokens": 3619,
+        "reasoning_tokens": 569
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 6,
+        "tool_calls": 21,
+        "input_tokens": 30780,
+        "output_tokens": 5616,
+        "reasoning_tokens": 4987
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 8,
+        "tool_calls": 19,
+        "input_tokens": 30725,
+        "output_tokens": 4562,
+        "reasoning_tokens": 3595
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1582,
+        "output_tokens": 1472,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1643,
+        "output_tokens": 1344,
+        "reasoning_tokens": 27
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 5,
+        "tool_calls": 12,
+        "input_tokens": 12163,
+        "output_tokens": 1960,
+        "reasoning_tokens": 1441
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 6,
+        "tool_calls": 8,
+        "input_tokens": 24583,
+        "output_tokens": 5103,
+        "reasoning_tokens": 4582
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2008,
+        "output_tokens": 895,
+        "reasoning_tokens": 10
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1628,
+        "output_tokens": 1482,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 78,
+        "input_tokens": 56089,
+        "output_tokens": 4761,
+        "reasoning_tokens": 128
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 753,
+        "output_tokens": 188,
+        "reasoning_tokens": 103
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 9,
+        "tool_calls": 87,
+        "input_tokens": 138083,
+        "output_tokens": 5926,
+        "reasoning_tokens": 796
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 765,
+        "output_tokens": 166,
+        "reasoning_tokens": 94
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 40,
+        "input_tokens": 38591,
+        "output_tokens": 2869,
+        "reasoning_tokens": 182
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 8,
+        "input_tokens": 8320,
+        "output_tokens": 952,
+        "reasoning_tokens": 617
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 751,
+        "output_tokens": 280,
+        "reasoning_tokens": 153
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2208,
+        "output_tokens": 1008,
+        "reasoning_tokens": 15
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 7,
+        "tool_calls": 82,
+        "input_tokens": 85928,
+        "output_tokens": 5456,
+        "reasoning_tokens": 689
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 5,
+        "tool_calls": 24,
+        "input_tokens": 12553,
+        "output_tokens": 1357,
+        "reasoning_tokens": 665
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 756,
+        "output_tokens": 259,
+        "reasoning_tokens": 135
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 6,
+        "input_tokens": 6651,
+        "output_tokens": 978,
+        "reasoning_tokens": 690
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2194,
+        "output_tokens": 898,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6549,
+        "output_tokens": 618,
+        "reasoning_tokens": 328
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2199,
+        "output_tokens": 1934,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2232,
+        "output_tokens": 1251,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 10,
+        "tool_calls": 50,
+        "input_tokens": 93712,
+        "output_tokens": 4396,
+        "reasoning_tokens": 1027
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 789,
+        "output_tokens": 194,
+        "reasoning_tokens": 79
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 74,
+        "input_tokens": 49449,
+        "output_tokens": 4906,
+        "reasoning_tokens": 316
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 764,
+        "output_tokens": 138,
+        "reasoning_tokens": 69
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 10,
+        "tool_calls": 73,
+        "input_tokens": 110678,
+        "output_tokens": 6047,
+        "reasoning_tokens": 1670
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 772,
+        "output_tokens": 155,
+        "reasoning_tokens": 78
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 9,
+        "tool_calls": 58,
+        "input_tokens": 84914,
+        "output_tokens": 4815,
+        "reasoning_tokens": 967
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 11,
+        "input_tokens": 8477,
+        "output_tokens": 981,
+        "reasoning_tokens": 532
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 776,
+        "output_tokens": 185,
+        "reasoning_tokens": 64
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 18,
+        "input_tokens": 9744,
+        "output_tokens": 1044,
+        "reasoning_tokens": 484
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6069,
+        "output_tokens": 912,
+        "reasoning_tokens": 574
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2347,
+        "output_tokens": 863,
+        "reasoning_tokens": 172
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2359,
+        "output_tokens": 1428,
+        "reasoning_tokens": 516
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2355,
+        "output_tokens": 1661,
+        "reasoning_tokens": 315
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 8,
+        "input_tokens": 8407,
+        "output_tokens": 839,
+        "reasoning_tokens": 487
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1786,
+        "output_tokens": 1112,
+        "reasoning_tokens": 20
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 10,
+        "tool_calls": 34,
+        "input_tokens": 75493,
+        "output_tokens": 3706,
+        "reasoning_tokens": 1316
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 9,
+        "tool_calls": 43,
+        "input_tokens": 82858,
+        "output_tokens": 4346,
+        "reasoning_tokens": 1397
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 57,
+        "input_tokens": 55506,
+        "output_tokens": 4419,
+        "reasoning_tokens": 677
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 832,
+        "output_tokens": 205,
+        "reasoning_tokens": 82
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 14,
+        "input_tokens": 9174,
+        "output_tokens": 973,
+        "reasoning_tokens": 470
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 7,
+        "input_tokens": 10066,
+        "output_tokens": 2657,
+        "reasoning_tokens": 2236
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 5,
+        "input_tokens": 6390,
+        "output_tokens": 587,
+        "reasoning_tokens": 308
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1618,
+        "output_tokens": 860,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2447,
+        "output_tokens": 1190,
+        "reasoning_tokens": 516
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 14,
+        "tool_calls": 84,
+        "input_tokens": 208881,
+        "output_tokens": 6344,
+        "reasoning_tokens": 1489
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2410,
+        "output_tokens": 1060,
+        "reasoning_tokens": 455
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 795,
+        "output_tokens": 214,
+        "reasoning_tokens": 76
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6568,
+        "output_tokens": 692,
+        "reasoning_tokens": 396
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2432,
+        "output_tokens": 1036,
+        "reasoning_tokens": 201
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 29,
+        "input_tokens": 33269,
+        "output_tokens": 2913,
+        "reasoning_tokens": 579
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 31,
+        "input_tokens": 53635,
+        "output_tokens": 3269,
+        "reasoning_tokens": 697
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 795,
+        "output_tokens": 191,
+        "reasoning_tokens": 64
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 48,
+        "input_tokens": 94655,
+        "output_tokens": 4146,
+        "reasoning_tokens": 702
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 794,
+        "output_tokens": 208,
+        "reasoning_tokens": 94
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 766,
+        "output_tokens": 219,
+        "reasoning_tokens": 99
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 9,
+        "input_tokens": 6087,
+        "output_tokens": 849,
+        "reasoning_tokens": 487
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 9,
+        "input_tokens": 6647,
+        "output_tokens": 916,
+        "reasoning_tokens": 523
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 8,
+        "input_tokens": 6696,
+        "output_tokens": 823,
+        "reasoning_tokens": 458
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2410,
+        "output_tokens": 978,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 27,
+        "input_tokens": 32399,
+        "output_tokens": 3152,
+        "reasoning_tokens": 859
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2438,
+        "output_tokens": 913,
+        "reasoning_tokens": 516
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 780,
+        "output_tokens": 181,
+        "reasoning_tokens": 62
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2424,
+        "output_tokens": 1212,
+        "reasoning_tokens": 516
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 6,
+        "input_tokens": 6102,
+        "output_tokens": 769,
+        "reasoning_tokens": 437
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 16,
+        "input_tokens": 22957,
+        "output_tokens": 1609,
+        "reasoning_tokens": 132
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 790,
+        "output_tokens": 188,
+        "reasoning_tokens": 68
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2460,
+        "output_tokens": 1448,
+        "reasoning_tokens": 12
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 48,
+        "input_tokens": 41335,
+        "output_tokens": 3259,
+        "reasoning_tokens": 208
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 793,
+        "output_tokens": 166,
+        "reasoning_tokens": 88
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6108,
+        "output_tokens": 682,
+        "reasoning_tokens": 362
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2461,
+        "output_tokens": 728,
+        "reasoning_tokens": 229
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6369,
+        "output_tokens": 1335,
+        "reasoning_tokens": 950
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2411,
+        "output_tokens": 1197,
+        "reasoning_tokens": 516
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 10,
+        "tool_calls": 45,
+        "input_tokens": 79021,
+        "output_tokens": 4470,
+        "reasoning_tokens": 1212
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 743,
+        "output_tokens": 203,
+        "reasoning_tokens": 91
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 20,
+        "input_tokens": 29058,
+        "output_tokens": 2251,
+        "reasoning_tokens": 560
+      },
+      {
+        "action_log": true,
+        "stage": "domain_classifier",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 774,
+        "output_tokens": 147,
+        "reasoning_tokens": 27
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 62,
+        "input_tokens": 47666,
+        "output_tokens": 4679,
+        "reasoning_tokens": 396
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 11,
+        "input_tokens": 6213,
+        "output_tokens": 911,
+        "reasoning_tokens": 538
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 8,
+        "input_tokens": 8645,
+        "output_tokens": 1079,
+        "reasoning_tokens": 695
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1820,
+        "output_tokens": 1013,
+        "reasoning_tokens": 178
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2452,
+        "output_tokens": 921,
+        "reasoning_tokens": 516
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 5,
+        "tool_calls": 17,
+        "input_tokens": 12919,
+        "output_tokens": 2370,
+        "reasoning_tokens": 1839
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 18,
+        "input_tokens": 23984,
+        "output_tokens": 1699,
+        "reasoning_tokens": 133
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1787,
+        "output_tokens": 1848,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 9,
+        "tool_calls": 39,
+        "input_tokens": 62840,
+        "output_tokens": 4195,
+        "reasoning_tokens": 1418
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 13,
+        "input_tokens": 9015,
+        "output_tokens": 1007,
+        "reasoning_tokens": 571
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 13,
+        "input_tokens": 9508,
+        "output_tokens": 1623,
+        "reasoning_tokens": 1163
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1830,
+        "output_tokens": 1140,
+        "reasoning_tokens": 312
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1823,
+        "output_tokens": 1182,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 9,
+        "tool_calls": 49,
+        "input_tokens": 90046,
+        "output_tokens": 4824,
+        "reasoning_tokens": 1563
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 6,
+        "tool_calls": 11,
+        "input_tokens": 15643,
+        "output_tokens": 1642,
+        "reasoning_tokens": 1188
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1854,
+        "output_tokens": 1595,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 54,
+        "input_tokens": 61234,
+        "output_tokens": 4160,
+        "reasoning_tokens": 1048
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 7,
+        "tool_calls": 66,
+        "input_tokens": 67695,
+        "output_tokens": 4738,
+        "reasoning_tokens": 899
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 11,
+        "input_tokens": 9710,
+        "output_tokens": 935,
+        "reasoning_tokens": 541
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 6,
+        "input_tokens": 6091,
+        "output_tokens": 942,
+        "reasoning_tokens": 665
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 9,
+        "tool_calls": 144,
+        "input_tokens": 149349,
+        "output_tokens": 8329,
+        "reasoning_tokens": 1413
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1877,
+        "output_tokens": 1264,
+        "reasoning_tokens": 334
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6725,
+        "output_tokens": 895,
+        "reasoning_tokens": 590
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1865,
+        "output_tokens": 1404,
+        "reasoning_tokens": 296
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1920,
+        "output_tokens": 979,
+        "reasoning_tokens": 21
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 94,
+        "input_tokens": 110946,
+        "output_tokens": 5815,
+        "reasoning_tokens": 882
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 38,
+        "input_tokens": 34387,
+        "output_tokens": 2949,
+        "reasoning_tokens": 287
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 5902,
+        "output_tokens": 894,
+        "reasoning_tokens": 576
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1835,
+        "output_tokens": 900,
+        "reasoning_tokens": 14
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 60,
+        "input_tokens": 63637,
+        "output_tokens": 4779,
+        "reasoning_tokens": 768
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 6,
+        "input_tokens": 6364,
+        "output_tokens": 781,
+        "reasoning_tokens": 492
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 8,
+        "tool_calls": 12,
+        "input_tokens": 23612,
+        "output_tokens": 2570,
+        "reasoning_tokens": 1991
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1952,
+        "output_tokens": 1272,
+        "reasoning_tokens": 15
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 10,
+        "tool_calls": 51,
+        "input_tokens": 105030,
+        "output_tokens": 4309,
+        "reasoning_tokens": 1027
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2005,
+        "output_tokens": 905,
+        "reasoning_tokens": 16
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 42,
+        "input_tokens": 40335,
+        "output_tokens": 3411,
+        "reasoning_tokens": 520
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6210,
+        "output_tokens": 786,
+        "reasoning_tokens": 496
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2003,
+        "output_tokens": 1203,
+        "reasoning_tokens": 345
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 15,
+        "input_tokens": 9142,
+        "output_tokens": 1184,
+        "reasoning_tokens": 669
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1878,
+        "output_tokens": 1038,
+        "reasoning_tokens": 232
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 43,
+        "input_tokens": 70174,
+        "output_tokens": 4538,
+        "reasoning_tokens": 1302
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 77,
+        "input_tokens": 90548,
+        "output_tokens": 5444,
+        "reasoning_tokens": 973
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 6,
+        "input_tokens": 6907,
+        "output_tokens": 764,
+        "reasoning_tokens": 452
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 43,
+        "input_tokens": 66208,
+        "output_tokens": 4374,
+        "reasoning_tokens": 1373
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 7,
+        "input_tokens": 8852,
+        "output_tokens": 957,
+        "reasoning_tokens": 639
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2012,
+        "output_tokens": 1317,
+        "reasoning_tokens": 418
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 44,
+        "input_tokens": 47267,
+        "output_tokens": 3589,
+        "reasoning_tokens": 843
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 9,
+        "input_tokens": 9250,
+        "output_tokens": 926,
+        "reasoning_tokens": 572
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1883,
+        "output_tokens": 1516,
+        "reasoning_tokens": 226
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 9,
+        "input_tokens": 6256,
+        "output_tokens": 707,
+        "reasoning_tokens": 342
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2045,
+        "output_tokens": 1210,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1935,
+        "output_tokens": 1024,
+        "reasoning_tokens": 462
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 7,
+        "tool_calls": 54,
+        "input_tokens": 57746,
+        "output_tokens": 4745,
+        "reasoning_tokens": 1170
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 10,
+        "input_tokens": 9450,
+        "output_tokens": 1170,
+        "reasoning_tokens": 778
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 80,
+        "input_tokens": 70796,
+        "output_tokens": 5554,
+        "reasoning_tokens": 445
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2042,
+        "output_tokens": 978,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6570,
+        "output_tokens": 1145,
+        "reasoning_tokens": 828
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2054,
+        "output_tokens": 1131,
+        "reasoning_tokens": 12
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 9,
+        "tool_calls": 41,
+        "input_tokens": 86173,
+        "output_tokens": 5606,
+        "reasoning_tokens": 2869
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 8,
+        "tool_calls": 11,
+        "input_tokens": 22333,
+        "output_tokens": 1575,
+        "reasoning_tokens": 1170
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2050,
+        "output_tokens": 1895,
+        "reasoning_tokens": 231
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 6,
+        "input_tokens": 6711,
+        "output_tokens": 1001,
+        "reasoning_tokens": 737
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2063,
+        "output_tokens": 1032,
+        "reasoning_tokens": 15
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 50,
+        "input_tokens": 76412,
+        "output_tokens": 4782,
+        "reasoning_tokens": 1118
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 49,
+        "input_tokens": 50661,
+        "output_tokens": 4123,
+        "reasoning_tokens": 567
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 9,
+        "input_tokens": 6592,
+        "output_tokens": 922,
+        "reasoning_tokens": 583
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 7,
+        "input_tokens": 9975,
+        "output_tokens": 1267,
+        "reasoning_tokens": 963
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1561,
+        "output_tokens": 1139,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 79,
+        "input_tokens": 53620,
+        "output_tokens": 5962,
+        "reasoning_tokens": 911
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2120,
+        "output_tokens": 1101,
+        "reasoning_tokens": 15
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 10,
+        "tool_calls": 45,
+        "input_tokens": 70190,
+        "output_tokens": 4633,
+        "reasoning_tokens": 1173
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 6,
+        "tool_calls": 8,
+        "input_tokens": 16274,
+        "output_tokens": 1538,
+        "reasoning_tokens": 1190
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 5,
+        "tool_calls": 12,
+        "input_tokens": 14659,
+        "output_tokens": 1165,
+        "reasoning_tokens": 727
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1998,
+        "output_tokens": 894,
+        "reasoning_tokens": 15
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2083,
+        "output_tokens": 757,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 46,
+        "input_tokens": 44555,
+        "output_tokens": 4128,
+        "reasoning_tokens": 751
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 5,
+        "input_tokens": 6453,
+        "output_tokens": 863,
+        "reasoning_tokens": 579
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 41,
+        "input_tokens": 47957,
+        "output_tokens": 3389,
+        "reasoning_tokens": 473
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1961,
+        "output_tokens": 911,
+        "reasoning_tokens": 328
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 10,
+        "tool_calls": 68,
+        "input_tokens": 117109,
+        "output_tokens": 6004,
+        "reasoning_tokens": 1061
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 7,
+        "tool_calls": 32,
+        "input_tokens": 43437,
+        "output_tokens": 3473,
+        "reasoning_tokens": 1278
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6337,
+        "output_tokens": 748,
+        "reasoning_tokens": 445
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 10,
+        "input_tokens": 10038,
+        "output_tokens": 1092,
+        "reasoning_tokens": 674
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6718,
+        "output_tokens": 722,
+        "reasoning_tokens": 428
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2099,
+        "output_tokens": 1392,
+        "reasoning_tokens": 408
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2098,
+        "output_tokens": 1116,
+        "reasoning_tokens": 13
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1983,
+        "output_tokens": 1399,
+        "reasoning_tokens": 13
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 43,
+        "input_tokens": 44966,
+        "output_tokens": 3516,
+        "reasoning_tokens": 437
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 11,
+        "tool_calls": 36,
+        "input_tokens": 89193,
+        "output_tokens": 4280,
+        "reasoning_tokens": 1506
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 11,
+        "input_tokens": 6552,
+        "output_tokens": 757,
+        "reasoning_tokens": 344
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 13,
+        "input_tokens": 9272,
+        "output_tokens": 1036,
+        "reasoning_tokens": 564
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 10,
+        "tool_calls": 55,
+        "input_tokens": 94281,
+        "output_tokens": 5065,
+        "reasoning_tokens": 1053
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1985,
+        "output_tokens": 834,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2062,
+        "output_tokens": 1378,
+        "reasoning_tokens": 388
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 5,
+        "input_tokens": 6809,
+        "output_tokens": 934,
+        "reasoning_tokens": 643
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 10,
+        "tool_calls": 78,
+        "input_tokens": 109915,
+        "output_tokens": 6406,
+        "reasoning_tokens": 1546
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1960,
+        "output_tokens": 817,
+        "reasoning_tokens": 18
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 8,
+        "input_tokens": 6814,
+        "output_tokens": 1183,
+        "reasoning_tokens": 821
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 50,
+        "input_tokens": 41416,
+        "output_tokens": 3961,
+        "reasoning_tokens": 570
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2076,
+        "output_tokens": 1206,
+        "reasoning_tokens": 0
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 38,
+        "input_tokens": 36819,
+        "output_tokens": 2871,
+        "reasoning_tokens": 282
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 11,
+        "input_tokens": 9586,
+        "output_tokens": 1053,
+        "reasoning_tokens": 630
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 7,
+        "input_tokens": 6814,
+        "output_tokens": 1249,
+        "reasoning_tokens": 915
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1972,
+        "output_tokens": 1153,
+        "reasoning_tokens": 470
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 10,
+        "tool_calls": 52,
+        "input_tokens": 102263,
+        "output_tokens": 5572,
+        "reasoning_tokens": 2042
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1982,
+        "output_tokens": 1478,
+        "reasoning_tokens": 57
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 6,
+        "tool_calls": 22,
+        "input_tokens": 17112,
+        "output_tokens": 2093,
+        "reasoning_tokens": 1381
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 40,
+        "input_tokens": 48185,
+        "output_tokens": 3357,
+        "reasoning_tokens": 623
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 62,
+        "input_tokens": 83032,
+        "output_tokens": 5166,
+        "reasoning_tokens": 1067
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2079,
+        "output_tokens": 1848,
+        "reasoning_tokens": 15
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 6,
+        "input_tokens": 6585,
+        "output_tokens": 839,
+        "reasoning_tokens": 540
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 7,
+        "input_tokens": 10000,
+        "output_tokens": 1108,
+        "reasoning_tokens": 778
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2082,
+        "output_tokens": 1029,
+        "reasoning_tokens": 15
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 1956,
+        "output_tokens": 1528,
+        "reasoning_tokens": 516
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 82,
+        "input_tokens": 101977,
+        "output_tokens": 6315,
+        "reasoning_tokens": 963
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 13,
+        "input_tokens": 10123,
+        "output_tokens": 1289,
+        "reasoning_tokens": 803
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2034,
+        "output_tokens": 943,
+        "reasoning_tokens": 12
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 7,
+        "tool_calls": 41,
+        "input_tokens": 54290,
+        "output_tokens": 3878,
+        "reasoning_tokens": 743
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 5,
+        "tool_calls": 49,
+        "input_tokens": 37483,
+        "output_tokens": 4037,
+        "reasoning_tokens": 803
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 3,
+        "tool_calls": 6,
+        "input_tokens": 6553,
+        "output_tokens": 920,
+        "reasoning_tokens": 643
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 8,
+        "tool_calls": 101,
+        "input_tokens": 116396,
+        "output_tokens": 8343,
+        "reasoning_tokens": 1863
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2006,
+        "output_tokens": 1368,
+        "reasoning_tokens": 12
+      },
+      {
+        "action_log": true,
+        "stage": "ontology_agent",
+        "requests": 4,
+        "tool_calls": 11,
+        "input_tokens": 9806,
+        "output_tokens": 1222,
+        "reasoning_tokens": 778
+      },
+      {
+        "action_log": true,
+        "stage": "extractor_agent",
+        "requests": 1,
+        "tool_calls": 0,
+        "input_tokens": 2065,
+        "output_tokens": 1477,
+        "reasoning_tokens": 311
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 53,
+        "input_tokens": 54168,
+        "output_tokens": 4552,
+        "reasoning_tokens": 1361
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 6,
+        "tool_calls": 65,
+        "input_tokens": 64780,
+        "output_tokens": 5043,
+        "reasoning_tokens": 816
+      },
+      {
+        "action_log": true,
+        "stage": "librarian_agent",
+        "requests": 7,
+        "tool_calls": 57,
+        "input_tokens": 66182,
+        "output_tokens": 4855,
+        "reasoning_tokens": 570
+      }
+    ]
+  }
+}

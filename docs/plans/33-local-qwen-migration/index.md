@@ -351,7 +351,7 @@ remain a useful long-term aspiration; they are not a valid instrument for a mode
 | # | Stage | Status | Notes | Commit |
 |---|-------|--------|-------|--------|
 | 4 | [Measurement harness](stages/04-measurement-harness.md) | DONE | Added corpus loader, recall scorer, live-regex metrics emitter, structured usage/timing/rejection audit events, and full arm orchestrator with pre-flight assertions and derived timeout polling. Dry-run/parser checks pass; full suite: 916 passed, 11 skipped. Live DB/API reproduction and end-to-end timeout assertion deferred to Backlog #8. | |
-| 5 | [Baseline arm — GPT-5.4-mini](stages/05-baseline-arm.md) | PENDING | | |
+| 5 | [Baseline arm — GPT-5.4-mini](stages/05-baseline-arm.md) | BLOCKED | Run 1 corpus arm completed cleanly and was snapshotted; run 2 remained at two `doing` extraction jobs for >30 minutes with no finished events, so variance, E2E gates, and resolved thresholds are NOT MEASURED. See Backlog #9. | 89e7f95 |
 | 6 | [Qwen arm — all four agents](stages/06-qwen-arm.md) | PENDING | | |
 | 6b | [Isolation arms (conditional)](stages/06b-isolation-arms.md) | PENDING | | |
 
@@ -492,6 +492,9 @@ Leave empty until execution surfaces something.
 | 4 | 3 | New Qwen marker tests did not raise because `<…>` was stripped first | Normalization checked `_TOOL_CALL_ARTIFACT` only after removing invalid characters | Check the raw type name before sanitization; added regression cases for all five new marker families and reran the full suite | inline |
 | 5 | 3 | Pre-commit rejected two prompt lines with E501 | Added terminal contracts exceeded the repository's 120-column lint limit | Wrapped the prompt strings without changing their text; pre-commit passed on retry | inline |
 | 6 | 4 | Two unit tests emitted unawaited-coroutine warnings from usage instrumentation | Minimal AsyncMock librarian results expose an async `usage()` placeholder, unlike production pydantic-ai results | Detect awaitable usage values and close coroutine placeholders before returning | inline |
+| 7 | 5 | Baseline orchestrator failed its admin pre-flight with HTTP 401 | `manage.sh` advertises `admin-token`, while the harness fallback is `admin-token-neocortex` | Supplied `NEOCORTEX_ADMIN_TOKEN=admin-token` for the measured run; no key or code change | inline |
+| 8 | 5 | Recall scorer returned all-zero results with HTTP 401 on MCP | Its fallback `alice-token` is absent from production `dev_tokens.json`; the corpus was loaded under the admin identity | Kept the output as non-gating diagnostic data and did not use it as a model metric | inline |
+| 9 | 5 | First E2E gate could not connect after `manage.sh` reported healthy | `uv run` wrapper PID bookkeeping allowed the underlying listener to re-parent; the gate also needs a separate test-token file | Direct retry reached MCP but exposed the token-file mismatch; E2E score remains NOT MEASURED | inline |
 
 ---
 
@@ -511,6 +514,7 @@ state the symptom, where it came from, and a concrete lead for resolving it.
 | 6 | Hosted no-regression E2E not run after prompt hardening | 3 | med | The required hosted E2E needs a running hosted-configured service and the runner uses `start --fresh`, which would destroy the persisted development graph; no truthful result was available without that environment decision | Run `./scripts/run_e2e.sh scripts/e2e_extraction_pipeline_test.py` in the dedicated hosted baseline environment, snapshot first, and record the exit/output before Stage 5 | OPEN |
 | 7 | Extractor open-dict schema experiment not isolated | 3 | med | The existing probe harness only runs the committed schema and has no agent-selection or temporary-schema variant; changing `properties` in place would confound the shared bake-off schema and alter stored data semantics | Add a bounded extractor-only probe mode or temporary schema variants, measure open `dict`, `dict[str, str]`, and omitted properties with latency and token counts, then retain the committed schema unless hosted validation also passes | OPEN |
 | 8 | Stage 4 live harness verification not run | 4 | med | This unattended checkout has no running PostgreSQL/NeoCortex services or guaranteed embedding/API credentials, so Plan 29 snapshot reproduction, live audit-event assertion, pre-flight failure/pass matrix, and bounded poll-timeout test could not be truthfully executed | Start the dedicated hosted/local bake-off environment, run the listed Stage 4 verification commands, restore any snapshots afterward, and record the emitted metrics JSON before Stage 5 | OPEN |
+| 9 | Baseline run 2 did not complete | 5 | high | Run 1 completed 102/102 jobs with 0 failures and produced `metrics-baseline-gpt54mini.json` plus snapshot `baseline-gpt54mini`; run 2 reached 103 succeeded but jobs 1 and 3 remained `doing` for over 30 minutes with only `started` events. It was stopped before the 4-hour deadline, so no truthful run-2 metrics, spread, E2E scores, or thresholds exist | Re-run Stage 5 in a stable dedicated environment. Investigate jobs 1 and 3 with `/admin/jobs/{id}` and `procrastinate_events`; add an explicit per-job HTTP/model timeout if they can hang indefinitely. Do not run Stage 6 until both runs and E2E gates are captured | OPEN |
 
 Statuses: `OPEN` -> `IN_PROGRESS` -> `RESOLVED`. When an item is resolved, flip its
 status and summarize the fix in **Fixed Issues**. Heavy items may warrant their own
@@ -625,6 +629,11 @@ Stage 3 did not change `ExtractedEntity.properties` or `ExtractedRelation.proper
 carry real graph data, and the existing probe harness cannot compare schema variants without changing
 the shared bake-off contract. The known open-dict baseline remains recorded (124.8 s / 3350 reasoning
 tokens in the earlier real-schema probe); the isolated comparison is Backlog #7.
+
+**D15 — Do not use a single completed arm as a variance baseline.**
+Stage 5 run 1 is retained as valid evidence, but run 2 did not finish its two oldest extraction
+jobs and the E2E helper environment had token/lifecycle mismatches. Baseline columns and Tier 2
+thresholds therefore remain unresolved; Stage 6 must not proceed from these partial measurements.
 
 ## Execution Notes
 

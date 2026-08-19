@@ -1,0 +1,91 @@
+{
+  "queries": [
+    {
+      "query": "Q1",
+      "text": "What is blocking in entity resolution and how does the system implement it?",
+      "results": [],
+      "keywords": [
+        "blocking",
+        "stop-list"
+      ]
+    },
+    {
+      "query": "Q2",
+      "text": "Describe the overall system architecture and Vertica design patterns",
+      "results": [],
+      "keywords": [
+        "architecture",
+        "vertica"
+      ]
+    },
+    {
+      "query": "Q3",
+      "text": "SQL injection vulnerability in normalization service",
+      "results": [],
+      "keywords": [
+        "sql injection",
+        "identifierlinknormalizationservice"
+      ]
+    },
+    {
+      "query": "Q4",
+      "text": "fingerprint hash collision birthday paradox 32-bit to 64-bit",
+      "results": [],
+      "keywords": [
+        "birthday paradox",
+        "64-bit"
+      ]
+    },
+    {
+      "query": "Q5",
+      "text": "Korean character crash UDX bug in name parsing",
+      "results": [],
+      "keywords": [
+        "korean",
+        "parsehumanname"
+      ]
+    },
+    {
+      "query": "Q6",
+      "text": "Who is on the DataWalk ER team and what are their roles?",
+      "results": [],
+      "keywords": [
+        "team",
+        "tomek",
+        "jonas"
+      ]
+    },
+    {
+      "query": "Q7",
+      "text": "What is Jonas Weber's current role and team assignment?",
+      "results": [],
+      "keywords": [
+        "security",
+        "jonas"
+      ]
+    },
+    {
+      "query": "Q8",
+      "text": "What is the current Metaphone3 encoding strategy and code length?",
+      "results": [],
+      "keywords": [
+        "correction",
+        "metaphone3",
+        "8-char"
+      ]
+    },
+    {
+      "query": "Q9",
+      "text": "How has the Metaphone3 decision evolved over time? What changed?",
+      "results": [],
+      "keywords": [
+        "correction",
+        "metaphone3"
+      ]
+    }
+  ],
+  "M1_max_activation": 0,
+  "M2_max_top1_count": 0,
+  "M3_specific_event_pass": 0,
+  "M4_temporal_pass": 0
+}
