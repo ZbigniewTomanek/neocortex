@@ -89,7 +89,7 @@ it is why Stage 3 exists.
 
 **The second finding is about cost, and it reorders the risk ranking.** Swapping the toy schema for
 NeoCortex's real `ExtractionResult` — 2 nested models, **2 unconstrained `dict` properties**, 2
-`ge/le` floats, 4 nullable strings, a raising validator — took the same call from 17.6 s / 725
+`ge/le` floats, 3 nullable strings, a raising validator — took the same call from 17.6 s / 725
 tokens to **124.8 s / 4436 tokens, of which 3350 were reasoning**. Roughly a 10× blow-up, and at
 the endpoint's measured p50 of 23.16 tok/s that is ~190 s of pure decode.
 
@@ -141,7 +141,7 @@ Four sharp edges inherited from the serving side:
 |---|---|
 | **No `base_url` anywhere** | `_build_model()` (`extraction/agents.py:50-56`) is literally `return config.model_name`. Grep for `base_url` in settings returns only `oauth_base_url`. |
 | **Wrong API prefix** | `openai-responses:` hits `/v1/responses`. LiteLLM/SGLang serve `/v1/chat/completions`. Must become `openai:` / `openai-chat:`. |
-| **Wrong thinking knob** | Both `extraction/agents.py:46` and `domains/classifier.py:48` use pydantic-ai's *unified* `ModelSettings.thinking`. Bot Plan 26 **D1** warns it maps through `OPENAI_REASONING_EFFORT_MAP` and can emit values outside the template allowlist. `OpenAIChatModelSettings(openai_reasoning_effort=…)` is the precise knob. |
+| **Thinking knob is fine; the sampling knobs are missing** | Both `extraction/agents.py:46` and `domains/classifier.py:48` use pydantic-ai's unified `ModelSettings.thinking`, and that is **correct** — `OPENAI_REASONING_EFFORT_MAP` is an identity map for every string level in 1.72.0, so it transmits exactly what `openai_reasoning_effort` would (see revised D6). What is genuinely absent is `temperature` / `top_p` / `timeout`, which base `ModelSettings` already supports. Note `model_settings` returns `None` outright when `thinking_effort is None`. |
 | **No temperature / top_p control** | Zero hits in `src/neocortex/`. The bot's measured local values (`0.6/0.95` thinking-on, `0.3/0.9` thinking-off) have nowhere to live. |
 | **No LLM-level retry, no HTTP timeout** | Only `procrastinate.RetryStrategy(max_attempts=3, wait=5)` at job level — a structured-output failure replays the *entire* 3-agent pipeline. No empty-content retry, no output repair. With `worker_concurrency=4`, four stalls exhaust the pool. |
 | **No metrics script** | Plan 18.5's M1–M7 were produced by a human reading MCP output and typing numbers into markdown. There is no `compute_metrics.py`, no JSON emitter, no A/B diff, no token/latency accounting. |
@@ -151,28 +151,42 @@ Four sharp edges inherited from the serving side:
 
 - **Plan 29's all-in-one metrics SQL** (`docs/plans/29-ontology-validation/resources/queries.md:29-71`) —
   objective, zero-judgement, per-schema, one psql call, with baseline values already recorded for two runs.
+  Three caveats: it returns **five** columns (`active_node_types`, `active_edge_types`,
+  `unused_edge_type_pct`, `garbage_types`, `type_reuse_ratio`) — despite its own header claiming six, it
+  does **not** compute instance-level types; `{schema}` is a textual find-and-replace placeholder, not a
+  bound parameter; and its `garbage_types` regex is a hardcoded pre-Qwen copy of
+  `_TOOL_CALL_ARTIFACT` (see D8).
 - **`scripts/e2e_plan15_scenarios_test.py`** (14 scenarios, gate ≥11/14) and
   **`scripts/e2e_plan17_validation.py`** (8 embedded episodes, 14 scenarios, gate ≥13/14) — self-contained,
-  exit-code gated, already runnable under `run_e2e.sh`.
+  already runnable under `run_e2e.sh`. **Neither is exit-code gated**: both wrap every scenario in
+  `try/except` and neither calls `sys.exit`, so both exit 0 at any score. Their result must be read by
+  parsing the printed score line (`Acceptable (PASS only): X/14`), never from `$?`.
 - **`scripts/e2e_extraction_pipeline_test.py`** — cheapest binary smoke gate.
 - **`scripts/manage.sh snapshot save|load`** — the A/B state-preservation mechanism.
 - **`/admin/jobs`** already exposes `created_at` / `started_at` / `finished_at` / `attempts` per job —
   the per-episode latency source, currently unaggregated.
 - **`src/neocortex/normalization.py:19-26`** `_TOOL_CALL_ARTIFACT` — the accumulated regex defense against
   exactly this failure mode (originally against Gemini Flash). **Extend it, don't replace it.**
+  It already carries `UpdateEdge`, `functionName` and `Updating\w*Id\d` beyond the shapes named in D7. It
+  is a plain unanchored alternation searched with `.search()` under `IGNORECASE` — no `\b` anchors, so
+  literal `<think>` / `<function=` additions are syntactically safe. It is consulted **only** by
+  `normalize_node_type` / `normalize_edge_type`, which **raise** on a match, so it guards type names
+  only — never node names or node content. That is what D10 exists to measure.
 
 ---
 
 ## Strategy
 
-Three phases, nine stages. The ordering is load-bearing: the cheapest disqualifying evidence is
+Three phases, ten stages (one conditional). The ordering is load-bearing: the cheapest disqualifying evidence is
 gathered first, and both bake-off arms run on *identical* prompts so the only variable is the model.
 
 - **Phase A — Enablement and fail-fast (Stages 1–3).** Build the provider routing that makes a local
   endpoint addressable per-agent, then spend ~15 minutes probing all four agents against Qwen with their
   *real* schemas and *real* tools before investing in a full bake-off. Harden the prompts that fail.
-- **Phase B — The bake-off (Stages 4–6).** Build the metrics harness NeoCortex has never had, run the
-  hosted baseline arm, then the Qwen arm, on the same corpus with the same prompts.
+- **Phase B — The bake-off (Stages 4–6b).** Build the metrics harness NeoCortex has never had, run the
+  hosted baseline arm, then the all-four-agents Qwen arm, on the same corpus with the same prompts.
+  Stage 6b is conditional: it runs single-agent isolation arms **only** when the joint arm misses a
+  Tier 2 metric, which is the only way to attribute a joint miss to one agent.
 - **Phase C — Gate and cutover (Stages 7–9).** Evaluate the gate per agent, tune thinking effort upward
   on whatever passed, and migrate defaults with a documented rollback.
 
@@ -186,39 +200,73 @@ Three rules hold across every stage:
 - **The gate is per-agent, and a partial pass ships.** Any agent that clears moves to Qwen; the rest stay
   on `openai-responses:gpt-5.4-mini` with the measured evidence recorded in the Backlog. This is why
   Stage 1's routing must be per-agent rather than a single global `OPENAI_BASE_URL`.
+- **A per-agent verdict needs per-agent evidence (D9).** Every Tier 2 metric is a joint output of all
+  four agents on one graph, so the single Stage 6 arm can support "all four migrate" or "all four hold"
+  but cannot say *which* agent caused a miss. Stage 6b buys that attribution with single-agent arms, and
+  it is skipped entirely when the joint arm passes — because in that case the configuration that shipped
+  is exactly the configuration that was measured.
 
 ---
 
 ## Success Criteria
 
-Two tiers. **Hard-fail metrics** must pass on the Qwen arm regardless of what the baseline scored —
-they encode the Plan 28 ontology crisis and must never regress. **Near-parity metrics** are scored
-against the measured baseline arm with a stated tolerance.
+Three tiers. **Hard-fail metrics** must pass on the Qwen arm and encode the Plan 28 ontology crisis.
+**Near-parity metrics** are scored against the measured baseline arm with a stated tolerance.
+**Tier 3** is recorded and never gates.
+
+Two Tier 1 rows are deliberately baseline-relative rather than absolute — the invalid-type rejection
+rate and the instance-level type candidate count. Both are heuristics with standing false positives
+that *both* arms share, so an absolute `0` would fail the hosted baseline too. They are still hard
+fails: a Qwen arm that rejects materially more than the baseline is blocked regardless of how good the
+rest of its numbers look.
 
 ### Tier 1 — hard fail (any miss blocks that agent from migrating)
 
 | Metric | Source | Target | Baseline (fill in Stage 5) | Qwen (fill in Stage 6) |
 |---|---|---|---|---|
-| Garbage / tool-call-artifact types | Plan 29 SQL + `normalization.py` regex | **0** | | |
-| Instance-level types (`DishGreg`, `LocationSalCapeVerde`) | Plan 29 SQL | **0** | | |
+| Garbage / tool-call-artifact types **stored** | `compute_metrics.py`, regex read live from `normalization._TOOL_CALL_ARTIFACT` | **0** | | |
+| Invalid-type **rejection rate** — rejections ÷ total entity attempts | `compute_metrics.py` over `log/agent_actions.log` (Stage 4 step 4 binds the events) | **≤ baseline + 2 pp** | | |
+| Instance-level type candidates | `compute_metrics.py` instance-type scan (Stage 4 step 3) | **0 above baseline** | | |
 | Extraction job failure rate | `/admin/jobs/summary` | **≤ 10%** (Plan 23 baseline was 29%) | | |
 | Type names ≤ 60 chars, ≤ 5 segments, PascalCase | Plan 19 S3 | **100%** | | |
-| Reasoning / `<think>` text leaked into any stored node, edge, or type name | grep over graph | **0** | | |
+| Reasoning / `<think>` text leaked into any stored node **name** or node **content** | `compute_metrics.py` leak scan (new coverage — the regex only ever guarded type names) | **0** | | |
 | `e2e_extraction_pipeline_test.py` | exit code | **pass** | | |
+
+**Why the rejection rate is a Tier 1 metric and not a footnote.** `_TOOL_CALL_ARTIFACT` is consulted
+only inside `normalize_node_type` / `normalize_edge_type`, which **raise**, and every caller swallows
+the raise: `propose_type` returns `accepted: false` (`extraction/agents.py:216`),
+`get_or_create_node_type` logs `invalid_node_type_rejected` and returns `None`
+(`db/adapter.py:536-540`), and `pipeline.py:446-448` does
+`if node_type is None: logger.warning("skipping_entity_invalid_type", …); continue`. So once Stage 3
+step 6 teaches the regex the Qwen shapes, a leaked `<think>` can **never** reach the graph — and the
+two "stored artifact" rows above would read 0 for the exact failure mode they exist to catch, while
+entities are dropped on the floor. Counting the rejections is the only way the gate can see it.
+The same reasoning is why the stored-artifact scan reads its regex from `normalization.py` at runtime
+rather than reusing the hardcoded copy inside Plan 29's SQL, which predates the Qwen shapes.
 
 ### Tier 2 — near-parity (scored against the measured baseline arm)
 
 | Metric | Source | Target | Baseline | Qwen |
 |---|---|---|---|---|
-| Plan 15 scenarios acceptable | `e2e_plan15_scenarios_test.py` | ≥ 11/14 **and** ≥ baseline − 1 | | |
-| Plan 17 scenarios acceptable | `e2e_plan17_validation.py` | ≥ 13/14 **and** ≥ baseline − 1 | | |
-| Active node types per schema | Plan 29 SQL | 25–35, within ±25% of baseline | | |
-| Active edge types per schema | Plan 29 SQL | 30–50, within ±25% of baseline | | |
-| Unused edge type % | Plan 29 SQL | < 15%, not worse than baseline + 10 pp | | |
+| Plan 15 scenarios acceptable | `e2e_plan15_scenarios_test.py` **score line** (it always exits 0) | ≥ 11/14 **and** ≥ baseline − 1 | | |
+| Plan 17 scenarios acceptable | `e2e_plan17_validation.py` **score line** (it always exits 0) | ≥ 13/14 **and** ≥ baseline − 1 | | |
+| Active node types per schema | Plan 29 SQL | within ±25% of baseline | | |
+| Active edge types per schema | Plan 29 SQL | within ±25% of baseline | | |
+| Unused edge type % | Plan 29 SQL | not worse than baseline + 10 pp | | |
 | Type reuse ratio (nodes / active types) | Plan 29 SQL | ≥ baseline × 0.75 | | |
 | Entity dedup rate | Plan 22 M1 method | ≥ 70% and ≥ baseline − 10 pp | | |
 | Episodes consolidated | graph stats | ≥ 90% and ≥ baseline − 5 pp | | |
 | `e2e_episodic_memory_test.py`, `e2e_cognitive_recall_test.py` | exit codes | pass, both arms | | |
+
+**The three ontology-size rows are relative-only on purpose.** Plan 28's absolute ranges (25–35 active
+node types, 30–50 active edge types, < 15% unused edge types) were deliberately dropped from the Target
+column, because Plan 29 already scored the current stack against those exact numbers and recorded
+6–32 / 0–22 / 46–100% — marking them *"N/A (low volume)"* and *"UNCHANGED (seed size vs volume)"* with
+the explicit finding: *"Seed edge types created upfront but never used. Driven by seed ontology size,
+not extraction quality."* Since Stage 4 step 6 **mandates** provisioning those same seed schemas before
+either arm ingests, keeping the absolute floors would fail both arms — including the hosted baseline —
+and drag every agent to HOLD for a reason that has nothing to do with either model. The Plan 28 ranges
+remain a useful long-term aspiration; they are not a valid instrument for a model-vs-model comparison.
 
 ### Tier 3 — recorded, never gating
 
@@ -234,14 +282,24 @@ against the measured baseline arm with a stated tolerance.
 ## Files That May Be Changed
 
 ### Provider routing (Stage 1)
+- `src/neocortex/model_factory.py` — **new.** Shared `build_model()` / `build_model_settings()` used by
+  all five agent construction sites. It must not live in `extraction/agents.py`: `domains/classifier.py`
+  and `domains/seed_generator.py` need it too, they have no `AgentInferenceConfig`, and importing a
+  private `_build_model` across packages is the wrong boundary.
 - `src/neocortex/mcp_settings.py` — add `local_model_base_url`, `local_model_api_key_env`,
-  per-agent `temperature` / `top_p`; keep the four `*_model` and `*_thinking_effort` fields.
-- `src/neocortex/extraction/agents.py` — `_build_model()` (currently `return config.model_name`),
-  `AgentInferenceConfig.model_settings`, `DEFAULT_MODEL_NAME`/`DEFAULT_THINKING_EFFORT` at `:30-31`.
-- `src/neocortex/domains/classifier.py` — `__init__` model construction at `:44-48`.
-- `src/neocortex/domains/seed_generator.py` — `:29` default; give it its own thinking setting.
-- `src/neocortex/services.py` — `:69-72`, `:130-133`, `:154-157` wiring.
-- `src/neocortex/jobs/tasks.py` — `:78-86` `AgentInferenceConfig` construction.
+  `local_model_temperature` / `_top_p` (+ `_nothink` variants), `local_model_timeout_s`,
+  `seed_generator_thinking_effort`; keep the four `*_model` and `*_thinking_effort` fields.
+- `src/neocortex/extraction/agents.py` — `_build_model()` at `:50-56` (currently returns
+  `config.model_name` after two `logger.debug` calls) delegates to the shared factory;
+  `AgentInferenceConfig.model_settings` at `:42-47` (note it already returns `None` when
+  `thinking_effort is None` — preserve that branch); `DEFAULT_MODEL_NAME`/`DEFAULT_THINKING_EFFORT` at `:30-31`.
+- `src/neocortex/domains/classifier.py` — `:44-48` stores the model *string* and `ModelSettings`; the
+  `Agent` is built fresh inside `classify()` at `:79-83` on **every call**. Both need the factory.
+- `src/neocortex/domains/seed_generator.py` — `:29` default; `Agent` built inside `_generate_seed()` at
+  `:119-127` with **no** `model_settings` at all; give it its own thinking setting.
+- `src/neocortex/services.py` — `:69-72`, `:130-133`, `:154-157` wiring. Note `SeedGenerator` has no
+  model setting of its own — both sites pass `settings.domain_classifier_model`.
+- `src/neocortex/jobs/tasks.py` — `:76-87` `AgentInferenceConfig` construction (three configs).
 
 ### Prompt hardening (Stage 3)
 - `src/neocortex/extraction/agents.py` — ontology system prompt (`:88-122`), extractor (`:304-335`),
@@ -260,7 +318,14 @@ against the measured baseline arm with a stated tolerance.
 ### Docs (Stage 9)
 - `CLAUDE.md:109`, `docs/configuration.md:191,205,213,220-222`, `docs/development.md:222-243`,
   `README.md:90`, `.claude/skills/neocortex/SKILL.md:60` — all still claim Gemini.
-- `.env.example` — currently documents **neither** `GOOGLE_API_KEY` nor `OPENAI_API_KEY`.
+- **Also stale, outside the original list:** `docs/multi-agent.md:84`
+  (`NEOCORTEX_DOMAIN_CLASSIFIER_MODEL` shown as `google-gla:gemini-3-flash-preview`),
+  `docs/e2e-reproduction.md:9` ("used for extraction agents + embeddings") and `:95`
+  ("3 sequential Gemini API calls"), `.claude/skills/neocortex/PERMISSIONS.md:130`
+  ("A classifier (Gemini model) assigns semantic domain labels").
+  `docs/reports/00-extraction-pipeline-e2e-validation.md` is a dated historical report — leave it.
+- `.env.example` — currently documents **neither** `GOOGLE_API_KEY` nor `OPENAI_API_KEY`, and has no
+  comments at all, so the explanatory comment Stage 9 adds is a new convention for that file.
 
 ### Explicitly NOT changed
 - `src/neocortex/embedding_service.py` — 768-dim `pgvector` semantics; swapping means re-embedding everything.
@@ -287,7 +352,8 @@ against the measured baseline arm with a stated tolerance.
 |---|-------|--------|-------|--------|
 | 4 | [Measurement harness](stages/04-measurement-harness.md) | PENDING | | |
 | 5 | [Baseline arm — GPT-5.4-mini](stages/05-baseline-arm.md) | PENDING | | |
-| 6 | [Qwen arm](stages/06-qwen-arm.md) | PENDING | | |
+| 6 | [Qwen arm — all four agents](stages/06-qwen-arm.md) | PENDING | | |
+| 6b | [Isolation arms (conditional)](stages/06b-isolation-arms.md) | PENDING | | |
 
 **Phase C — Gate and cutover**
 
@@ -298,6 +364,11 @@ against the measured baseline arm with a stated tolerance.
 | 9 | [Cutover, docs, rollback](stages/09-cutover-and-docs.md) | PENDING | | |
 
 Statuses: `PENDING` -> `IN_PROGRESS` -> `DONE` | `BLOCKED` | `SKIPPED`
+
+**Stage 6b is conditional on Stage 6.** If the Stage 6 joint arm clears every Tier 1 and Tier 2
+threshold, mark 6b SKIPPED — no attribution is needed, because the measured configuration is the
+configuration that would ship. If it misses any Tier 2 metric, 6b is **required** before Stage 7 can
+issue a per-agent verdict.
 
 **Stages 8 and 9 are conditional on Stage 7.** If Stage 7 clears no agent, mark 8 and 9 SKIPPED,
 record the measured evidence in the Backlog, and end the run with the plan's question answered
@@ -378,8 +449,23 @@ unexpected runtime error:
 
 **Endpoint-specific triage.** If the z-spark endpoint is unreachable or returns 5xx, that is an
 **external blocker**, not a light problem: do not retry in a loop. Mark the current stage BLOCKED,
-record it in the Backlog with the exact error, and continue to any stage that does not need the
-endpoint (Stages 1, 4, and the baseline half of 5 all run without it).
+record it in the Backlog with the exact error, and continue to any stage that does not need the endpoint.
+
+Which stages those actually are, since the dependency chain is nearly linear:
+
+- **Stages 1 and 4 are genuinely endpoint-independent** — pure code and tooling.
+- **Stage 3's edits are endpoint-independent; only its verification is not.** Steps 1–8 are prompt and
+  regex changes that apply to both arms regardless of what Stage 2 measured. If Stage 2 is blocked,
+  apply the universal hardening (source-text framing, terminal imperatives, reordering, the duplicate-text
+  removal, the regex extension), skip the exemplars that Stage 2's verdicts were meant to scope, mark
+  Stage 3 DONE with a Backlog note that live re-probing is deferred, and carry on. D5 is preserved
+  because **both arms still run identical prompt text** — only the empirical confirmation that hardening
+  helped is deferred.
+- **Stage 5 needs Stage 3 landed, not Stage 2 measured.** There is no "baseline half of 5" that can run
+  before Stage 3 — running the baseline arm on unhardened prompts would void D5 permanently and force a
+  re-run, which is far more expensive than waiting. Never do it.
+- **Stages 6, 6b, 7, 8 and 9 all require the endpoint.** If it stays down, the run legitimately ends after
+  Stage 5 with Stages 6+ BLOCKED.
 
 ### Guardrails
 
@@ -413,7 +499,8 @@ state the symptom, where it came from, and a concrete lead for resolving it.
 |---|-------|--------------|----------|--------------|---------------------|--------|
 | 1 | Embeddings remain cloud-bound | scoping | med | Out of scope by decision — swapping `gemini-embedding-001` changes vector dimensionality and semantics, requiring a re-embed of every stored node | If full-local is later required, plan a separate migration: pick a local 768-dim model, add an `embedding_backend` setting, and write a backfill job over `nodes.embedding` | OPEN |
 | 2 | Media description remains cloud-bound | scoping | low | Audio/video multimodal + Gemini Files API (2 GB uploads, PROCESSING polling) have no local equivalent in a text-only SGLang lane | Only actionable if a local multimodal lane is stood up on z-spark | OPEN |
-| 3 | `embedding_service.py` silently returns `None` without `GOOGLE_API_KEY` | pre-existing | med | Unrelated to this migration, but it will corrupt a bake-off arm by silently degrading recall to text-only with no error | Make the embedding service fail loudly at startup when `GOOGLE_API_KEY` is absent and `mock_db` is false. Stage 4 must assert embeddings are live before either arm runs | OPEN |
+| 3 | `embedding_service.py` silently returns `None` without `GOOGLE_API_KEY` | pre-existing | med | Unrelated to this migration, but it will corrupt a bake-off arm by silently degrading recall to text-only with no error | Make the embedding service fail loudly at startup when `GOOGLE_API_KEY` is absent and `mock_db` is false. Note it reads `os.environ["GOOGLE_API_KEY"]` directly and has no `settings` reference, so this needs a constructor change. Stage 4 must assert embeddings are live before either arm runs | OPEN |
+| 4 | Artifact-rejected entities are silently discarded, not quarantined | pre-review | med | A product issue this plan only *measures* (Tier 1c). When `normalize_node_type` rejects a name, `get_or_create_node_type` returns `None` and `pipeline.py:448` does `continue` — the entity is dropped with a WARNING and nothing surfaces it to the caller or the graph. Any model that leaks markers loses data quietly, on any provider | Give `run_extraction` a `rejected: list[...]` in its result and surface a count on the job record, so a rejection is visible without log archaeology. Consider a retry that strips the artifact and re-normalizes rather than dropping the entity | OPEN |
 
 Statuses: `OPEN` -> `IN_PROGRESS` -> `RESOLVED`. When an item is resolved, flip its
 status and summarize the fix in **Fixed Issues**. Heavy items may warrant their own
@@ -423,7 +510,7 @@ follow-up plan — link it here.
 
 ## Decisions
 
-Recorded during planning (D1–D8). Execution appends D9+.
+Recorded during planning (D1–D8); D9–D12 added by pre-review, which also revised D6. Execution appends D13+.
 
 **D1 — All four PydanticAI agents are in scope; embeddings and media are not.**
 Owner decision. "Main model" means the reasoning surface. Embeddings are excluded because the
@@ -451,12 +538,20 @@ The 2026-08-19 probe showed the model's only failure was prompt-shaped. Hardenin
 baseline would confound the comparison. Both arms therefore run identical, hardened prompts, and
 any benefit to GPT-5.4-mini is a real result that stays.
 
-**D6 — Use `OpenAIChatModelSettings(openai_reasoning_effort=…)`, not the unified `ModelSettings.thinking`.**
-Bot Plan 26 D1 warns the unified field maps through `OPENAI_REASONING_EFFORT_MAP` and can emit
-values outside the stock Qwen3.8 template allowlist `{low, medium, xhigh}`. The 2026-08-19 probe
-showed the unified field *does* work through this endpoint, so this is a precision measure rather
-than a bug fix — but the precise knob costs nothing and removes a whole class of silent clamping.
-Hosted agents keep the unified field.
+**D6 — Keep the unified `ModelSettings.thinking` for local models too; add `temperature`/`top_p`/`timeout` to it.**
+*Revised during pre-review — the original rationale was wrong.* Bot Plan 26 D1 warned that the unified
+field maps through `OPENAI_REASONING_EFFORT_MAP` and could emit values outside the stock Qwen3.8 template
+allowlist. Checked against the installed pydantic-ai 1.72.0, that map is
+`{True: 'medium', False: 'none', 'minimal': 'minimal', 'low': 'low', 'medium': 'medium', 'high': 'high', 'xhigh': 'xhigh'}`
+— an **identity map for every string level** — and `OpenAIChatModel._get_reasoning_effort` falls back to
+it when `openai_reasoning_effort` is unset. So `ModelSettings(thinking=X)` and
+`OpenAIChatModelSettings(openai_reasoning_effort=X)` put the identical string on the wire for every value
+`ThinkingLevel` permits (`bool | Literal['minimal','low','medium','high','xhigh']`, which includes `xhigh`).
+Base `ModelSettings` already carries `temperature`, `top_p` and `timeout`, which were the other stated
+reasons to switch types. There is therefore **no benefit** to a second settings type, and a single code
+path is one fewer branch to get wrong. If a future sweep needs `reasoning_effort='none'` — which
+`ThinkingLevel` cannot express but `ReasoningEffort` can — that is the one case worth reaching for
+`OpenAIChatModelSettings`, and it is out of scope here.
 
 **D7 — Extend `normalization.py`'s `_TOOL_CALL_ARTIFACT` rather than replacing it.**
 It was built against Gemini Flash's leakage and Plan 29 proved its value (garbage types 9 → 0 via
@@ -467,5 +562,42 @@ two regex additions, no model change). Qwen's leakage shapes differ (`<think>`, 
 emitter, and the orchestrator.** NeoCortex has three tiers of measurement maturity — Plan 29's
 metrics are SQL (automatable today), Plan 15/17/32's are Python (already automated), Plan 18.5's
 M1–M7 are prose executed by a human. Stage 4 builds only the missing connective tissue, and
-Stage 4's own success criterion is that it reproduces Plan 29's already-recorded numbers on the
-existing graph.
+Stage 4's own success criterion is that it reproduces Plan 29's already-recorded numbers — against
+the **`pre-plan30-20260407-201234` snapshot**, not the live graph, which has drifted through Plans
+30–32 (its `graph_registry` holds schemas created as late as 2026-07-28). Two carve-outs from
+"reuse verbatim": the garbage-type regex is read live from `normalization.py` instead of the stale
+copy hardcoded in Plan 29's SQL, and the instance-level-type metric is **not** in that SQL at all
+(Plan 29 computed it by human review) so Stage 4 defines an explicit automatable rule for it.
+
+---
+
+**D9 — One joint Qwen arm decides "all four", and only a Tier 2 miss buys isolation arms.**
+Added during pre-review. Every Tier 2 metric (scenario counts, type counts, unused edge %, reuse
+ratio, dedup rate, episodes consolidated) is produced jointly by all four agents against one graph,
+so the Stage 6 arm cannot attribute a miss to an individual agent — yet D4 promises a per-agent
+verdict and Stage 7 requires one. Rather than pay for four isolation arms up front, Stage 6b runs
+them **only** for the agents a Tier 2 miss could plausibly implicate, and is SKIPPED when the joint
+arm passes outright. Stage 7's Tier 1 attribution heuristic is unchanged; Stage 6b is what makes its
+Tier 2 counterpart possible.
+
+**D10 — Rejected artifacts are counted, not just absent from the graph.**
+Added during pre-review. Extending `_TOOL_CALL_ARTIFACT` (Stage 3 step 6) makes the artifact shapes
+Qwen actually leaks *unstorable*, which would drive the "stored artifact types" and "leaked marker"
+Tier 1 rows to 0 by construction while entities are silently dropped at `pipeline.py:448`. A
+rejection-rate metric is therefore Tier 1 alongside them. This is a genuine tension in D7's
+"extend, don't replace": the regex is both the defense and the blindfold, so the plan needs to
+measure what it blocks.
+
+**D11 — Both arms run at `worker_concurrency=2`.**
+Added during pre-review. The Qwen arm needs 2 to respect SGLang's `max_running_requests=8`, and the
+original plan left the baseline at the default 4. That is not a throughput-only difference: each
+ontology agent is seeded with a type snapshot taken when its job starts and types are created via
+`INSERT … ON CONFLICT DO NOTHING`, so concurrency changes how much of each other's ontology sibling
+extractions see — moving the active type counts, unused edge %, and reuse ratio that Tier 2 gates on.
+Equalising at 2 costs the baseline arm wall-clock and buys a clean comparison.
+
+**D12 — The baseline arm runs twice; tolerances must exceed observed spread.**
+Added during pre-review. Nothing pins temperature or a seed on either arm (local runs at 0.6), and
+Tier 2 tolerances like "≥ baseline − 1" on a 14-point gate were chosen a priori without ever
+measuring run-to-run variance. Two baseline runs give a spread; any tolerance narrower than that
+spread is noise-dominated and must be widened in Stage 5 step 5, before the Qwen arm runs.

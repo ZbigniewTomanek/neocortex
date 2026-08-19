@@ -118,6 +118,12 @@ Two things this establishes:
 1. `ModelSettings(thinking=…)` reaches the server and produces real reasoning tokens, so
    LiteLLM's global `drop_params: true` is **not** eating `reasoning_effort` on the `hosted_vllm/`
    adapter. (It did eat it on the generic `openai/` adapter — z-spark Plan 14 Fixed Issue #14.)
+   Checked in the installed 1.72.0, `OPENAI_REASONING_EFFORT_MAP` is
+   `{True: 'medium', False: 'none', 'minimal': 'minimal', 'low': 'low', 'medium': 'medium', 'high': 'high', 'xhigh': 'xhigh'}`
+   — an identity map for every string level — and `OpenAIChatModel._get_reasoning_effort` falls back to
+   it when `openai_reasoning_effort` is unset. So the unified field is not a source of value
+   distortion, and there is no reason to prefer the provider-specific one. This is why D6 was revised
+   to keep a single settings path.
 2. The whole integration path works with no code change *for a global swap*. Per-agent routing —
    which D4 requires — is what needs Stage 1.
 
@@ -130,7 +136,7 @@ Two things this establishes:
 
 The probes above used a hand-written toy schema. Repeating with NeoCortex's actual
 `ExtractionResult` — 2 nested models, **2 unconstrained `dict` properties**, 2 `ge/le` floats,
-4 nullable strings, and a **raising** `type_name` validator — via pydantic-ai:
+3 nullable strings, and a **raising** `type_name` validator — via pydantic-ai:
 
 | Setting | Result |
 |---|---|

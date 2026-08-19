@@ -34,19 +34,31 @@
      the stage BLOCKED, record it, and do not retry in a loop (see the index's endpoint-specific
      triage).
 
-3. **Lower worker concurrency to match the serving ceiling.**
+3. **Confirm worker concurrency matches the baseline arm.**
    - Details: SGLang runs `max_running_requests=8` on a single shared GB10 with p50 23 tok/s
-     single-stream decode. NeoCortex defaults to `worker_concurrency=4`, and each extraction is
-     3 sequential agents with tool budgets of 30 and 150 — so 4 workers can present far more than
-     8 concurrent requests once tool loops are in flight. Set `NEOCORTEX_WORKER_CONCURRENCY=2` for
-     this arm and **record that it differs from the baseline arm**. It affects throughput (Tier 3,
-     non-gating) and not quality, but it must be written down.
+     single-stream decode. Each extraction is 3 sequential agents with tool budgets of 30 and 150, so
+     4 workers can present far more than 8 concurrent requests once tool loops are in flight —
+     `NEOCORTEX_WORKER_CONCURRENCY=2` is required here.
+   - **Stage 5 already ran the baseline at 2 as well (D11), so this is no longer a difference between
+     the arms — verify it rather than record it as a confound.** The earlier draft of this plan set 2
+     here only, on the reasoning that concurrency "affects throughput and not quality". That reasoning
+     was wrong: each ontology agent is seeded with a type snapshot taken when its job starts and types
+     are created with `INSERT … ON CONFLICT DO NOTHING`, so concurrency changes how much of each
+     other's committed ontology sibling extractions see — moving the active type counts, unused edge %,
+     and reuse ratio that Tier 2 gates on. If for any reason the baseline arm ran at a different
+     concurrency, **re-run the baseline** rather than recording an asymmetry on a gating axis.
 
 4. **Run the arm.**
    - Details: `./scripts/model_bakeoff.sh --arm qwen38-27b`.
      Expect this to take substantially longer than the baseline — the plan's scoping decision is
-     that latency is measured, not gated (D3). Give the orchestrator's job-completion poll a
-     generous timeout (the existing e2e scripts use 300–600 s; raise to at least 1800 s).
+     that latency is measured, not gated (D3).
+   - **Budget the job-completion poll at ≥ 4 h, not the 1800 s an earlier draft suggested.** Stage 5
+     budgets the *faster* hosted arm at 60–90 min for the same 28 episodes at the same concurrency, and
+     `resources/probes.md` Probe 5 measured the Qwen extractor **alone** at 124.8 s at `low` — one of
+     three sequential agents, at the cheapest effort, with the librarian's 150-call tool budget still
+     ahead of it. Per Stage 4 step 5 the orchestrator **aborts without writing metrics** if the poll
+     expires with work outstanding; do not "rescue" a timed-out run by computing metrics on the partial
+     graph, because the result is indistinguishable from a genuine collapse.
 
 5. **Watch for the four predicted failure modes and count each one.**
    - Details:
@@ -58,7 +70,14 @@
      - **Tool-budget exhaustion** — `UsageLimitExceeded` against the 30 / 150 limits.
      - **Leaked template markers** — `</think>`, `<tool_call>`, `<function=` in stored node names,
        type names, or content. Bot Plan 26 observed a stray `</think>` at `reasoning_effort=none`.
-       The Tier 1 leak scan covers this; make sure it actually ran.
+       **Read Tier 1c (rejection rate) as the primary signal here, not the stored-artifact scan.**
+       After Stage 3 step 6, a leaked marker in a *type name* is rejected before it can be stored —
+       `normalize_node_type` raises, `get_or_create_node_type` returns `None`, and
+       `pipeline.py:448` drops the entity with a warning — so the stored-artifact and leak-scan rows
+       will read 0 whether the model is clean or leaking constantly. A rejection rate materially
+       above the baseline's *is* the leakage finding, and the rejected names in the metrics JSON are
+       the evidence. The leak scan still matters for node **content** and node **names**, which the
+       regex never guarded.
 
 6. **Record everything into the index.**
    - File: `docs/plans/33-local-qwen-migration/index.md`
@@ -82,12 +101,18 @@
       explicitly `NOT MEASURED`.
 - [ ] The metrics JSON records the resolved model strings, effort levels, and worker concurrency,
       so the arm can never be misattributed.
+- [ ] `worker_concurrency` in this arm's metrics JSON **equals** the baseline arm's (both 2).
 - [ ] Counts for all four predicted failure modes are recorded, including zeros.
+- [ ] Tier 1c rejection rate recorded for this arm alongside the baseline's, with the rejected type
+      names listed. A stored-artifact count of 0 is **not** sufficient evidence of no leakage.
+- [ ] The job poll reached `todo+doing == 0` — the arm was not metriced on a partial graph.
 - [ ] Index Tier 1 and Tier 2 "Qwen" columns filled in.
 - [ ] Both snapshots exist: `./scripts/manage.sh snapshot list` shows `baseline-gpt54mini` **and**
       `qwen38-27b`.
-- [ ] Any deviation from the baseline arm's procedure (effort level, concurrency, retries) is
-      written into the stage notes as an explicit confound.
+- [ ] Any residual deviation from the baseline arm's procedure (effort level, retries) is written into
+      the stage notes as an explicit confound.
+- [ ] **Set Stage 6b's disposition**: if every Tier 1 and Tier 2 threshold cleared, mark 6b SKIPPED
+      with a note; otherwise list the missed Tier 2 metrics in the tracker note so 6b knows its scope.
 
 ---
 

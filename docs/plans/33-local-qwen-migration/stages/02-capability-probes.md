@@ -18,7 +18,7 @@ tool surfaces, which are considerably heavier than the probe's toy versions:
 
 | Agent | Real surface | Predicted risk |
 |---|---|---|
-| Extractor | `ExtractionResult` — 2 nested models, **2 unconstrained `dict` properties**, 2 `ge/le` floats, 4 nullable strings, a **raising** `type_name` validator; largest dynamic prompt (full ontology + episode, duplicated) | Widest schema surface. **Measured 124.8 s / 3350 reasoning tokens at `low`, and a timeout at `medium`** — no loop risk, but the pipeline's most expensive call by far |
+| Extractor | `ExtractionResult` — 2 nested models, **2 unconstrained `dict` properties**, 2 `ge/le` floats, 3 nullable strings (`description`, `supersedes`, `temporal_signal`, all on `ExtractedEntity`), a **raising** `type_name` validator (length > 60 and non-uppercase first char); largest dynamic prompt (full ontology + episode, duplicated). No `usage_limits` at all on this agent's `.run()` | Widest schema surface. **Measured 124.8 s / 3350 reasoning tokens at `low`, and a timeout at `medium`** — no loop risk, but the pipeline's most expensive call by far |
 | Ontology | `OntologyProposal` with **raising** name validators; 3 tools; explicit reject-and-retry protocol (`propose_type` returns `accepted: false` + a reason the model must act on); `tool_calls_limit=30` | Multi-turn + must recover from an in-band rejection |
 | Librarian | `CurationSummary`; **9 tools**; `tool_calls_limit=150`; ~5 KB system prompt; tools return `{"error": …}` the model must self-correct from; structured output demanded *after* a long tool sequence | **Highest risk.** Local models characteristically drop the terminal structured output after a long loop |
 | Domain classifier | `ClassificationResult` with a nullable nested `ProposedDomain` and calibrated confidence floats; growing domain tree in the prompt | Medium; already has a keyword fallback and a router-level try/except |
@@ -44,9 +44,10 @@ tool surfaces, which are considerably heavier than the probe's toy versions:
      record a timeout as its own outcome class. The 2026-08-19 exploratory run of this probe was
      killed after ~25 minutes without completing because it had no timeout — without one, the
      extractor's cost profile presents as a hang rather than a measurement.
-   - The librarian and ontology probes need a live DB for their tools. Run under
-     `KEEP_RUNNING=1 ./scripts/run_e2e.sh` or against an already-started stack — the tools
-     query real schemas and will error against a torn-down database.
+   - The librarian and ontology probes need a live DB for their tools. Bring the stack up with
+     **`./scripts/manage.sh start`** (persist-by-default) — the tools query real schemas and will error
+     against a torn-down database. Do **not** reach for `run_e2e.sh`: it requires a test-script
+     argument and calls `manage.sh start --fresh` at line 122, wiping the DB on every invocation.
 
 2. **Use a fixed probe corpus with known-hard properties.**
    - File: `docs/plans/33-local-qwen-migration/resources/probe-corpus.md` (new)

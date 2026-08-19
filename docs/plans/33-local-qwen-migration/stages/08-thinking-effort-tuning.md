@@ -43,6 +43,10 @@ M2 also recorded `xhigh` at temperature 0.3 selecting only 1 of 2 required tools
      Stage 2 (it already accepts `--effort`) for the fast signal, at N ≥ 5 per level.
    - Record per level: pass rate, reasoning tokens, wall-clock, tool calls, and any Tier 1
      violation (a garbage type or a leaked marker at *any* effort level is disqualifying for that level).
+   - **Include the Tier 1c invalid-type rejection rate per effort level.** Because Stage 3 step 6 makes
+     leaked markers unstorable, a level that leaks heavily shows up as a rejection spike and silently
+     dropped entities, not as stored garbage. A level whose rejection rate is materially worse than its
+     neighbours is disqualified even when every stored-artifact count reads 0.
 
 2. **Settle the `high` question explicitly.**
    - Details: compare reasoning-token distributions across `low` / `medium` / `high` / `xhigh` on an
