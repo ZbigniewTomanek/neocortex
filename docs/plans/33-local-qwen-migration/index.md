@@ -350,7 +350,7 @@ remain a useful long-term aspiration; they are not a valid instrument for a mode
 
 | # | Stage | Status | Notes | Commit |
 |---|-------|--------|-------|--------|
-| 4 | [Measurement harness](stages/04-measurement-harness.md) | PENDING | | |
+| 4 | [Measurement harness](stages/04-measurement-harness.md) | DONE | Added corpus loader, recall scorer, live-regex metrics emitter, structured usage/timing/rejection audit events, and full arm orchestrator with pre-flight assertions and derived timeout polling. Dry-run/parser checks pass; full suite: 916 passed, 11 skipped. Live DB/API reproduction and end-to-end timeout assertion deferred to Backlog #8. | |
 | 5 | [Baseline arm — GPT-5.4-mini](stages/05-baseline-arm.md) | PENDING | | |
 | 6 | [Qwen arm — all four agents](stages/06-qwen-arm.md) | PENDING | | |
 | 6b | [Isolation arms (conditional)](stages/06b-isolation-arms.md) | PENDING | | |
@@ -491,6 +491,7 @@ Leave empty until execution surfaces something.
 | 3 | 2 | Required `poetry run pytest` command was unavailable | This checkout uses `uv` and does not have the Poetry executable installed | Ran the repository-equivalent `uv run pytest` successfully: 911 passed, 11 skipped | inline |
 | 4 | 3 | New Qwen marker tests did not raise because `<…>` was stripped first | Normalization checked `_TOOL_CALL_ARTIFACT` only after removing invalid characters | Check the raw type name before sanitization; added regression cases for all five new marker families and reran the full suite | inline |
 | 5 | 3 | Pre-commit rejected two prompt lines with E501 | Added terminal contracts exceeded the repository's 120-column lint limit | Wrapped the prompt strings without changing their text; pre-commit passed on retry | inline |
+| 6 | 4 | Two unit tests emitted unawaited-coroutine warnings from usage instrumentation | Minimal AsyncMock librarian results expose an async `usage()` placeholder, unlike production pydantic-ai results | Detect awaitable usage values and close coroutine placeholders before returning | inline |
 
 ---
 
@@ -509,6 +510,7 @@ state the symptom, where it came from, and a concrete lead for resolving it.
 | 5 | Probe tool backend is not PostgreSQL-backed | 2 | med | The completed capability sweep uses `InMemoryRepository` to avoid mutating the shared development graph. This exercises the real PydanticAI agents and tool functions but does not measure PostgreSQL query/permission behavior or production graph latency | Before any bake-off interpretation, run a small repeat of ontology/librarian probes with the production repository and isolated probe schema, or explicitly document why the mock backend is sufficient | OPEN |
 | 6 | Hosted no-regression E2E not run after prompt hardening | 3 | med | The required hosted E2E needs a running hosted-configured service and the runner uses `start --fresh`, which would destroy the persisted development graph; no truthful result was available without that environment decision | Run `./scripts/run_e2e.sh scripts/e2e_extraction_pipeline_test.py` in the dedicated hosted baseline environment, snapshot first, and record the exit/output before Stage 5 | OPEN |
 | 7 | Extractor open-dict schema experiment not isolated | 3 | med | The existing probe harness only runs the committed schema and has no agent-selection or temporary-schema variant; changing `properties` in place would confound the shared bake-off schema and alter stored data semantics | Add a bounded extractor-only probe mode or temporary schema variants, measure open `dict`, `dict[str, str]`, and omitted properties with latency and token counts, then retain the committed schema unless hosted validation also passes | OPEN |
+| 8 | Stage 4 live harness verification not run | 4 | med | This unattended checkout has no running PostgreSQL/NeoCortex services or guaranteed embedding/API credentials, so Plan 29 snapshot reproduction, live audit-event assertion, pre-flight failure/pass matrix, and bounded poll-timeout test could not be truthfully executed | Start the dedicated hosted/local bake-off environment, run the listed Stage 4 verification commands, restore any snapshots afterward, and record the emitted metrics JSON before Stage 5 | OPEN |
 
 Statuses: `OPEN` -> `IN_PROGRESS` -> `RESOLVED`. When an item is resolved, flip its
 status and summarize the fix in **Fixed Issues**. Heavy items may warrant their own

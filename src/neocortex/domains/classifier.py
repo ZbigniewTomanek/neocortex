@@ -95,6 +95,17 @@ class AgentDomainClassifier:
             text,
             model_settings=build_model_settings(self._thinking_effort, self._model_name, self._local_endpoint),
         )
+        usage = result.usage()
+        details = getattr(usage, "details", {}) or {}
+        logger.bind(action_log=True).info(
+            "agent_usage",
+            stage="domain_classifier",
+            requests=int(getattr(usage, "requests", 0)),
+            tool_calls=int(getattr(usage, "tool_calls", 0)),
+            input_tokens=int(getattr(usage, "input_tokens", 0)),
+            output_tokens=int(getattr(usage, "output_tokens", 0)),
+            reasoning_tokens=details.get("reasoning_tokens"),
+        )
         # Retain the result for diagnostics (the public API continues to return only the model output).
         self._last_run_result = result
         logger.debug(

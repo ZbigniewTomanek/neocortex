@@ -536,7 +536,7 @@ class GraphServiceAdapter:
         try:
             name = normalize_node_type(name)
         except ValueError as e:
-            logger.warning("invalid_node_type_rejected", raw_name=name, error=str(e))
+            logger.bind(action_log=True).warning("invalid_node_type_rejected", raw_name=name, error=str(e))
             return None
         if target_schema is None and (self._pool is None or self._router is None):
             existing = await self._graph.get_node_type_by_name(name)
@@ -567,7 +567,7 @@ class GraphServiceAdapter:
         try:
             name = normalize_edge_type(name)
         except ValueError as e:
-            logger.warning("invalid_edge_type_rejected", raw_name=name, error=str(e))
+            logger.bind(action_log=True).warning("invalid_edge_type_rejected", raw_name=name, error=str(e))
             return None
         if target_schema is None and (self._pool is None or self._router is None):
             existing = await self._graph.get_edge_type_by_name(name)
@@ -594,8 +594,7 @@ class GraphServiceAdapter:
             # Fallback: check for very similar existing type (e.g., after normalization
             # both are SCREAMING_SNAKE but differ by a word like singular/plural)
             similar = await conn.fetchrow(
-                "SELECT * FROM edge_type WHERE similarity(name, $1) >= 0.8 "
-                "ORDER BY similarity(name, $1) DESC LIMIT 1",
+                "SELECT * FROM edge_type WHERE similarity(name, $1) >= 0.8 ORDER BY similarity(name, $1) DESC LIMIT 1",
                 name,
             )
             if similar:
@@ -1062,7 +1061,7 @@ class GraphServiceAdapter:
         async with self._scoped_conn(schema_name, agent_id, target_schema) as conn:
             # Source-target primary edge dedup: check existing edges between this pair
             existing = await conn.fetch(
-                "SELECT id, type_id, weight, properties FROM edge " "WHERE source_id = $1 AND target_id = $2",
+                "SELECT id, type_id, weight, properties FROM edge WHERE source_id = $1 AND target_id = $2",
                 source_id,
                 target_id,
             )
@@ -1439,8 +1438,7 @@ class GraphServiceAdapter:
         schema_name = await self._router.route_store(agent_id)
         async with schema_scoped_connection(self._pool, schema_name) as conn:
             await conn.execute(
-                "UPDATE node SET access_count = access_count + 1, last_accessed_at = now() "
-                "WHERE id = ANY($1::int[])",
+                "UPDATE node SET access_count = access_count + 1, last_accessed_at = now() WHERE id = ANY($1::int[])",
                 ids_to_update,
             )
 
@@ -2313,7 +2311,7 @@ class GraphServiceAdapter:
                 # so only they get scored as primary results later.
                 episode_row_dicts = sorted(
                     episode_row_dicts,
-                    key=lambda r: (r.get("vector_sim") or 0.0),
+                    key=lambda r: r.get("vector_sim") or 0.0,
                     reverse=True,
                 )[:limit]
                 seen_episode_ids = {int(r["id"]) for r in episode_row_dicts}

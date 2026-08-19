@@ -7,8 +7,9 @@ and persists the resulting knowledge graph via the MemoryRepository protocol.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from pydantic_ai.messages import ToolCallPart
@@ -34,6 +35,27 @@ if TYPE_CHECKING:
     from neocortex.embedding_service import EmbeddingService
 
 _UNSET: str = "__UNSET__"
+
+
+def _audit_usage(stage: str, result: Any) -> None:
+    """Write provider-neutral numeric usage fields to the durable action log."""
+    usage = result.usage()  # type: ignore[attr-defined]
+    if inspect.isawaitable(usage):
+        # Minimal AsyncMock results used by unit tests do not model provider usage.
+        # Production pydantic-ai RunResult.usage() is synchronous.
+        if inspect.iscoroutine(usage):
+            usage.close()
+        return
+    details = getattr(usage, "details", {}) or {}
+    logger.bind(action_log=True).info(
+        "agent_usage",
+        stage=stage,
+        requests=int(getattr(usage, "requests", 0)),
+        tool_calls=int(getattr(usage, "tool_calls", 0)),
+        input_tokens=int(getattr(usage, "input_tokens", 0)),
+        output_tokens=int(getattr(usage, "output_tokens", 0)),
+        reasoning_tokens=details.get("reasoning_tokens"),
+    )
 
 
 async def run_extraction(
@@ -131,7 +153,9 @@ async def run_extraction(
             repo.get_edge_types(agent_id, target_schema=target_schema),
             repo.get_type_examples(agent_id, target_schema=target_schema),
         )
-        logger.debug("stage_timing", stage="metadata_fetch", elapsed_s=round(time.monotonic() - t0, 2))
+        logger.bind(action_log=True).info(
+            "stage_timing", stage="metadata_fetch", elapsed_s=round(time.monotonic() - t0, 2)
+        )
 
         # Build type description dicts for richer context
         node_type_descs = {t.name: (t.description or "") for t in node_types}
@@ -163,7 +187,8 @@ async def run_extraction(
             usage_limits=UsageLimits(tool_calls_limit=ontology_tool_calls_limit),
         )
         ontology_elapsed = round(time.monotonic() - t0, 2)
-        logger.debug("stage_timing", stage="ontology_agent", elapsed_s=ontology_elapsed)
+        _audit_usage("ontology_agent", ontology_result)
+        logger.bind(action_log=True).info("stage_timing", stage="ontology_agent", elapsed_s=ontology_elapsed)
 
         # Ontology agent observability: log model info, token usage, tool call count
         ontology_tool_calls = sum(
@@ -208,7 +233,9 @@ async def run_extraction(
         for nt in ontology_result.output.new_node_types:
             created = await repo.get_or_create_node_type(agent_id, nt.name, nt.description, target_schema=target_schema)
             if created is None:
-                logger.warning("skipping_invalid_node_type", name=nt.name)
+                logger.bind(action_log=True).warning(
+                    "skipping_invalid_node_type", name=nt.name, error="normalization rejected type"
+                )
             elif created.name not in existing_node_names:
                 node_types.append(TypeInfo(id=created.id, name=created.name, description=created.description))
                 existing_node_names.add(created.name)
@@ -217,7 +244,9 @@ async def run_extraction(
         for et in ontology_result.output.new_edge_types:
             created = await repo.get_or_create_edge_type(agent_id, et.name, et.description, target_schema=target_schema)
             if created is None:
-                logger.warning("skipping_invalid_edge_type", name=et.name)
+                logger.bind(action_log=True).warning(
+                    "skipping_invalid_edge_type", name=et.name, error="normalization rejected type"
+                )
             elif created.name not in existing_edge_names:
                 edge_types.append(TypeInfo(id=created.id, name=created.name, description=created.description))
                 existing_edge_names.add(created.name)
@@ -225,7 +254,9 @@ async def run_extraction(
         # Rebuild description dicts with merged types (no reload needed)
         node_type_descs = {t.name: (t.description or "") for t in node_types}
         edge_type_descs = {t.name: (t.description or "") for t in edge_types}
-        logger.debug("stage_timing", stage="type_persist", elapsed_s=round(time.monotonic() - t0, 2))
+        logger.bind(action_log=True).info(
+            "stage_timing", stage="type_persist", elapsed_s=round(time.monotonic() - t0, 2)
+        )
 
         # 4. Extraction stage
         t0 = time.monotonic()
@@ -242,7 +273,10 @@ async def run_extraction(
             ),
             model_settings=ext_cfg.model_settings,
         )
-        logger.debug("stage_timing", stage="extractor_agent", elapsed_s=round(time.monotonic() - t0, 2))
+        _audit_usage("extractor_agent", extraction_result)
+        logger.bind(action_log=True).info(
+            "stage_timing", stage="extractor_agent", elapsed_s=round(time.monotonic() - t0, 2)
+        )
 
         # 5. Librarian stage
         if librarian_use_tools:
@@ -260,7 +294,9 @@ async def run_extraction(
                     for desc, emb in zip(descriptions, batch_results, strict=True):
                         if emb is not None:
                             precomputed_embeddings[desc] = emb
-            logger.debug("stage_timing", stage="embedding_precompute", elapsed_s=round(time.monotonic() - t0, 2))
+            logger.bind(action_log=True).info(
+                "stage_timing", stage="embedding_precompute", elapsed_s=round(time.monotonic() - t0, 2)
+            )
 
             t0 = time.monotonic()
             librarian_result = await librarian_agent.run(
@@ -282,7 +318,10 @@ async def run_extraction(
                 usage_limits=UsageLimits(tool_calls_limit=tool_calls_limit),
             )
 
-            logger.debug("stage_timing", stage="librarian_agent", elapsed_s=round(time.monotonic() - t0, 2))
+            _audit_usage("librarian_agent", librarian_result)
+            logger.bind(action_log=True).info(
+                "stage_timing", stage="librarian_agent", elapsed_s=round(time.monotonic() - t0, 2)
+            )
 
             # Mark episode as consolidated
             await repo.mark_episode_consolidated(agent_id, episode_id, target_schema=read_schema)
@@ -343,7 +382,10 @@ async def run_extraction(
                 model_settings=lib_cfg.model_settings,
                 usage_limits=UsageLimits(tool_calls_limit=tool_calls_limit),
             )
-            logger.debug("stage_timing", stage="librarian_agent", elapsed_s=round(time.monotonic() - t0, 2))
+            _audit_usage("librarian_agent", librarian_result)
+            logger.bind(action_log=True).info(
+                "stage_timing", stage="librarian_agent", elapsed_s=round(time.monotonic() - t0, 2)
+            )
 
             # Build fallback map from extractor descriptions
             extractor_descriptions: dict[str, str] = {
@@ -363,7 +405,9 @@ async def run_extraction(
                 extractor_descriptions=extractor_descriptions,
                 episode_schema=read_schema,
             )
-            logger.debug("stage_timing", stage="persist_payload", elapsed_s=round(time.monotonic() - t0, 2))
+            logger.bind(action_log=True).info(
+                "stage_timing", stage="persist_payload", elapsed_s=round(time.monotonic() - t0, 2)
+            )
 
             logger.info(
                 "extraction_complete",
@@ -415,10 +459,14 @@ async def _persist_payload(
     # Persist any remaining type proposals (skip invalid names)
     for nt in payload.accepted_node_types:
         if await repo.get_or_create_node_type(agent_id, nt.name, nt.description, target_schema=target_schema) is None:
-            logger.warning("skipping_invalid_node_type", name=nt.name)
+            logger.bind(action_log=True).warning(
+                "skipping_invalid_node_type", name=nt.name, error="normalization rejected type"
+            )
     for et in payload.accepted_edge_types:
         if await repo.get_or_create_edge_type(agent_id, et.name, et.description, target_schema=target_schema) is None:
-            logger.warning("skipping_invalid_edge_type", name=et.name)
+            logger.bind(action_log=True).warning(
+                "skipping_invalid_edge_type", name=et.name, error="normalization rejected type"
+            )
 
     # Batch-embed entity descriptions (single API call instead of N+1)
     entity_embeddings: list[list[float] | None] = [None] * len(payload.entities)
@@ -445,7 +493,12 @@ async def _persist_payload(
     for i, entity in enumerate(payload.entities):
         node_type = await repo.get_or_create_node_type(agent_id, entity.type_name, target_schema=target_schema)
         if node_type is None:
-            logger.warning("skipping_entity_invalid_type", name=entity.name, type_name=entity.type_name)
+            logger.bind(action_log=True).warning(
+                "skipping_entity_invalid_type",
+                name=entity.name,
+                type_name=entity.type_name,
+                error="normalization rejected type",
+            )
             continue
         entity_importance = entity.importance
         if importance_hint is not None:
