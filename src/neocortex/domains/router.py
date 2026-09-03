@@ -103,20 +103,6 @@ class DomainRouter:
             )
             return []
 
-        logger.bind(action_log=True).info(
-            "domain_classification_result",
-            agent_id=agent_id,
-            episode_id=episode_id,
-            correlation_id=correlation_id,
-            matched_count=len(classification.matched_domains),
-            matched_slugs=[m.domain_slug for m in classification.matched_domains],
-            method=(
-                "llm"
-                if classification.matched_domains and classification.matched_domains[0].reasoning != "keyword_fallback"
-                else "keyword_fallback"
-            ),
-        )
-
         # Classifier output is untrusted.  Keep only known domains, remove
         # duplicate slugs, and apply the confidence threshold before any job
         # can be enqueued.  This establishes one routed extraction per domain
@@ -157,6 +143,24 @@ class DomainRouter:
             matches = [*matches[: MAX_UNIQUE_ROUTED_DOMAINS - 1], proposed_match]
         else:
             matches = matches[:MAX_UNIQUE_ROUTED_DOMAINS]
+
+        # Keep action-log fields to counts and bounded, post-validation
+        # identifiers.  Never copy model-provided slugs or reasoning into the
+        # audit trail: unknown values can contain source text or credentials.
+        logger.bind(action_log=True).info(
+            "domain_classification_result",
+            agent_id=agent_id,
+            episode_id=episode_id,
+            correlation_id=correlation_id,
+            matched_count=len(classification.matched_domains),
+            accepted_match_count=len(matches),
+            accepted_domain_slugs=[match.domain_slug for match in matches],
+            method=(
+                "llm"
+                if classification.matched_domains and classification.matched_domains[0].reasoning != "keyword_fallback"
+                else "keyword_fallback"
+            ),
+        )
 
         results: list[RoutingResult] = []
         for match in matches:
@@ -245,9 +249,8 @@ class DomainRouter:
             else:
                 logger.bind(action_log=True).warning(
                     "domain_provision_parent_not_found",
-                    proposed_slug=slug,
-                    parent_slug=proposed.parent_slug,
-                    action="treating_as_root",
+                    proposed_domain_slug=slug,
+                    reason="parent_not_found_treating_as_root",
                 )
 
         try:
