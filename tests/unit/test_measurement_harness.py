@@ -50,6 +50,8 @@ def test_non_terminal_cli_writes_only_not_measured_sidecar(monkeypatch: pytest.M
 
     monkeypatch.setattr(metrics, "collect", fake_collect)
     monkeypatch.setattr(metrics, "PLAN_RESOURCES", tmp_path)
+    canonical = tmp_path / "metrics-self-test.json"
+    canonical.write_text('{"old": "quality"}')
     monkeypatch.setattr(
         sys,
         "argv",
@@ -60,14 +62,134 @@ def test_non_terminal_cli_writes_only_not_measured_sidecar(monkeypatch: pytest.M
 
     assert result == 2
     sidecar = tmp_path / "metrics-self-test.not-measured.json"
-    assert json.loads(sidecar.read_text()) == {
-        "schema_version": 3,
-        "status": "NOT_MEASURED",
-        "reason": "non_terminal_jobs",
-        "job_summary": summary,
-        "input_paths": {"admin_jobs_api": "http://127.0.0.1:8001/admin/jobs/summary"},
-    }
-    assert not (tmp_path / "metrics-self-test.json").exists()
+    marker = json.loads(sidecar.read_text())
+    assert marker["schema_version"] == 3
+    assert marker["status"] == "NOT_MEASURED"
+    assert marker["reason"] == "non_terminal_jobs"
+    assert marker["job_summary"] == summary
+    assert marker["input_paths"]["admin_jobs_api"] == "http://127.0.0.1:8001/admin/jobs/summary"
+    assert marker["run_id"]
+    assert marker["invalidated_canonical"] == str(canonical)
+    assert marker["recoverable_stale_artifact"] == str(tmp_path / "metrics-self-test.json.stale")
+    assert not canonical.exists()
+    assert json.loads((tmp_path / "metrics-self-test.json.stale").read_text()) == {"old": "quality"}
+
+
+@pytest.mark.parametrize(
+    ("case", "expected_reason"),
+    [
+        ("missing", "missing_audit_log"),
+        ("empty", "empty_audit_log"),
+        ("malformed", "malformed_audit_log"),
+        ("fully_filtered", "audit_log_fully_filtered"),
+    ],
+)
+def test_zero_signal_audit_never_publishes_canonical_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    case: str,
+    expected_reason: str,
+) -> None:
+    """Absent or unusable run-scoped evidence must remain NOT_MEASURED."""
+    import asyncio
+    import sys
+
+    import scripts.compute_metrics as metrics  # ty: ignore[unresolved-import]
+
+    run_id = "selected-run"
+    resources = tmp_path / "resources"
+    log_dir = tmp_path / "log"
+    log_path = log_dir / "agent_actions.log"
+    if case != "missing":
+        log_dir.mkdir()
+        content = {
+            "empty": "",
+            "malformed": "this is not json\n{also not json",
+            "fully_filtered": json.dumps(
+                {
+                    "record": {
+                        "message": "model_request_completed",
+                        "extra": {"run_id": "different-run"},
+                    }
+                }
+            )
+            + "\n",
+        }[case]
+        log_path.write_text(content)
+
+    async def fake_collect(*args: object, **kwargs: object) -> dict[str, object]:
+        assert kwargs["run_id"] == run_id
+        return {
+            "schema_version": 3,
+            "job_summary": {"todo": 0, "doing": 0, "succeeded": 1},
+            "schemas": {"quality": "must-not-be-published"},
+        }
+
+    monkeypatch.setattr(metrics, "ROOT", tmp_path)
+    monkeypatch.setattr(metrics, "PLAN_RESOURCES", resources)
+    monkeypatch.setattr(metrics, "collect", fake_collect)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "compute_metrics.py",
+            "--arm",
+            "zero-signal",
+            "--run-id",
+            run_id,
+            "--ingestion-url",
+            "http://127.0.0.1:8001",
+        ],
+    )
+
+    canonical = resources / "metrics-zero-signal.json"
+    canonical.parent.mkdir(parents=True)
+    canonical.write_text('{"old": "quality"}')
+    assert asyncio.run(metrics.main()) == 2
+
+    sidecar = resources / "metrics-zero-signal.not-measured.json"
+    marker = json.loads(sidecar.read_text())
+    assert marker["status"] == "NOT_MEASURED"
+    assert marker["reason"] == expected_reason
+    assert marker["run_id"] == run_id
+    assert marker["audit"]["status"] == "NOT_MEASURED"
+    assert "schemas" not in marker
+    assert not canonical.exists()
+    assert (resources / "metrics-zero-signal.json.stale").exists()
+
+
+def test_main_passes_one_effective_run_id_to_collect_and_audit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """An omitted CLI id is generated once, then shared by all collectors."""
+    import asyncio
+    import sys
+
+    import scripts.compute_metrics as metrics  # ty: ignore[unresolved-import]
+
+    seen: dict[str, str] = {}
+
+    async def fake_collect(*args: object, **kwargs: object) -> dict[str, object]:
+        seen["collect"] = str(kwargs["run_id"])
+        return {"job_summary": {"todo": 0, "doing": 0}}
+
+    def fake_audit(*, run_id: str | None = None, correlation_id: str | None = None) -> dict[str, object]:
+        del correlation_id
+        assert run_id is not None
+        seen["audit"] = run_id
+        return {"status": "MEASURED", "run_id": run_id}
+
+    monkeypatch.setattr(metrics, "collect", fake_collect)
+    monkeypatch.setattr(metrics, "audit_metrics", fake_audit)
+    monkeypatch.setattr(metrics, "PLAN_RESOURCES", tmp_path)
+    monkeypatch.delenv("NEOCORTEX_BAKEOFF_RUN_ID", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["compute_metrics.py", "--arm", "run-id-self-test", "--ingestion-url", "http://127.0.0.1:8001"],
+    )
+
+    assert asyncio.run(metrics.main()) == 0
+    assert seen["collect"] == seen["audit"]
+    assert seen["collect"]
 
 
 def test_bakeoff_dry_run_reports_bounds_without_secret() -> None:
