@@ -1,4 +1,7 @@
-# Stage 2 capability probe findings
+# Historical Stage 2 capability probe findings
+
+> These findings describe the 2026-08-19 remote `qwen3.8-27b` run. They are retained for context and
+> do not establish capability, quality, or stability for local `qwen3.8-flash-next`.
 
 The probe corpus contains E1 (factual), E2 (temporal correction), and E3 (adversarial
 type bait). Each effort file contains 60 records: five attempts for each episode and

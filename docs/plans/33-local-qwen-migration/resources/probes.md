@@ -1,4 +1,8 @@
-# Capability Probes — Reproduction
+# Historical Capability Probes — Reproduction
+
+> Historical evidence only. These requests targeted the remote `qwen3.8-27b` service on 2026-08-19.
+> They do not satisfy any active Flash Next gate. Use `../stages/02-capability-probes.md` and
+> `commands.md` for the current target.
 
 Everything measured on **2026-08-19** against `http://z-spark.tail215ba1.ts.net:4000/v1`,
 which serves exactly one model: `qwen3.8-27b`. These are the probes that justified writing this
