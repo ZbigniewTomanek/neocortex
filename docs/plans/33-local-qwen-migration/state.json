@@ -2,7 +2,7 @@
   "plan": "33-local-qwen-migration",
   "created": "2026-09-03",
   "stages": [
-    {"id": 1, "title": "Authenticated local preflight and routing", "file": "stages/01-local-provider-routing.md", "status": "DONE", "depends_on": [], "commit": null, "note": "LITELLM_API_KEY preflight passed; missing named credentials fail fast; default VLLM_API_KEY retained.", "blocked_by": []},
+    {"id": 1, "title": "Authenticated local preflight and routing", "file": "stages/01-local-provider-routing.md", "status": "DONE", "depends_on": [], "commit": "4ab4284", "note": "LITELLM_API_KEY preflight passed; missing named credentials fail fast; default VLLM_API_KEY retained.", "blocked_by": []},
     {"id": 2, "title": "Real-agent Flash Next probes", "file": "stages/02-capability-probes.md", "status": "PENDING", "depends_on": [1], "commit": null, "note": null, "blocked_by": []},
     {"id": 3, "title": "Iterative prompt and compatibility hardening", "file": "stages/03-prompt-hardening.md", "status": "PENDING", "depends_on": [2], "commit": null, "note": null, "blocked_by": []},
     {"id": 4, "title": "Harness, instrumentation, and auth stability", "file": "stages/04-measurement-harness.md", "status": "PENDING", "depends_on": [1], "commit": null, "note": null, "blocked_by": []},

@@ -6,8 +6,9 @@
 ## Steps
 
 1. Preflight again immediately before the arm. Set `NEOCORTEX_LOCAL_MODEL_BASE_URL` to
-   `http://127.0.0.1:24000/v1`, each in-scope model to `local:qwen3.8-flash-next`, and provide
-   `VLLM_API_KEY` through the environment. Confirm `/v1/models` before starting; do not print the key.
+   `http://127.0.0.1:24000/v1`, each in-scope model to `local:qwen3.8-flash-next`, and provide the
+   credential environment named by `NEOCORTEX_LOCAL_MODEL_API_KEY_ENV` (the active run uses
+   `LITELLM_API_KEY`). Confirm `/v1/models` before starting; do not print the key.
    Use the repository token map explicitly: `NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json` and
    `NEOCORTEX_ADMIN_TOKEN=admin-token`. These names are verified in the repository root:
    `dev_tokens.json` maps `admin-token` to the bootstrap `admin` identity. Do not use the test token

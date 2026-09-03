@@ -128,3 +128,8 @@ names the verified repository map explicitly.
 - CHECK plan lint: `jq` state validation, stage-file reference validation, and `git diff --check`: **PASS** after the final state update.
 **Provenance**: Backlog item 11 is resolved by using the credential environment that the endpoint accepts, not by aliasing or changing a secret. The state disposition is Stage 1 `DONE`; subsequent stages may use the active credential setting from `resources/commands.md`.
 **Problems**: The generic structured-output prompt was insufficient for this model and remains recorded as a prompt-compatibility signal for Stage 2/3. No Stage 1 routing or authentication blocker remains.
+
+## 2026-09-03 -- Stage 1 verifier bookkeeping -- RECORDED
+**Did**: Confirmed the Stage 1 completion state and commit reference `4ab4284`; active Stage 2 and Stage 6 instructions now use the configured credential environment and name `LITELLM_API_KEY` for this run.
+**Verification**: `state.json` reports Stage 1 `DONE` with backlog item 11 resolved; no source files or credentials changed.
+**Provenance**: Commit reference is the verified Stage 1 fix commit; historical `VLLM_API_KEY` mentions remain only where they describe prior evidence or the preserved product default.

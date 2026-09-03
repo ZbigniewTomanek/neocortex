@@ -8,7 +8,8 @@
 1. Read `resources/probe-corpus.md` and `resources/commands.md`. Use the fixed factual, temporal,
    and adversarial episodes. Run `scripts/probe_local_model.py` at low, medium, high, and xhigh with
    the model `local:qwen3.8-flash-next`, the local endpoint, and a timeout of at least 300 seconds.
-   Use bounded concurrency below the service limit. Keep the key in `$VLLM_API_KEY` only.
+   Use bounded concurrency below the service limit. Keep the key only in the environment named by
+   `NEOCORTEX_LOCAL_MODEL_API_KEY_ENV` (the active run uses `LITELLM_API_KEY`).
 2. Ensure the probe calls the real agent builders and records one JSON record per attempt: success or
    timeout, exception class, raw validation output, wall clock, prompt/completion/reasoning tokens,
    tool names and order, retries, and normalization rejections. N≥5 per agent/effort is preferred;
