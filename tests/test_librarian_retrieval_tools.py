@@ -225,8 +225,8 @@ async def test_pipeline_passes_repo_to_librarian_deps(repo: InMemoryRepository) 
 
     original_build = build_librarian_agent
 
-    def patched_build(config=None, use_tools=True):
-        agent = original_build(config, use_tools=use_tools)
+    def patched_build(config=None, use_tools=True, retries=1):
+        agent = original_build(config, use_tools=use_tools, retries=retries)
 
         async def capturing_run(*args, **kwargs):
             deps = kwargs.get("deps")

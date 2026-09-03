@@ -39,6 +39,9 @@ from neocortex.extraction.schemas import (
 # Plan 33 introduces an opt-in local: model route; Stage 9 changes defaults after the gate.
 DEFAULT_MODEL_NAME = "openai-responses:gpt-5.4-mini"
 DEFAULT_THINKING_EFFORT = "low"
+# Keep this in one place with the librarian Agent construction.  The pipeline
+# uses the same value when deriving its operational request budget.
+DEFAULT_LIBRARIAN_RETRIES = 1
 
 
 # Tool names are code-owned identifiers.  Keep the allow-list here so an
@@ -699,6 +702,7 @@ class LibrarianAgentDeps:
 def build_librarian_agent(
     config: AgentInferenceConfig | None = None,
     use_tools: bool = True,
+    retries: int = DEFAULT_LIBRARIAN_RETRIES,
 ) -> Agent[LibrarianAgentDeps, CurationSummary] | Agent[LibrarianAgentDeps, LibrarianPayload]:
     """Build the librarian agent.
 
@@ -805,6 +809,7 @@ def build_librarian_agent(
         model,
         output_type=output_type,
         deps_type=LibrarianAgentDeps,
+        retries=retries,
         capabilities=[build_audit_hooks("librarian", cfg)],
         system_prompt=system_prompt,
     )

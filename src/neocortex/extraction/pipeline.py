@@ -19,6 +19,7 @@ from pydantic_ai.usage import UsageLimits
 
 from neocortex.domains.ontology_seeds import DOMAIN_SEEDS
 from neocortex.extraction.agents import (
+    DEFAULT_LIBRARIAN_RETRIES,
     AgentInferenceConfig,
     CurationActionTracker,
     ExtractorAgentDeps,
@@ -60,6 +61,16 @@ def _safe_action_fields(fields: dict[str, object] | None) -> dict[str, object]:
     if not fields:
         return {}
     return {key: value for key, value in fields.items() if key in _ACTION_AUDIT_FIELDS}
+
+
+def _librarian_request_limit(tool_calls_limit: int, retry_limit: int) -> int:
+    """Budget the initial request, tool follow-ups, and configured output retries.
+
+    ``retry_limit`` is passed to the librarian Agent constructor and comes from
+    the shared default in ``extraction.agents``.  Keeping construction and
+    budgeting on the same named value prevents the two settings from drifting.
+    """
+    return tool_calls_limit + 1 + retry_limit
 
 
 def _audit_usage(
@@ -182,7 +193,13 @@ async def run_extraction(
 
     ontology_agent = build_ontology_agent(ont_cfg)
     extractor_agent = build_extractor_agent(ext_cfg)
-    librarian_agent = build_librarian_agent(lib_cfg, use_tools=librarian_use_tools)
+    librarian_retry_limit = DEFAULT_LIBRARIAN_RETRIES
+    librarian_agent = build_librarian_agent(
+        lib_cfg,
+        use_tools=librarian_use_tools,
+        retries=librarian_retry_limit,
+    )
+    librarian_request_limit = _librarian_request_limit(tool_calls_limit, librarian_retry_limit)
 
     # Set to keep fire-and-forget task references alive (prevents GC + satisfies RUF006)
     _bg_tasks: set[asyncio.Task[None]] = set()
@@ -415,7 +432,7 @@ async def run_extraction(
                 ),
                 model_settings=lib_cfg.model_settings,
                 usage_limits=UsageLimits(
-                    request_limit=tool_calls_limit + 1,
+                    request_limit=librarian_request_limit,
                     tool_calls_limit=tool_calls_limit,
                 ),
             )
@@ -494,7 +511,7 @@ async def run_extraction(
                 ),
                 model_settings=lib_cfg.model_settings,
                 usage_limits=UsageLimits(
-                    request_limit=tool_calls_limit + 1,
+                    request_limit=librarian_request_limit,
                     tool_calls_limit=tool_calls_limit,
                 ),
             )

@@ -13,13 +13,20 @@ Tests verify:
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 from loguru import logger
+from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+from pydantic_ai.models import ModelRequestParameters
+from pydantic_ai.models.test import TestModel
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.usage import UsageLimits
 
 from neocortex.db.mock import InMemoryRepository
 from neocortex.extraction.agents import (
+    DEFAULT_LIBRARIAN_RETRIES,
     AgentInferenceConfig,
     CurationActionTracker,
     LibrarianAgentDeps,
@@ -40,6 +47,53 @@ _TEST_CONFIG = AgentInferenceConfig(use_test_model=True)
 @pytest.fixture
 def repo() -> InMemoryRepository:
     return InMemoryRepository()
+
+
+class _ToolBudgetThenValidationRetryModel(TestModel):
+    """Emit one retrieval call, then an invalid and valid curation result."""
+
+    def __init__(self) -> None:
+        super().__init__(call_tools=[])
+        self.requests = 0
+
+    def _request(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+    ) -> ModelResponse:
+        del messages, model_settings
+        self.requests += 1
+        if self.requests == 1:
+            search_tool = next(
+                tool for tool in model_request_parameters.function_tools if tool.name == "search_existing_nodes"
+            )
+            return ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        search_tool.name,
+                        {"query": "Alice", "limit": 1},
+                        tool_call_id="search-call",
+                    )
+                ],
+                model_name="scripted-retry-model",
+            )
+
+        output_tool = model_request_parameters.output_tools[0]
+        # Force PydanticAI to spend its configured output-validation retry.
+        output_args: dict[str, Any] = (
+            {"actions": "not-a-list", "summary": ""} if self.requests == 2 else {"actions": [], "summary": ""}
+        )
+        return ModelResponse(
+            parts=[
+                ToolCallPart(
+                    output_tool.name,
+                    output_args,
+                    tool_call_id=f"output-call-{self.requests}",
+                )
+            ],
+            model_name="scripted-retry-model",
+        )
 
 
 def _make_deps(
@@ -339,8 +393,9 @@ async def test_librarian_request_limit_tracks_tool_budget(
     eid = await repo.store_episode(AGENT, "safe source")
     captured_limits = []
 
-    def fake_build(_config=None, *, use_tools=True):
+    def fake_build(_config=None, *, use_tools=True, retries=DEFAULT_LIBRARIAN_RETRIES):
         agent = SimpleNamespace()
+        agent._max_result_retries = retries
 
         async def run(*_args, **kwargs):
             captured_limits.append(kwargs["usage_limits"])
@@ -375,8 +430,38 @@ async def test_librarian_request_limit_tracks_tool_budget(
         )
 
     assert len(captured_limits) == 1
-    assert captured_limits[0].request_limit == 18
+    assert captured_limits[0].request_limit == 19
     assert captured_limits[0].tool_calls_limit == 17
+
+
+@pytest.mark.asyncio
+async def test_librarian_request_budget_allows_full_tool_budget_and_retry(
+    repo: InMemoryRepository,
+) -> None:
+    """A full tool budget plus one output retry completes under the derived limit."""
+    from neocortex.extraction.pipeline import _librarian_request_limit
+
+    agent = build_librarian_agent(_TEST_CONFIG, use_tools=True)
+    model = _ToolBudgetThenValidationRetryModel()
+    deps = _make_deps(repo)
+    tool_calls_limit = 1
+    request_limit = _librarian_request_limit(tool_calls_limit, DEFAULT_LIBRARIAN_RETRIES)
+
+    assert agent._max_result_retries == DEFAULT_LIBRARIAN_RETRIES
+    assert request_limit == tool_calls_limit + 1 + DEFAULT_LIBRARIAN_RETRIES
+    with agent.override(model=model):
+        result = await agent.run(
+            "Integrate the extracted entities and relations into the knowledge graph.",
+            deps=deps,
+            usage_limits=UsageLimits(
+                request_limit=request_limit,
+                tool_calls_limit=tool_calls_limit,
+            ),
+        )
+
+    assert result.output == CurationSummary()
+    assert model.requests == request_limit
+    assert result.usage().requests == request_limit
 
 
 @pytest.mark.asyncio
@@ -390,7 +475,7 @@ async def test_curation_complete_uses_observed_actions_not_model_summary(
     eid = await repo.store_episode(AGENT, "safe source")
     records: list[dict] = []
 
-    def fake_build(_config=None, *, use_tools=True):
+    def fake_build(_config=None, *, use_tools=True, retries=DEFAULT_LIBRARIAN_RETRIES):
         agent = SimpleNamespace()
 
         async def run(*_args, **kwargs):
