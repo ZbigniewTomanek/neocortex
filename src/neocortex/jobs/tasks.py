@@ -41,7 +41,6 @@ async def extract_episode(
         domain_slug: Optional domain slug used to look up domain-specific seed
                      ontology recommendations.
     """
-    provided_correlation_id = correlation_id
     correlation_id = correlation_id or f"job:{agent_id}:{episode_ids[0] if episode_ids else 'empty'}"
     logger.bind(action_log=True).info(
         "extract_episode_started",
@@ -49,7 +48,6 @@ async def extract_episode(
         episode_ids=episode_ids,
         target_schema=target_schema,
         source_schema=source_schema,
-        domain_hint=domain_hint,
         domain_slug=domain_slug,
         correlation_id=correlation_id,
     )
@@ -99,12 +97,8 @@ async def extract_episode(
         domain_hint=domain_hint,
         domain_slug=domain_slug,
         seed_generator=services.get("seed_generator"),
+        correlation_id=correlation_id,
     )
-    # Keep the optional argument absent for backwards-compatible direct task
-    # callers, while production jobs get one correlation id for all audit
-    # records emitted by the extraction pipeline.
-    if provided_correlation_id is not None:
-        run_kwargs["correlation_id"] = provided_correlation_id
     await run_extraction(**run_kwargs)  # ty: ignore[invalid-argument-type]
     logger.bind(action_log=True).info(
         "extract_episode_completed",

@@ -111,6 +111,7 @@ class AgentDomainClassifier:
             thinking_effort=self._thinking_effort,
             local_endpoint=self._local_endpoint,
         )
+        resolved_correlation_id = correlation_id or f"domain:{uuid.uuid4().hex}"
         agent: Agent[DomainAuditDeps, ClassificationResult] = (  # ty: ignore[invalid-assignment]
             Agent(  # ty: ignore[no-matching-overload]
                 build_model(self._model_name, self._local_endpoint),
@@ -126,7 +127,7 @@ class AgentDomainClassifier:
             deps=DomainAuditDeps(
                 agent_id=agent_id or "unknown",
                 episode_id=episode_id,
-                correlation_id=correlation_id or f"domain:{uuid.uuid4().hex}",
+                correlation_id=resolved_correlation_id,
             ),
             model_settings=build_model_settings(self._thinking_effort, self._model_name, self._local_endpoint),
         )
@@ -138,7 +139,7 @@ class AgentDomainClassifier:
             agent="domain_classifier",
             agent_id=agent_id or "unknown",
             episode_id=episode_id,
-            correlation_id=correlation_id or "unavailable",
+            correlation_id=resolved_correlation_id,
             model=self._model_name.removeprefix("local:"),
             endpoint=_endpoint_identity(config),
             effort=self._thinking_effort,

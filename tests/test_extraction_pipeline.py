@@ -7,6 +7,7 @@ or API keys needed.
 from __future__ import annotations
 
 import pytest
+from loguru import logger
 
 from neocortex.db.mock import InMemoryRepository
 from neocortex.extraction.agents import AgentInferenceConfig, OntologyAgentDeps, build_ontology_agent
@@ -147,6 +148,46 @@ async def test_persist_payload_skips_edge_with_missing_node(
 
     sigs = await repo.list_all_edge_signatures(AGENT)
     assert len(sigs) == 0  # edge skipped
+
+
+@pytest.mark.asyncio
+async def test_persist_payload_audit_does_not_include_relation_endpoint_names(
+    repo: InMemoryRepository,
+) -> None:
+    """Durable audit records use resolution flags, not source text names."""
+    eid = await repo.store_episode(AGENT, "private episode content")
+    payload = LibrarianPayload(
+        relations=[
+            NormalizedRelation(
+                source_name="Private Person Name",
+                target_name="Confidential Organisation",
+                relation_type="WORKS_FOR",
+            )
+        ]
+    )
+    captured: list[dict] = []
+    sink_id = logger.add(lambda message: captured.append(message.record), level="INFO")
+    try:
+        await _persist_payload(
+            repo,
+            None,
+            AGENT,
+            eid,
+            payload,
+            audit_fields={"correlation_id": "test-correlation"},
+        )
+    finally:
+        logger.remove(sink_id)
+
+    records = [record for record in captured if record["message"] == "edge_skipped_missing_node"]
+    assert len(records) == 1
+    extra = records[0]["extra"]
+    assert extra["source_id"] is None
+    assert extra["target_id"] is None
+    assert "source" not in extra
+    assert "target" not in extra
+    assert "Private Person Name" not in str(extra)
+    assert "Confidential Organisation" not in str(extra)
 
 
 @pytest.mark.asyncio

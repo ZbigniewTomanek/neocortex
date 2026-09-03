@@ -621,8 +621,9 @@ async def _persist_payload(
         if src_id is None or tgt_id is None:
             logger.bind(action_log=True, **(audit_fields or {})).warning(
                 "edge_skipped_missing_node",
-                source=rel.source_name,
-                target=rel.target_name,
+                source_id=src_id,
+                target_id=tgt_id,
+                relation_type=rel.relation_type,
             )
             continue
         edge_type = await repo.get_or_create_edge_type(agent_id, rel.relation_type, target_schema=target_schema)

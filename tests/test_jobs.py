@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock
 
 import procrastinate
 import pytest
+from loguru import logger
 from procrastinate.testing import InMemoryConnector
 
 from neocortex.jobs import create_job_app
@@ -163,12 +164,14 @@ async def test_extract_episode_calls_run_extraction():
     sys.modules["neocortex.extraction"] = fake_extraction
     sys.modules["neocortex.extraction.pipeline"] = fake_pipeline
     sys.modules["neocortex.extraction.agents"] = fake_agents  # type: ignore[assignment]
+    audit_records: list[dict] = []
+    sink_id = logger.add(lambda message: audit_records.append(message.record), level="INFO")
 
     try:
         from neocortex.jobs.tasks import extract_episode
 
         # Call the task function directly (bypassing Procrastinate machinery)
-        await extract_episode(agent_id="test-agent", episode_ids=[10, 20])
+        await extract_episode(agent_id="test-agent", episode_ids=[10, 20], domain_hint="PRIVATE_DOMAIN_HINT")
 
         mock_run.assert_called_once_with(
             repo=mock_repo,
@@ -192,11 +195,17 @@ async def test_extract_episode_calls_run_extraction():
             tool_calls_limit=150,
             ontology_tool_calls_limit=30,
             ontology_max_new_types=3,
-            domain_hint=None,
+            domain_hint="PRIVATE_DOMAIN_HINT",
             domain_slug=None,
             seed_generator=mock_seed_generator,
+            correlation_id="job:test-agent:10",
         )
+        action_records = [record for record in audit_records if record["extra"].get("action_log")]
+        assert action_records
+        assert all("domain_hint" not in record["extra"] for record in action_records)
+        assert all("PRIVATE_DOMAIN_HINT" not in str(record["extra"]) for record in action_records)
     finally:
+        logger.remove(sink_id)
         ctx_mod._services = None
         sys.modules.pop("neocortex.extraction.pipeline", None)
         sys.modules.pop("neocortex.extraction.agents", None)

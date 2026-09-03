@@ -3,6 +3,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from loguru import logger
+from pydantic_ai.models.test import TestModel
 
 from neocortex.domains import InMemoryDomainService
 from neocortex.domains.classifier import (
@@ -233,3 +235,29 @@ class TestAgentDomainClassifierKeywordFallback:
         assert len(result.matched_domains) == 1
         assert result.matched_domains[0].domain_slug == "work_context"
         assert result.matched_domains[0].reasoning == "LLM match"
+
+
+class TestAgentDomainClassifierAudit:
+    @pytest.mark.asyncio
+    async def test_generated_correlation_joins_hooks_and_usage(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """One generated correlation id must identify hooks and the usage event."""
+        domain = SemanticDomain(slug="technical", name="Technical", description="Technology", depth=0, path="technical")
+        records: list[dict] = []
+        sink_id = logger.add(lambda message: records.append(message.record), level="INFO")
+        monkeypatch.setattr("neocortex.domains.classifier.build_model", lambda *args, **kwargs: TestModel())
+        try:
+            classifier = AgentDomainClassifier(thinking_effort="low")
+            await classifier.classify("A private technical note", [domain], agent_id="agent-a", episode_id=7)
+        finally:
+            logger.remove(sink_id)
+
+        audit = [record for record in records if record["extra"].get("action_log")]
+        hook_ids = {
+            record["extra"].get("correlation_id")
+            for record in audit
+            if record["message"] in {"model_request_started", "model_request_completed", "agent_run_completed"}
+        }
+        usage_ids = {record["extra"].get("correlation_id") for record in audit if record["message"] == "agent_usage"}
+        assert len(hook_ids) == 1
+        assert usage_ids == hook_ids
+        assert None not in hook_ids
