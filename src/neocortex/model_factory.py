@@ -48,11 +48,14 @@ def build_model(model_name: str, endpoint: LocalEndpoint | None) -> str | Model:
         return model_name
     if endpoint is None or not endpoint.base_url:
         raise ValueError(f"{model_name!r} requires NEOCORTEX_LOCAL_MODEL_BASE_URL to be set")
+    api_key = os.environ.get(endpoint.api_key_env, "") if endpoint.api_key_env else ""
+    if endpoint.api_key_env and not api_key:
+        raise ValueError(f"{model_name!r} requires {endpoint.api_key_env} to be set for the local endpoint")
     return OpenAIChatModel(
         model_name.removeprefix(LOCAL_PREFIX),
         provider=OpenAIProvider(
             base_url=endpoint.base_url,
-            api_key=os.environ.get(endpoint.api_key_env, ""),
+            api_key=api_key,
         ),
     )
 

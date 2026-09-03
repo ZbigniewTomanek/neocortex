@@ -9,8 +9,10 @@
    construction sites. Keep `local:` routing per agent. The active string is
    `local:qwen3.8-flash-next`; the endpoint default remains unset so other environments fail clearly.
 2. Validate settings in `neocortex.mcp_settings.MCPSettings`: base URL,
-   `local_model_api_key_env=VLLM_API_KEY`, sampling settings, and timeout are read from environment
-   variables. Never add a key value to source, fixtures, logs, or this plan.
+   ~~`local_model_api_key_env=VLLM_API_KEY`~~ → the active run sets
+   `NEOCORTEX_LOCAL_MODEL_API_KEY_ENV=LITELLM_API_KEY`; sampling settings and timeout are read from
+   environment variables. Preserve the product default `VLLM_API_KEY` for other environments. Never
+   add a key value to source, fixtures, logs, or this plan.
 3. Run a preflight with the key supplied only by the environment. Parse the authenticated
    `GET http://127.0.0.1:24000/v1/models` response and require exactly `qwen3.8-flash-next`. Then
    send one small authenticated chat-completion request and one PydanticAI structured-output request.
@@ -23,7 +25,9 @@
 ## Verification
 
 - [ ] GATE `uv run pytest tests/test_local_provider_routing.py tests/ -q` — every test passes; a broken provider selection, missing setting, or changed assertion makes this red.
-- [ ] GATE authenticated `/v1/models` response — read from the live JSON response using `$VLLM_API_KEY`; a wrong id, missing auth, or endpoint failure makes this red.
+- [ ] GATE authenticated `/v1/models` response — read from the live JSON response using the configured
+  `LITELLM_API_KEY` environment variable for this run; a wrong id, missing auth, or endpoint failure
+  makes this red.
 - [ ] REPORT structured-output smoke — record model id, HTTP status, completion validity, and elapsed time in `journal.md`; do not record the key.
 
 ## Commit

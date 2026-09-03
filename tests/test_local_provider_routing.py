@@ -13,7 +13,11 @@ def endpoint() -> LocalEndpoint:
     # Keep routing tests independent of a developer's local .env file. The
     # live preflight supplies explicit environment overrides instead.
     return LocalEndpoint.from_settings(
-        MCPSettings(local_model_base_url="http://local.example/v1", _env_file=None)  # ty: ignore[unknown-argument]
+        MCPSettings(
+            local_model_base_url="http://local.example/v1",
+            local_model_api_key_env="",
+            _env_file=None,  # ty: ignore[unknown-argument]
+        )
     )
 
 
@@ -22,6 +26,7 @@ def test_local_model_uses_configured_endpoint(endpoint: LocalEndpoint) -> None:
     assert isinstance(model, OpenAIChatModel)
     assert model.model_name == "qwen3.8-flash-next"
     assert str(model._provider.base_url).rstrip("/") == "http://local.example/v1"
+    assert model._provider.client.api_key == ""
 
 
 def test_hosted_model_keeps_string_routing(endpoint: LocalEndpoint) -> None:
@@ -83,7 +88,7 @@ def test_local_model_reads_authentication_only_from_configured_environment(
     assert model._provider.client.api_key == "test-only-key"
 
 
-def test_local_model_uses_empty_key_when_configured_environment_is_missing(
+def test_local_model_requires_configured_authentication_when_environment_is_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("TEST_VLLM_API_KEY", raising=False)
@@ -93,10 +98,8 @@ def test_local_model_uses_empty_key_when_configured_environment_is_missing(
         _env_file=None,  # ty: ignore[unknown-argument]
     )
 
-    model = build_model("local:qwen3.8-flash-next", LocalEndpoint.from_settings(settings))
-
-    assert isinstance(model, OpenAIChatModel)
-    assert model._provider.client.api_key == ""
+    with pytest.raises(ValueError, match="TEST_VLLM_API_KEY"):
+        build_model("local:qwen3.8-flash-next", LocalEndpoint.from_settings(settings))
 
 
 def test_local_sampling_and_timeout_settings_are_environment_driven(

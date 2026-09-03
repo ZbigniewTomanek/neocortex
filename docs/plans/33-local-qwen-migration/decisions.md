@@ -148,3 +148,16 @@ Append-only. Each entry is kept short; detailed measurements belong in `resource
 **Options**: A) edit `.env` B) pass `_env_file=None` in unit fixtures and use explicit environment overrides for live checks.
 **Chosen**: B.
 **Rationale**: `.env` contains an invalid boolean representation for `extraction_enabled`; tests must remain deterministic without modifying or committing the local file.
+
+### D25: Amend the Stage 1 active credential environment
+**Date**: 2026-09-03 - **Stage**: 1 - **Type**: AMENDMENT
+**Original**: ~~The endpoint requires `Authorization: Bearer $VLLM_API_KEY`; Stage 1 reads `local_model_api_key_env=VLLM_API_KEY`.~~ → The active run sets `NEOCORTEX_LOCAL_MODEL_API_KEY_ENV=LITELLM_API_KEY` and sends `Authorization: Bearer $LITELLM_API_KEY`.
+**Evidence**: The live endpoint returned HTTP 401 for the inherited `VLLM_API_KEY`, while direct use of the separately configured `LITELLM_API_KEY` returned HTTP 200 with exactly `qwen3.8-flash-next`, and raw chat plus PydanticAI structured output succeeded. No credential value was recorded.
+**Disposition**: Stage 1 uses `LITELLM_API_KEY` explicitly for this machine; the product setting default remains `VLLM_API_KEY` for other environments.
+**Class**: Runtime measurement assumption; the model/provider contract and secret handling are unchanged.
+
+### D26: Fail fast for missing configured local authentication
+**Date**: 2026-09-03 - **Stage**: 1
+**Options**: A) pass an empty key to the provider and fail later with an opaque HTTP 401 B) raise a clear configuration error when a named key environment is absent, while allowing an explicit empty environment name for unauthenticated local endpoints.
+**Chosen**: B.
+**Rationale**: A configured authenticated endpoint must not silently downgrade to an empty credential. The explicit empty `local_model_api_key_env` option preserves the documented OpenAI-compatible local endpoint support for services such as unauthenticated Ollama.

@@ -11,8 +11,11 @@ Runtime record: [journal.md](journal.md) · [decisions.md](decisions.md) · [bac
 ## Context
 
 The active target is the local OpenAI-compatible endpoint `http://127.0.0.1:24000/v1`, with model id
-`qwen3.8-flash-next`. The endpoint requires `Authorization: Bearer $VLLM_API_KEY`; the key is already
-available in the execution environment and must never be printed, copied to a plan file, or committed.
+`qwen3.8-flash-next`. ~~The endpoint requires `Authorization: Bearer $VLLM_API_KEY`.~~ → The active
+run requires `Authorization: Bearer $LITELLM_API_KEY` and sets
+`NEOCORTEX_LOCAL_MODEL_API_KEY_ENV=LITELLM_API_KEY`; the product default remains `VLLM_API_KEY` for
+other environments. The credential is available in the execution environment and must never be
+printed, copied to a plan file, or committed.
 The `local:` model prefix and provider-routing implementation already exist, but prior capability and
 bake-off evidence targeted remote `qwen3.8-27b` and is not evidence for Flash Next.
 

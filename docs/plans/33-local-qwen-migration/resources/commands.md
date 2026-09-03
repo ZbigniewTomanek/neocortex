@@ -1,7 +1,7 @@
 # Flash Next execution commands
 
-These commands are for the active local target. Never print or commit the value of `VLLM_API_KEY`.
-The key is read from the environment supplied by the supervisor.
+These commands are for the active local target. Never print or commit the value of the configured
+credential. The key is read from the environment supplied by the supervisor.
 
 ## Preflight
 
@@ -9,10 +9,11 @@ The key is read from the environment supplied by the supervisor.
 export NEOCORTEX_LOCAL_MODEL_BASE_URL=http://127.0.0.1:24000/v1
 export NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json
 export NEOCORTEX_ADMIN_TOKEN=admin-token
-test -n "${VLLM_API_KEY:-}" || { echo 'VLLM_API_KEY is required' >&2; exit 1; }
+export NEOCORTEX_LOCAL_MODEL_API_KEY_ENV=LITELLM_API_KEY
+test -n "${LITELLM_API_KEY:-}" || { echo 'LITELLM_API_KEY is required' >&2; exit 1; }
 curl --fail --silent --show-error \
   "$NEOCORTEX_LOCAL_MODEL_BASE_URL/models" \
-  -H "Authorization: Bearer ${VLLM_API_KEY}" \
+  -H "Authorization: Bearer ${LITELLM_API_KEY}" \
   | jq -e '[.data[].id] | length == 1 and .[0] == "qwen3.8-flash-next"'
 ```
 
@@ -22,7 +23,7 @@ Use the same header for `/chat/completions`. Do not put the header or key into a
 
 ```bash
 export NEOCORTEX_LOCAL_MODEL_BASE_URL=http://127.0.0.1:24000/v1
-export NEOCORTEX_LOCAL_MODEL_API_KEY_ENV=VLLM_API_KEY
+export NEOCORTEX_LOCAL_MODEL_API_KEY_ENV=LITELLM_API_KEY
 export NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json
 export NEOCORTEX_ADMIN_TOKEN=admin-token
 export NEOCORTEX_ONTOLOGY_MODEL=local:qwen3.8-flash-next
