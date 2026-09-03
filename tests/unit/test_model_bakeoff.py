@@ -35,18 +35,21 @@ def _dry_run(**overrides: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_dry_run_accounts_for_routing_topology_and_ceils_fractional_timeout() -> None:
+def test_dry_run_accounts_for_routing_topology_seed_call_and_ceils_fractional_timeout() -> None:
     completed = _dry_run(
         NEOCORTEX_LOCAL_MODEL_TIMEOUT_S="0.5",
         NEOCORTEX_WORKER_CONCURRENCY="2",
-        NEOCORTEX_BAKEOFF_MAX_DOMAIN_FANOUT="5",
     )
 
     assert completed.returncode == 0, completed.stderr
-    # ceil(0.5 * (1 route + 3 personal + 15 fanout) * 3 * 28 / 2 + 60) = 459.
-    assert "poll_timeout_s=459" in completed.stdout
+    # The application declares four seed domains.  With 28 episodes, each
+    # route can add one proposal, so a later route can fan out to 32 domains.
+    # ceil(0.5 * (1 route + 1 seed + 3 personal + 96 fanout) * 3 * 28 / 2 + 60) = 2181.
+    assert "poll_timeout_s=2181" in completed.stdout
     assert "domain_routing_enabled=true" in completed.stdout
-    assert "max_domain_fanout=5" in completed.stdout
+    assert "initial_domain_count=4" in completed.stdout
+    assert "max_domain_fanout=32" in completed.stdout
+    assert "seed_calls_per_episode=1" in completed.stdout
 
 
 def test_dry_run_can_explicitly_disable_domain_routing() -> None:
@@ -60,6 +63,9 @@ def test_dry_run_can_explicitly_disable_domain_routing() -> None:
     # ceil(1.1 * 3 * 3 * 28 / 2 + 60) = 199.
     assert "poll_timeout_s=199" in completed.stdout
     assert "domain_routing_enabled=false" in completed.stdout
+    assert "initial_domain_count=0" in completed.stdout
+    assert "max_domain_fanout=0" in completed.stdout
+    assert "seed_calls_per_episode=0" in completed.stdout
     assert "domain routing disabled" in completed.stdout
 
 
@@ -95,6 +101,8 @@ def fake_bakeoff_project(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
 set -euo pipefail
 if [[ "$*" == *corpus_loader.py* && "$*" == *--dry-run* ]]; then
   seq 1 28
+elif [[ "$*" == *SEED_DOMAINS* ]]; then
+  printf '4\\n'
 elif [[ "$*" == *' -c '* || "$*" == *' -c'* ]]; then
   cat >/dev/null || true
   printf '0\\n'

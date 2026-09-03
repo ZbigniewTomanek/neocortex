@@ -12,8 +12,6 @@ CORPUS_SIZE="$(uv run python "$ROOT/scripts/corpus_loader.py" --dry-run | wc -l 
 WORKER_CONCURRENCY="${NEOCORTEX_WORKER_CONCURRENCY:-2}"
 PER_CALL_TIMEOUT="${NEOCORTEX_LOCAL_MODEL_TIMEOUT_S:-600}"
 DOMAIN_ROUTING_ENABLED="${NEOCORTEX_DOMAIN_ROUTING_ENABLED:-true}"
-# Four seeded domains plus one possible classifier-proposed domain.
-MAX_DOMAIN_FANOUT="${NEOCORTEX_BAKEOFF_MAX_DOMAIN_FANOUT:-5}"
 POLL_TIMEOUT_OVERRIDE="${BAKEOFF_POLL_TIMEOUT:-}"
 POLL_TIMEOUT_ARG=""
 POLL_TIMEOUT=""
@@ -40,7 +38,6 @@ is_positive_int() { [[ "$1" =~ ^[1-9][0-9]*$ ]]; }
 is_positive_number() { [[ "$1" =~ ^[1-9][0-9]*(\.[0-9]+)?$|^0\.[0-9]+$ ]]; }
 is_positive_int "$WORKER_CONCURRENCY" || die "NEOCORTEX_WORKER_CONCURRENCY must be a positive integer"
 is_positive_number "$PER_CALL_TIMEOUT" || die "NEOCORTEX_LOCAL_MODEL_TIMEOUT_S must be a positive number"
-is_positive_int "$MAX_DOMAIN_FANOUT" || die "NEOCORTEX_BAKEOFF_MAX_DOMAIN_FANOUT must be a positive integer"
 case "${DOMAIN_ROUTING_ENABLED,,}" in
   true|1|yes) DOMAIN_ROUTING_ENABLED=true ;;
   false|0|no) DOMAIN_ROUTING_ENABLED=false ;;
@@ -48,19 +45,35 @@ case "${DOMAIN_ROUTING_ENABLED,,}" in
 esac
 [[ "$CORPUS_SIZE" == "28" ]] || die "fixed corpus parser returned $CORPUS_SIZE episodes, expected 28"
 
+INITIAL_DOMAIN_COUNT=0
+MAX_DOMAIN_FANOUT=0
+SEED_CALLS_PER_EPISODE=0
+if [[ "$DOMAIN_ROUTING_ENABLED" == true ]]; then
+  # The fresh run seeds the domains declared by the running application.  A
+  # route can add at most one proposed domain per corpus episode, so this is a
+  # source-derived upper bound for the domain list seen by any later route.
+  INITIAL_DOMAIN_COUNT="$(uv run python -c 'from neocortex.domains.models import SEED_DOMAINS; print(len(SEED_DOMAINS))')"
+  is_positive_int "$INITIAL_DOMAIN_COUNT" || die "seed domain count is not a positive integer"
+  MAX_DOMAIN_FANOUT=$((INITIAL_DOMAIN_COUNT + CORPUS_SIZE))
+  # A newly proposed domain can require one SeedGenerator model call before
+  # its extraction.  Each route can propose at most one domain.
+  SEED_CALLS_PER_EPISODE=1
+fi
+
 if [[ -n "$POLL_TIMEOUT_OVERRIDE" ]]; then
   is_positive_int "$POLL_TIMEOUT_OVERRIDE" || die "BAKEOFF_POLL_TIMEOUT must be a positive integer"
   POLL_TIMEOUT="$POLL_TIMEOUT_OVERRIDE"
   POLL_TIMEOUT_SOURCE="explicit BAKEOFF_POLL_TIMEOUT"
 else
   # A corpus episode always gets one three-stage extraction.  In the default
-  # topology it also gets one domain-classification call and up to one
-  # three-stage extraction per matching domain.  Jobs retry up to three times.
+  # topology it also gets one domain-classification call, one possible seed
+  # generation call, and up to the source-derived domain fanout of three-stage
+  # extractions.  Jobs retry up to three times.
   # Use awk for ceil(): shell arithmetic would silently truncate fractional
   # per-call timeouts and make the bound too small.
   if [[ "$DOMAIN_ROUTING_ENABLED" == true ]]; then
-    MODEL_CALLS_PER_EPISODE=$((1 + 3 + 3 * MAX_DOMAIN_FANOUT))
-    POLL_TIMEOUT_SOURCE="derived: per_call_timeout_s x (1 route + 3 personal stages + 3 stages x max domain fanout) x 3 attempts x corpus_size / worker_concurrency + 60s, rounded up"
+    MODEL_CALLS_PER_EPISODE=$((1 + SEED_CALLS_PER_EPISODE + 3 + 3 * MAX_DOMAIN_FANOUT))
+    POLL_TIMEOUT_SOURCE="derived: per_call_timeout_s x (1 route + 1 possible seed + 3 personal stages + 3 stages x source-derived max domain fanout) x 3 attempts x corpus_size / worker_concurrency + 60s, rounded up"
   else
     MODEL_CALLS_PER_EPISODE=3
     POLL_TIMEOUT_SOURCE="derived: per_call_timeout_s x 3 personal stages x 3 attempts x corpus_size / worker_concurrency + 60s, rounded up (domain routing disabled)"
@@ -92,7 +105,9 @@ print_configuration() {
     "effort_librarian=${NEOCORTEX_LIBRARIAN_THINKING_EFFORT:-low}" \
     "worker_concurrency=$WORKER_CONCURRENCY" \
     "domain_routing_enabled=$DOMAIN_ROUTING_ENABLED" \
+    "initial_domain_count=$INITIAL_DOMAIN_COUNT" \
     "max_domain_fanout=$MAX_DOMAIN_FANOUT" \
+    "seed_calls_per_episode=$SEED_CALLS_PER_EPISODE" \
     "per_call_timeout_s=$PER_CALL_TIMEOUT" \
     "corpus_size=$CORPUS_SIZE" \
     "poll_timeout_s=$POLL_TIMEOUT" \
