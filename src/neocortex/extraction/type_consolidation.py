@@ -174,8 +174,10 @@ async def merge_similar_types(
             )
             logger.bind(action_log=True).info(
                 "type_merged",
-                source=source_name,
-                target=target_name,
+                action="merged",
+                kind="node",
+                source_type_id=source_id,
+                target_type_id=target_id,
                 nodes_moved=moved,
             )
 
@@ -214,7 +216,12 @@ async def archive_unused_types(
                 try:
                     await repo.delete_type(agent_id, type_id, kind=kind, target_schema=schema)
                     actions.append(ArchiveAction(type_name=type_name, type_id=type_id, kind=kind))
-                    logger.bind(action_log=True).info("type_archived", kind=kind, name=type_name, type_id=type_id)
+                    logger.bind(action_log=True).info(
+                        "type_archived",
+                        action="archived",
+                        kind=kind,
+                        type_id=type_id,
+                    )
                 except ValueError:
                     # Race condition: type got used between query and delete
                     logger.debug("archive_skipped_in_use", kind=kind, name=type_name)

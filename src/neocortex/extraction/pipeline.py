@@ -20,6 +20,7 @@ from pydantic_ai.usage import UsageLimits
 from neocortex.domains.ontology_seeds import DOMAIN_SEEDS
 from neocortex.extraction.agents import (
     AgentInferenceConfig,
+    CurationActionTracker,
     ExtractorAgentDeps,
     LibrarianAgentDeps,
     OntologyAgentDeps,
@@ -37,6 +38,28 @@ if TYPE_CHECKING:
     from neocortex.embedding_service import EmbeddingService
 
 _UNSET: str = "__UNSET__"
+
+
+_ACTION_AUDIT_FIELDS = frozenset(
+    {
+        "stage",
+        "agent",
+        "agent_id",
+        "episode_id",
+        "correlation_id",
+        "model",
+        "endpoint",
+        "effort",
+        "run_id",
+    }
+)
+
+
+def _safe_action_fields(fields: dict[str, object] | None) -> dict[str, object]:
+    """Keep action-log context to the pipeline's non-content allow-list."""
+    if not fields:
+        return {}
+    return {key: value for key, value in fields.items() if key in _ACTION_AUDIT_FIELDS}
 
 
 def _audit_usage(
@@ -263,7 +286,6 @@ async def run_extraction(
             proposed_edge_types=len(ontology_result.output.new_edge_types),
             tool_calls=ontology_tool_calls,
             elapsed_s=ontology_elapsed,
-            usage=str(ontology_result.usage()),
         )
 
         # 2.5. Type budget enforcement (defense-in-depth safety valve)
@@ -293,8 +315,9 @@ async def run_extraction(
                 logger.bind(action_log=True).warning(
                     "skipping_invalid_node_type",
                     **_audit_fields("type_persist", ont_cfg, agent_id, correlation_id, episode_id),
-                    name=nt.name,
-                    error="normalization rejected type",
+                    kind="node",
+                    accepted=False,
+                    reason_code="normalization_rejected",
                 )
             elif created.name not in existing_node_names:
                 node_types.append(TypeInfo(id=created.id, name=created.name, description=created.description))
@@ -307,8 +330,9 @@ async def run_extraction(
                 logger.bind(action_log=True).warning(
                     "skipping_invalid_edge_type",
                     **_audit_fields("type_persist", ont_cfg, agent_id, correlation_id, episode_id),
-                    name=et.name,
-                    error="normalization rejected type",
+                    kind="edge",
+                    accepted=False,
+                    reason_code="normalization_rejected",
                 )
             elif created.name not in existing_edge_names:
                 edge_types.append(TypeInfo(id=created.id, name=created.name, description=created.description))
@@ -371,6 +395,7 @@ async def run_extraction(
             )
 
             t0 = time.monotonic()
+            action_tracker = CurationActionTracker()
             librarian_result = await librarian_agent.run(
                 "Integrate the extracted entities and relations into the knowledge graph.",
                 deps=LibrarianAgentDeps(
@@ -386,9 +411,13 @@ async def run_extraction(
                     episode_id=episode_id,
                     correlation_id=correlation_id,
                     precomputed_embeddings=precomputed_embeddings,
+                    action_tracker=action_tracker,
                 ),
                 model_settings=lib_cfg.model_settings,
-                usage_limits=UsageLimits(tool_calls_limit=tool_calls_limit),
+                usage_limits=UsageLimits(
+                    request_limit=tool_calls_limit + 1,
+                    tool_calls_limit=tool_calls_limit,
+                ),
             )
 
             _audit_usage("librarian_agent", librarian_result, lib_cfg, agent_id, correlation_id, episode_id)
@@ -409,12 +438,21 @@ async def run_extraction(
             logger.bind(action_log=True).info(
                 "curation_complete",
                 **_audit_fields("librarian_agent", lib_cfg, agent_id, correlation_id, episode_id),
-                created=summary.entities_created,
-                updated=summary.entities_updated,
-                archived=summary.entities_archived,
-                edges_created=summary.edges_created,
-                edges_removed=summary.edges_removed,
-                summary=summary.summary,
+                created=action_tracker.entities_created,
+                updated=action_tracker.entities_updated,
+                archived=action_tracker.entities_archived,
+                edges_created=action_tracker.edges_created,
+                edges_removed=action_tracker.edges_removed,
+                actions_observed=sum(
+                    (
+                        action_tracker.entities_created,
+                        action_tracker.entities_updated,
+                        action_tracker.entities_archived,
+                        action_tracker.edges_created,
+                        action_tracker.edges_removed,
+                    )
+                ),
+                model_summary_actions=len(summary.actions),
             )
 
             # Clean up empty types (fire-and-forget — non-blocking)
@@ -455,7 +493,10 @@ async def run_extraction(
                     known_node_names=known_names,
                 ),
                 model_settings=lib_cfg.model_settings,
-                usage_limits=UsageLimits(tool_calls_limit=tool_calls_limit),
+                usage_limits=UsageLimits(
+                    request_limit=tool_calls_limit + 1,
+                    tool_calls_limit=tool_calls_limit,
+                ),
             )
             _audit_usage("librarian_agent", librarian_result, lib_cfg, agent_id, correlation_id, episode_id)
             logger.bind(action_log=True).info(
@@ -540,17 +581,19 @@ async def _persist_payload(
     # Persist any remaining type proposals (skip invalid names)
     for nt in payload.accepted_node_types:
         if await repo.get_or_create_node_type(agent_id, nt.name, nt.description, target_schema=target_schema) is None:
-            logger.bind(action_log=True, **(audit_fields or {})).warning(
+            logger.bind(action_log=True, **_safe_action_fields(audit_fields)).warning(
                 "skipping_invalid_node_type",
-                name=nt.name,
-                error="normalization rejected type",
+                kind="node",
+                accepted=False,
+                reason_code="normalization_rejected",
             )
     for et in payload.accepted_edge_types:
         if await repo.get_or_create_edge_type(agent_id, et.name, et.description, target_schema=target_schema) is None:
-            logger.bind(action_log=True, **(audit_fields or {})).warning(
+            logger.bind(action_log=True, **_safe_action_fields(audit_fields)).warning(
                 "skipping_invalid_edge_type",
-                name=et.name,
-                error="normalization rejected type",
+                kind="edge",
+                accepted=False,
+                reason_code="normalization_rejected",
             )
 
     # Batch-embed entity descriptions (single API call instead of N+1)
@@ -578,11 +621,11 @@ async def _persist_payload(
     for i, entity in enumerate(payload.entities):
         node_type = await repo.get_or_create_node_type(agent_id, entity.type_name, target_schema=target_schema)
         if node_type is None:
-            logger.bind(action_log=True, **(audit_fields or {})).warning(
+            logger.bind(action_log=True, **_safe_action_fields(audit_fields)).warning(
                 "skipping_entity_invalid_type",
-                name=entity.name,
-                type_name=entity.type_name,
-                error="normalization rejected type",
+                entity_index=i,
+                accepted=False,
+                reason_code="normalization_rejected",
             )
             continue
         entity_importance = entity.importance
@@ -620,17 +663,21 @@ async def _persist_payload(
                 tgt_nodes = await repo.find_nodes_by_name(agent_id, rel.target_name, target_schema=target_schema)
                 tgt_id = tgt_nodes[0].id if tgt_nodes else None
         if src_id is None or tgt_id is None:
-            logger.bind(action_log=True, **(audit_fields or {})).warning(
+            logger.bind(action_log=True, **_safe_action_fields(audit_fields)).warning(
                 "edge_skipped_missing_node",
                 source_id=src_id,
                 target_id=tgt_id,
-                relation_type=rel.relation_type,
+                source_present=src_id is not None,
+                target_present=tgt_id is not None,
+                reason_code="missing_node",
             )
             continue
         edge_type = await repo.get_or_create_edge_type(agent_id, rel.relation_type, target_schema=target_schema)
         if edge_type is None:
-            logger.bind(action_log=True, **(audit_fields or {})).warning(
-                "edge_skipped_invalid_type", relation_type=rel.relation_type
+            logger.bind(action_log=True, **_safe_action_fields(audit_fields)).warning(
+                "edge_skipped_invalid_type",
+                accepted=False,
+                reason_code="normalization_rejected",
             )
             continue
         await repo.upsert_edge(

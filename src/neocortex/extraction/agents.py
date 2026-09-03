@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from hashlib import sha256
 from time import monotonic
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -38,6 +39,75 @@ from neocortex.extraction.schemas import (
 # Plan 33 introduces an opt-in local: model route; Stage 9 changes defaults after the gate.
 DEFAULT_MODEL_NAME = "openai-responses:gpt-5.4-mini"
 DEFAULT_THINKING_EFFORT = "low"
+
+
+# Tool names are code-owned identifiers.  Keep the allow-list here so an
+# untrusted model-provided tool name cannot become a free-form action-log
+# field.  The same hook is also used by the ontology and domain agents.
+_AUDIT_TOOL_NAMES = frozenset(
+    {
+        "archive_node",
+        "create_or_update_edge",
+        "create_or_update_node",
+        "find_node_by_name",
+        "find_similar_nodes",
+        "find_similar_types",
+        "get_edges_between",
+        "get_ontology_overview",
+        "inspect_node_neighborhood",
+        "propose_type",
+        "remove_edge",
+        "search_existing_nodes",
+    }
+)
+
+
+def _safe_tool_name(tool_name: str) -> str:
+    """Return a static tool identity suitable for the durable action log."""
+    return tool_name if tool_name in _AUDIT_TOOL_NAMES else "unknown"
+
+
+def _opaque_call_id(call_id: str | None) -> str | None:
+    """Keep tool-call correlation without persisting model-controlled text."""
+    if call_id is None:
+        return None
+    return sha256(call_id.encode("utf-8", errors="replace")).hexdigest()[:16]
+
+
+@dataclass
+class CurationActionTracker:
+    """Counts successful graph mutations performed by one librarian run.
+
+    The model's structured summary is not authoritative: it can be empty or
+    stale after a long tool loop.  Mutation tools update this tracker only
+    after the repository operation succeeds, and the pipeline uses these
+    counters for its durable completion event.
+    """
+
+    entities_created: int = 0
+    entities_updated: int = 0
+    entities_archived: int = 0
+    edges_created: int = 0
+    edges_removed: int = 0
+
+    def record_node(self, action: str) -> None:
+        if action == "created":
+            self.entities_created += 1
+        elif action == "updated":
+            self.entities_updated += 1
+
+    def record_edge_upsert(self) -> None:
+        # The repository API returns the resulting edge, not a created/updated
+        # discriminator.  Count each successful upsert as an edge action.
+        self.edges_created += 1
+
+    def record_archive(self, archived: bool) -> None:
+        if archived:
+            self.entities_archived += 1
+
+    def record_edge_removal(self, removed: bool) -> None:
+        if removed:
+            self.edges_removed += 1
 
 
 @dataclass
@@ -181,8 +251,8 @@ def build_audit_hooks(agent_name: str, config: AgentInferenceConfig) -> Hooks:
         logger.bind(action_log=True).info(
             "tool_call_started",
             **_audit_dimensions(ctx, agent_name, config),
-            tool=call.tool_name,
-            tool_call_id=call.tool_call_id,
+            tool=_safe_tool_name(call.tool_name),
+            tool_call_id=_opaque_call_id(call.tool_call_id),
             retry=ctx.retry,
         )
         return args
@@ -195,8 +265,8 @@ def build_audit_hooks(agent_name: str, config: AgentInferenceConfig) -> Hooks:
         logger.bind(action_log=True).info(
             "tool_call_completed",
             **_audit_dimensions(ctx, agent_name, config),
-            tool=call.tool_name,
-            tool_call_id=call.tool_call_id,
+            tool=_safe_tool_name(call.tool_name),
+            tool_call_id=_opaque_call_id(call.tool_call_id),
             retry=ctx.retry,
             elapsed_s=round(monotonic() - started.pop(call_key, monotonic()), 4),
             result_type=type(result).__name__,
@@ -211,8 +281,8 @@ def build_audit_hooks(agent_name: str, config: AgentInferenceConfig) -> Hooks:
         logger.bind(action_log=True).warning(
             "tool_call_failed",
             **_audit_dimensions(ctx, agent_name, config),
-            tool=call.tool_name,
-            tool_call_id=call.tool_call_id,
+            tool=_safe_tool_name(call.tool_name),
+            tool_call_id=_opaque_call_id(call.tool_call_id),
             retry=ctx.retry,
             elapsed_s=round(monotonic() - started.pop(call_key, monotonic()), 4),
             error_type=type(error).__name__,
@@ -226,8 +296,8 @@ def build_audit_hooks(agent_name: str, config: AgentInferenceConfig) -> Hooks:
         logger.bind(action_log=True).warning(
             "tool_validation_rejected",
             **_audit_dimensions(ctx, agent_name, config),
-            tool=call.tool_name,
-            tool_call_id=call.tool_call_id,
+            tool=_safe_tool_name(call.tool_name),
+            tool_call_id=_opaque_call_id(call.tool_call_id),
             retry=ctx.retry,
             max_retries=ctx.max_retries,
             error_type=type(error).__name__,
@@ -623,6 +693,7 @@ class LibrarianAgentDeps:
     correlation_id: str | None = None
     known_node_names: list[str] | None = None  # Fallback dedup context (non-tool mode)
     precomputed_embeddings: dict[str, list[float]] = field(default_factory=dict)
+    action_tracker: CurationActionTracker | None = None
 
 
 def build_librarian_agent(
@@ -1104,9 +1175,11 @@ def build_librarian_agent(
                 "librarian_tool_call",
                 **_audit_dimensions(ctx, "librarian", cfg),
                 tool="create_or_update_node",
-                node_name=name,
+                node_id=node.id,
                 action=action,
             )
+            if ctx.deps.action_tracker is not None:
+                ctx.deps.action_tracker.record_node(action)
             return {
                 "node_id": node.id,
                 "name": node.name,
@@ -1184,10 +1257,14 @@ def build_librarian_agent(
                 "librarian_tool_call",
                 **_audit_dimensions(ctx, "librarian", cfg),
                 tool="create_or_update_edge",
-                source=source_name,
-                target=target_name,
-                edge_type=edge_type,
+                edge_id=edge.id,
+                source_id=edge.source_id,
+                target_id=edge.target_id,
+                edge_type_id=edge.type_id,
+                action="upserted",
             )
+            if ctx.deps.action_tracker is not None:
+                ctx.deps.action_tracker.record_edge_upsert()
             return {
                 "edge_id": edge.id,
                 "source": source_name,
@@ -1223,8 +1300,11 @@ def build_librarian_agent(
                 **_audit_dimensions(ctx, "librarian", cfg),
                 tool="archive_node",
                 node_id=node_id,
-                reason=reason,
+                archived=count > 0,
+                action="archived",
             )
+            if ctx.deps.action_tracker is not None:
+                ctx.deps.action_tracker.record_archive(count > 0)
             return {
                 "archived": count > 0,
                 "node_id": node_id,
@@ -1258,8 +1338,11 @@ def build_librarian_agent(
                 **_audit_dimensions(ctx, "librarian", cfg),
                 tool="remove_edge",
                 edge_id=edge_id,
-                reason=reason,
+                removed=deleted,
+                action="removed",
             )
+            if ctx.deps.action_tracker is not None:
+                ctx.deps.action_tracker.record_edge_removal(deleted)
             return {
                 "removed": deleted,
                 "edge_id": edge_id,

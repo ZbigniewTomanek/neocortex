@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from loguru import logger
 
+import neocortex.extraction.type_consolidation as type_consolidation
 from neocortex.db.mock import InMemoryRepository
 from neocortex.extraction.type_consolidation import (
     archive_unused_types,
@@ -327,3 +329,36 @@ async def test_get_unused_types_excludes_used(repo: InMemoryRepository):
     names = [name for _, name, _ in unused]
     assert "UnusedType" in names
     assert "UsedType" not in names
+
+
+@pytest.mark.asyncio
+async def test_type_consolidation_action_audit_is_opaque(
+    repo: InMemoryRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Type action audit records contain IDs, not model/source-derived names."""
+    source_name = "PrivateSourceTypeSentinel"
+    target_name = "PrivateTargetTypeSentinel"
+    unused_name = "PrivateUnusedTypeSentinel"
+    monkeypatch.setattr(type_consolidation, "_MERGE_MAP", {source_name: target_name})
+    await _create_node_type(repo, source_name)
+    await _create_node_type(repo, target_name)
+    await _create_node_type(repo, unused_name, age_hours=48)
+
+    records: list[dict] = []
+    sink_id = logger.add(lambda message: records.append(message.record), level="INFO")
+    try:
+        await merge_similar_types(repo, AGENT_ID, dry_run=False)
+        await archive_unused_types(repo, AGENT_ID, min_age_hours=24.0, dry_run=False)
+    finally:
+        logger.remove(sink_id)
+
+    action_records = [record for record in records if record["extra"].get("action_log")]
+    assert {record["message"] for record in action_records} >= {"type_merged", "type_archived"}
+    for record in action_records:
+        assert all(sentinel not in str(record["extra"]) for sentinel in (source_name, target_name, unused_name))
+    merged = next(record for record in action_records if record["message"] == "type_merged")
+    assert isinstance(merged["extra"]["source_type_id"], int)
+    assert isinstance(merged["extra"]["target_type_id"], int)
+    archived = next(record for record in action_records if record["message"] == "type_archived")
+    assert isinstance(archived["extra"]["type_id"], int)

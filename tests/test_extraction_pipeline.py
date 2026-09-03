@@ -6,6 +6,8 @@ or API keys needed.
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import pytest
 from loguru import logger
 
@@ -188,6 +190,108 @@ async def test_persist_payload_audit_does_not_include_relation_endpoint_names(
     assert "target" not in extra
     assert "Private Person Name" not in str(extra)
     assert "Confidential Organisation" not in str(extra)
+
+
+@pytest.mark.asyncio
+async def test_persist_payload_invalid_paths_keep_action_audit_opaque(
+    repo: InMemoryRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Invalid type/entity/edge audit events contain only codes, flags, and IDs."""
+    from neocortex.extraction.schemas import ProposedNodeType
+
+    sentinels = {
+        "node_type": "PRIVATE_INVALID_NODE_TYPE_SENTINEL",
+        "edge_type": "PRIVATE_INVALID_EDGE_TYPE_SENTINEL",
+        "entity": "PRIVATE_INVALID_ENTITY_SENTINEL",
+        "source": "PRIVATE_EDGE_SOURCE_SENTINEL",
+        "target": "PRIVATE_EDGE_TARGET_SENTINEL",
+    }
+    audit_fields: dict[str, object] = {
+        "stage": "persist_payload",
+        "correlation_id": "safe-correlation",
+        # Unknown fields must not be copied into action-log context.
+        "name": sentinels["entity"],
+        "target_schema": sentinels["target"],
+    }
+    captured: list[dict] = []
+    sink_id = logger.add(lambda message: captured.append(message.record), level="INFO")
+    try:
+        node_type_getter = repo.get_or_create_node_type
+        monkeypatch.setattr(repo, "get_or_create_node_type", AsyncMock(return_value=None))
+        node_invalid_episode = await repo.store_episode(AGENT, "safe source")
+        await _persist_payload(
+            repo,
+            None,
+            AGENT,
+            node_invalid_episode,
+            LibrarianPayload(
+                accepted_node_types=[ProposedNodeType(name=sentinels["node_type"])],
+                entities=[NormalizedEntity(name=sentinels["entity"], type_name=sentinels["node_type"])],
+            ),
+            audit_fields=audit_fields,
+        )
+        monkeypatch.setattr(repo, "get_or_create_node_type", node_type_getter)
+
+        node_type = await repo.get_or_create_node_type(AGENT, "Person")
+        assert node_type is not None
+        source = await repo.upsert_node(AGENT, sentinels["source"], node_type.id)
+        target = await repo.upsert_node(AGENT, sentinels["target"], node_type.id)
+
+        monkeypatch.setattr(repo, "get_or_create_edge_type", AsyncMock(return_value=None))
+        edge_invalid_episode = await repo.store_episode(AGENT, "safe source")
+        await _persist_payload(
+            repo,
+            None,
+            AGENT,
+            edge_invalid_episode,
+            LibrarianPayload(
+                relations=[
+                    NormalizedRelation(
+                        source_name=source.name,
+                        target_name=target.name,
+                        relation_type=sentinels["edge_type"],
+                    )
+                ]
+            ),
+            audit_fields=audit_fields,
+        )
+
+        missing_node_episode = await repo.store_episode(AGENT, "safe source")
+        await _persist_payload(
+            repo,
+            None,
+            AGENT,
+            missing_node_episode,
+            LibrarianPayload(
+                relations=[
+                    NormalizedRelation(
+                        source_name=source.name,
+                        target_name=sentinels["target"] + "_MISSING",
+                        relation_type=sentinels["edge_type"],
+                    )
+                ]
+            ),
+            audit_fields=audit_fields,
+        )
+    finally:
+        logger.remove(sink_id)
+
+    action_records = [record for record in captured if record["extra"].get("action_log")]
+    messages = {record["message"] for record in action_records}
+    assert {
+        "skipping_invalid_node_type",
+        "skipping_entity_invalid_type",
+        "edge_skipped_invalid_type",
+        "edge_skipped_missing_node",
+    } <= messages
+    for record in action_records:
+        assert all(sentinel not in str(record["extra"]) for sentinel in sentinels.values())
+    invalid_entity = next(record for record in action_records if record["message"] == "skipping_entity_invalid_type")
+    assert invalid_entity["extra"]["entity_index"] == 0
+    missing_edge = next(record for record in action_records if record["message"] == "edge_skipped_missing_node")
+    assert missing_edge["extra"]["source_present"] is True
+    assert missing_edge["extra"]["target_present"] is False
 
 
 @pytest.mark.asyncio

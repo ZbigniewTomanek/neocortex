@@ -12,11 +12,16 @@ Tests verify:
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pytest
+from loguru import logger
 
 from neocortex.db.mock import InMemoryRepository
 from neocortex.extraction.agents import (
     AgentInferenceConfig,
+    CurationActionTracker,
     LibrarianAgentDeps,
     build_librarian_agent,
 )
@@ -25,6 +30,7 @@ from neocortex.extraction.schemas import (
     CurationSummary,
     ExtractedEntity,
     ExtractedRelation,
+    LibrarianPayload,
 )
 
 AGENT = "test-agent"
@@ -252,6 +258,185 @@ async def test_retry_after_partial_failure(repo: InMemoryRepository) -> None:
     alice = await repo.find_nodes_by_name(AGENT, "Alice")
     assert len(alice) == 1
     assert alice[0].content == "Complete"
+
+
+@pytest.mark.asyncio
+async def test_librarian_mutation_audit_is_opaque_and_tracker_counts_actions(
+    repo: InMemoryRepository,
+) -> None:
+    """Mutation audit records contain IDs and actions, never source strings."""
+    entity_one = "PRIVATE_ENTITY_SENTINEL_ONE"
+    entity_two = "PRIVATE_ENTITY_SENTINEL_TWO"
+    node_type = "PRIVATE_NODE_TYPE_SENTINEL"
+    edge_type = "PRIVATE_EDGE_TYPE_SENTINEL"
+    private_content = "PRIVATE_CONTENT_SENTINEL"
+    private_reason = "PRIVATE_REASON_SENTINEL"
+    tracker = CurationActionTracker()
+    deps = _make_deps(repo, episode_id=42)
+    deps.node_types = [node_type]
+    deps.edge_types = [edge_type]
+    deps.action_tracker = tracker
+    ctx = SimpleNamespace(deps=deps, run_id="opaque-run", retry=0)
+    agent = build_librarian_agent(_TEST_CONFIG, use_tools=True)
+    tools = agent._function_toolset.tools
+    records: list[dict] = []
+    sink_id = logger.add(lambda message: records.append(message.record), level="INFO")
+
+    try:
+        await tools["create_or_update_node"].function(
+            ctx,
+            name=entity_one,
+            type_name=node_type,
+            content=private_content,
+        )
+        second = await tools["create_or_update_node"].function(
+            ctx,
+            name=entity_two,
+            type_name=node_type,
+            content=private_content,
+        )
+        edge = await tools["create_or_update_edge"].function(
+            ctx,
+            source_name=entity_one,
+            target_name=entity_two,
+            edge_type=edge_type,
+        )
+        await tools["archive_node"].function(ctx, node_id=second["node_id"], reason=private_reason)
+        await tools["remove_edge"].function(ctx, edge_id=edge["edge_id"], reason=private_reason)
+    finally:
+        logger.remove(sink_id)
+
+    action_records = [record for record in records if record["extra"].get("action_log")]
+    assert action_records
+    assert all(
+        sentinel not in str(record["extra"])
+        for sentinel in (entity_one, entity_two, node_type, edge_type, private_content, private_reason)
+        for record in action_records
+    )
+    node_record = next(record for record in action_records if record["message"] == "librarian_tool_call")
+    assert node_record["extra"]["tool"] in {
+        "create_or_update_node",
+        "create_or_update_edge",
+        "archive_node",
+        "remove_edge",
+    }
+    assert isinstance(node_record["extra"].get("node_id"), int)
+    assert tracker.entities_created == 2
+    assert tracker.edges_created == 1
+    assert tracker.entities_archived == 1
+    assert tracker.edges_removed == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("use_tools", [True, False])
+async def test_librarian_request_limit_tracks_tool_budget(
+    repo: InMemoryRepository,
+    use_tools: bool,
+) -> None:
+    """Both librarian modes receive a request budget above the tool budget."""
+    from neocortex.extraction.pipeline import run_extraction
+
+    eid = await repo.store_episode(AGENT, "safe source")
+    captured_limits = []
+
+    def fake_build(_config=None, *, use_tools=True):
+        agent = SimpleNamespace()
+
+        async def run(*_args, **kwargs):
+            captured_limits.append(kwargs["usage_limits"])
+            output = CurationSummary() if use_tools else LibrarianPayload()
+            result = SimpleNamespace(
+                output=output,
+                usage=lambda: SimpleNamespace(
+                    requests=1,
+                    tool_calls=0,
+                    input_tokens=0,
+                    output_tokens=0,
+                    details={},
+                ),
+            )
+            return result
+
+        agent.run = run
+        return agent
+
+    with patch("neocortex.extraction.pipeline.build_librarian_agent", side_effect=fake_build):
+        await run_extraction(
+            repo=repo,
+            embeddings=None,
+            agent_id=AGENT,
+            episode_ids=[eid],
+            ontology_config=_TEST_CONFIG,
+            extractor_config=_TEST_CONFIG,
+            librarian_config=_TEST_CONFIG,
+            librarian_use_tools=use_tools,
+            tool_calls_limit=17,
+            archive_interval=0,
+        )
+
+    assert len(captured_limits) == 1
+    assert captured_limits[0].request_limit == 18
+    assert captured_limits[0].tool_calls_limit == 17
+
+
+@pytest.mark.asyncio
+async def test_curation_complete_uses_observed_actions_not_model_summary(
+    repo: InMemoryRepository,
+) -> None:
+    """Completion counts remain accurate when the model returns an empty action list."""
+    from neocortex.extraction.pipeline import run_extraction
+
+    summary_sentinel = "PRIVATE_MODEL_SUMMARY_SENTINEL"
+    eid = await repo.store_episode(AGENT, "safe source")
+    records: list[dict] = []
+
+    def fake_build(_config=None, *, use_tools=True):
+        agent = SimpleNamespace()
+
+        async def run(*_args, **kwargs):
+            tracker = kwargs["deps"].action_tracker
+            assert tracker is not None
+            tracker.record_node("created")
+            tracker.record_edge_upsert()
+            return SimpleNamespace(
+                output=CurationSummary(summary=summary_sentinel),
+                usage=lambda: SimpleNamespace(
+                    requests=1,
+                    tool_calls=2,
+                    input_tokens=0,
+                    output_tokens=0,
+                    details={},
+                ),
+            )
+
+        agent.run = run
+        return agent
+
+    sink_id = logger.add(lambda message: records.append(message.record), level="INFO")
+    try:
+        with patch("neocortex.extraction.pipeline.build_librarian_agent", side_effect=fake_build):
+            await run_extraction(
+                repo=repo,
+                embeddings=None,
+                agent_id=AGENT,
+                episode_ids=[eid],
+                ontology_config=_TEST_CONFIG,
+                extractor_config=_TEST_CONFIG,
+                librarian_config=_TEST_CONFIG,
+                librarian_use_tools=True,
+                archive_interval=0,
+            )
+    finally:
+        logger.remove(sink_id)
+
+    complete = next(record for record in records if record["message"] == "curation_complete")
+    extra = complete["extra"]
+    assert extra["created"] == 1
+    assert extra["edges_created"] == 1
+    assert extra["actions_observed"] == 2
+    assert extra["model_summary_actions"] == 0
+    assert "summary" not in extra
+    assert summary_sentinel not in str(extra)
 
 
 # ── Pipeline integration tests ──
