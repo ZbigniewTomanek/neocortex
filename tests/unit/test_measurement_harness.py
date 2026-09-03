@@ -37,6 +37,40 @@ def test_terminal_job_summary_is_accepted() -> None:
     ensure_terminal_jobs({"todo": 0, "doing": 0, "succeeded": 25, "failed": 3, "cancelled": 0})
 
 
+def test_audit_metrics_reads_rotated_action_logs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Long runs keep their early action events after the 10 MB sink rotates."""
+    import scripts.compute_metrics as metrics  # ty: ignore[unresolved-import]
+
+    log_dir = tmp_path / "log"
+    log_dir.mkdir()
+    event = {
+        "record": {
+            "message": "model_request_completed",
+            "extra": {
+                "run_id": "rotated-run",
+                "correlation_id": "corr-1",
+                "model": "qwen3.8-flash-next",
+                "endpoint": "http://127.0.0.1:24000/v1",
+                "agent": "ontology",
+                "effort": "low",
+            },
+        }
+    }
+    (log_dir / "agent_actions.2026-09-03_00-00-00_000000.log").write_text(json.dumps(event) + "\n")
+    (log_dir / "agent_actions.log").write_text(json.dumps(event) + "\n")
+    monkeypatch.setattr(metrics, "ROOT", tmp_path)
+
+    result = metrics.audit_metrics(run_id="rotated-run")
+
+    assert result["status"] == "MEASURED"
+    assert result["audit_event_counts"] == {"model_request_completed": 2}
+    assert result["matched_records"] == 2
+    assert result["source_paths"] == [
+        "log/agent_actions.log",
+        "log/agent_actions.2026-09-03_00-00-00_000000.log",
+    ]
+
+
 def test_non_terminal_cli_writes_only_not_measured_sidecar(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Exercise the CLI guard, including its no-quality-file contract."""
     import asyncio

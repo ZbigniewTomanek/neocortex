@@ -175,6 +175,31 @@ def _endpoint_identity(url: str) -> str:
     return urlunsplit((parsed.scheme, host, parsed.path.rstrip("/"), "", ""))
 
 
+def _audit_log_paths() -> list[Path]:
+    """Return the active and rotated action-log files in this repository.
+
+    The action sink rotates at 10 MB.  Reading only ``agent_actions.log`` can
+    silently discard the beginning of a long bake-off run, which would make
+    its measured event counts and provenance incomplete.
+    """
+    directory = ROOT / "log"
+    paths = list(directory.glob("agent_actions*.log"))
+    return sorted(paths, key=lambda path: (path.name != "agent_actions.log", path.name))
+
+
+def _read_audit_logs() -> tuple[list[Path], list[str], bool]:
+    """Read the active and rotated action logs without losing provenance."""
+    paths = _audit_log_paths()
+    lines: list[str] = []
+    read_error = False
+    for path in paths:
+        try:
+            lines.extend(path.read_text(encoding="utf-8").splitlines())
+        except (OSError, UnicodeError):
+            read_error = True
+    return paths, lines, read_error
+
+
 async def fetch_job_summary(ingestion_url: str, admin_token: str) -> dict[str, object]:
     """Read job completion from the authenticated admin API."""
     url = ingestion_url.rstrip("/") + "/admin/jobs/summary"
@@ -346,6 +371,7 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
     return ``NOT_MEASURED`` instead of inventing zeroes from an absent log.
     """
     path = ROOT / "log/agent_actions.log"
+    audit_paths, lines, read_error = _read_audit_logs()
     counts: dict[str, int] = {}
     attempts = rejected = 0
     missing_dimensions = 0
@@ -354,13 +380,6 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
     malformed_lines = 0
     valid_records = 0
     matched_records = 0
-    read_error = False
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
-    except (OSError, UnicodeError):
-        lines = []
-        read_error = True
-
     for line in lines:
         try:
             record = json.loads(line)
@@ -421,6 +440,7 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
         "stage_timings": stage_timings,
         "usage": usage,
         "source_path": _relative_path(path),
+        "source_paths": [_relative_path(item) for item in audit_paths],
         "run_id": run_id or "ALL_LOG_ENTRIES",
         "correlation_id": correlation_id or "ALL_CORRELATIONS",
         "missing_required_dimensions": missing_dimensions,
@@ -430,7 +450,7 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
         "matched_records": matched_records,
         "malformed_lines": malformed_lines,
     }
-    if not path.exists():
+    if not audit_paths:
         return {**result, "status": "NOT_MEASURED", "reason": "missing_audit_log"}
     if not lines or not any(line.strip() for line in lines):
         reason = "malformed_audit_log" if read_error else "empty_audit_log"
