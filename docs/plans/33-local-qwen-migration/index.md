@@ -25,6 +25,9 @@ seed generator follows classification). Embeddings (`gemini-embedding-001`) and 
 NeoCortex deployment. Long indexing time is acceptable. Quality and operational correctness matter more
 than latency, which is recorded but never blocks a decision.
 
+The full local corpus run also produces a per-episode parsing report. The report uses one row for each
+fixed corpus episode and links each value to machine-readable evidence.
+
 The supervisor's initial audit found that basic structured output and domain classification reach the
 local service, while ontology and extractor calls can receive HTTP 400 because PydanticAI emits multiple
 system messages and this deployment requires one system message at the beginning. The probe script also
@@ -68,6 +71,7 @@ for a REPORT. Every measured GATE names its input and the defect that would turn
 | Authenticated model preflight | endpoint response | `/v1/models` contains exactly `qwen3.8-flash-next`; authenticated chat and PydanticAI calls succeed | GATE | block Stage 1 and diagnose auth/compatibility | REPORT `NOT MEASURED` and block |
 | Unit and harness regression suite | current repository tests | all relevant tests pass; no assertion is weakened or deleted | GATE | block owning stage | n/a |
 | Full local corpus completion | not yet measured | every submitted episode reaches a terminal job state within the configured timeout; failure/stall rate ≤10% from `/admin/jobs/summary` | GATE | block local stability and diagnose root cause | REPORT `NOT MEASURED` and block |
+| Per-episode Qwen parsing report | not yet measured | `resources/qwen-parsing-report.md` and `.json` contain one row for each `E01`–`E28`, actual provenance, safe values, quality checks, and explicit `NOT MEASURED` values | GATE | block Stage 7 and Stage 9 | report `NOT MEASURED` and block |
 | Critical integrity defects | not yet measured | zero stored artifact types, leaked reasoning markers, invalid type names, or unhandled auth/structured-output failures in the measured run | GATE | block affected agent and diagnose | REPORT `NOT MEASURED` and block |
 | Absolute quality rubric when baseline is unavailable | not yet measured | `MIGRATE` only when all five real quality inputs are measured and pass: extraction smoke exits 0; episodic-memory and cognitive-recall checks exit 0; Plan 15 score is ≥11/14; Plan 17 score is ≥13/14; and a fixed 20-node/20-edge sample from the named local snapshot passes the mechanical schema/reference checks in Stage 7. Any `NOT MEASURED` quality input means `HOLD`. | REPORT | publish `HOLD` and continue to report | publish `NOT MEASURED`; never `MIGRATE` |
 | Quality versus hosted baseline | prior baseline incomplete | per-agent quality verdict supported by current local evidence; baseline is used only when two complete same-prompt runs exist | REPORT | publish and continue | publish `NOT MEASURED`, continue local decision |

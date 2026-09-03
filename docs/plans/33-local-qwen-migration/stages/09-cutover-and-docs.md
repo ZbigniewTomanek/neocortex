@@ -1,6 +1,6 @@
 # Stage 9: Conditional Cutover or ASD-STE100 Technical Report
 
-**Goal**: Cut over only validated agents, or explain the inadequate result in a clear technical report with root cause and a concrete next action.
+**Goal**: Cut over only validated agents, or explain the inadequate result in a clear technical report with root cause and a concrete next action. Include the per-episode parsing report.
 **Dependencies**: Stage 8 DONE. Stage 8 is a control stage and records a no-op `DONE` outcome when no
 agent passes, so this stage always remains reachable for the ASD-STE100 report path.
 
@@ -23,13 +23,16 @@ agent passes, so this stage always remains reachable for the ASD-STE100 report p
    use short active sentences, one term for one meaning, condition before command, explicit evidence,
    root cause, impact, workaround, and next action. Include `NOT MEASURED` where instrumentation did
    not produce a signal. Do not call the result a full-local migration.
-7. Run the final tests and a fresh local smoke. Have a dedicated GPT-5.6-Luna xhigh subagent review
+7. Reference `resources/qwen-parsing-report.md` and `resources/qwen-parsing-report.json` in the
+   cutover or technical report. Keep both files with the final plan evidence.
+8. If a required report file is missing or incomplete, record `NOT MEASURED` and block cutover.
+9. Run the final tests and a fresh local smoke. Have a dedicated GPT-5.6-Luna xhigh subagent review
    the cutover/report for secret leakage, stale active references, and evidence provenance.
 
 ## Verification
 
 - [ ] GATE final code/documentation tests — `uv run pytest tests/ -q`, local mock boot, and configuration validation pass; a hosted-path regression or missing clear base-URL error makes this red.
-- [ ] GATE cutover/report completeness — every verdict has either a validated default plus rollback or an ASD-STE100 report with evidence and root cause; an unsupported claim makes this red.
+- [ ] GATE cutover/report completeness — every verdict has a validated default plus rollback or an ASD-STE100 report with evidence and root cause. The per-episode report is also present. An unsupported claim makes this red.
 - [ ] REPORT final model/config scan — record changed defaults, surviving hosted agents, cloud-bound services, rollback rehearsal, and unresolved backlog items in `journal.md`.
 
 ## Commit

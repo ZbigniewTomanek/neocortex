@@ -1,0 +1,574 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neocortex.local/schemas/qwen-parsing-report.schema.json",
+  "title": "Qwen Flash Next per-episode parsing report",
+  "description": "A source-backed report for the fixed 28-episode local run.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "run",
+    "source_artifacts",
+    "episodes",
+    "checks"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "enum": [
+        "MEASURED",
+        "NOT_MEASURED"
+      ]
+    },
+    "run": {
+      "$ref": "#/$defs/run"
+    },
+    "source_artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/sourceArtifact"
+      }
+    },
+    "episodes": {
+      "type": "array",
+      "minItems": 28,
+      "maxItems": 28,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/episode"
+      }
+    },
+    "checks": {
+      "$ref": "#/$defs/reportChecks"
+    }
+  },
+  "$defs": {
+    "value": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "const": "NOT_MEASURED"
+        }
+      ]
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "model",
+        "effort",
+        "source_revision",
+        "corpus_path",
+        "corpus_sha256",
+        "snapshot_path"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effort": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "corpus_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "corpus_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "snapshot_path": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "sha256",
+        "availability"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "corpus",
+            "metrics",
+            "snapshot",
+            "admin_jobs",
+            "graph_export",
+            "audit_log"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "availability": {
+          "enum": [
+            "MEASURED",
+            "NOT_MEASURED"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "episode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "episode_key",
+        "source",
+        "jobs",
+        "run_provenance",
+        "domains",
+        "ontology",
+        "extraction",
+        "librarian",
+        "events",
+        "quality_integrity"
+      ],
+      "properties": {
+        "episode_key": {
+          "type": "string",
+          "pattern": "^E(0[1-9]|1[0-9]|2[0-8])$"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "locator"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "locator": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "jobs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/job"
+          }
+        },
+        "run_provenance": {
+          "$ref": "#/$defs/episodeRun"
+        },
+        "domains": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "accepted",
+            "proposal"
+          ],
+          "properties": {
+            "accepted": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "proposal": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "status": {
+                  "enum": [
+                    "accepted",
+                    "rejected",
+                    "not_proposed",
+                    "NOT_MEASURED"
+                  ]
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "safe_value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "ontology": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "proposed",
+            "accepted",
+            "rejected"
+          ],
+          "properties": {
+            "proposed": {
+              "$ref": "#/$defs/ontologyTypes"
+            },
+            "accepted": {
+              "$ref": "#/$defs/ontologyTypes"
+            },
+            "rejected": {
+              "$ref": "#/$defs/ontologyTypes"
+            }
+          }
+        },
+        "extraction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entities",
+            "relations"
+          ],
+          "properties": {
+            "entities": {
+              "$ref": "#/$defs/collection"
+            },
+            "relations": {
+              "$ref": "#/$defs/collection"
+            }
+          }
+        },
+        "librarian": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "actions"
+          ],
+          "properties": {
+            "actions": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "availability",
+                "counts",
+                "representative_safe_values"
+              ],
+              "properties": {
+                "availability": {
+                  "enum": [
+                    "MEASURED",
+                    "NOT_MEASURED"
+                  ]
+                },
+                "counts": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "created_nodes",
+                    "updated_nodes",
+                    "archived_nodes",
+                    "created_edges",
+                    "removed_edges"
+                  ],
+                  "properties": {
+                    "created_nodes": {
+                      "$ref": "#/$defs/value"
+                    },
+                    "updated_nodes": {
+                      "$ref": "#/$defs/value"
+                    },
+                    "archived_nodes": {
+                      "$ref": "#/$defs/value"
+                    },
+                    "created_edges": {
+                      "$ref": "#/$defs/value"
+                    },
+                    "removed_edges": {
+                      "$ref": "#/$defs/value"
+                    }
+                  }
+                },
+                "representative_safe_values": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "retries",
+            "timeouts",
+            "rejections"
+          ],
+          "properties": {
+            "retries": {
+              "$ref": "#/$defs/value"
+            },
+            "timeouts": {
+              "$ref": "#/$defs/value"
+            },
+            "rejections": {
+              "$ref": "#/$defs/value"
+            }
+          }
+        },
+        "quality_integrity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "checks"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "PASS",
+                "FAIL",
+                "NOT_MEASURED"
+              ]
+            },
+            "checks": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "status",
+                  "source"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "status": {
+                    "enum": [
+                      "PASS",
+                      "FAIL",
+                      "NOT_MEASURED"
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "job": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "status",
+            "job_id",
+            "outcome"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "ingestion",
+                "routing",
+                "extraction"
+              ]
+            },
+            "status": {
+              "enum": [
+                "todo",
+                "doing",
+                "succeeded",
+                "failed",
+                "cancelled",
+                "NOT_MEASURED"
+              ]
+            },
+            "job_id": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "const": "NOT_MEASURED"
+                }
+              ]
+            },
+            "outcome": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+    "episodeRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "effort",
+        "run_id",
+        "snapshot_path",
+        "source_revision"
+      ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effort": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "snapshot_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_revision": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "availability",
+        "count",
+        "stable_ids",
+        "representative_safe_values"
+      ],
+      "properties": {
+        "availability": {
+          "enum": [
+            "MEASURED",
+            "NOT_MEASURED"
+          ]
+        },
+        "count": {
+          "$ref": "#/$defs/value"
+        },
+        "stable_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "representative_safe_values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ontologyTypes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node",
+        "edge"
+      ],
+      "properties": {
+        "node": {
+          "$ref": "#/$defs/collection"
+        },
+        "edge": {
+          "$ref": "#/$defs/collection"
+        }
+      }
+    },
+    "reportChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "episode_set",
+        "source_links",
+        "no_invented_rows",
+        "hidden_reasoning_absent",
+        "raw_secrets_absent",
+        "sensitive_audit_absent"
+      ],
+      "properties": {
+        "episode_set": {
+          "const": "E01-E28"
+        },
+        "source_links": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_MEASURED"
+          ]
+        },
+        "no_invented_rows": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_MEASURED"
+          ]
+        },
+        "hidden_reasoning_absent": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_MEASURED"
+          ]
+        },
+        "raw_secrets_absent": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_MEASURED"
+          ]
+        },
+        "sensitive_audit_absent": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_MEASURED"
+          ]
+        }
+      }
+    }
+  }
+}

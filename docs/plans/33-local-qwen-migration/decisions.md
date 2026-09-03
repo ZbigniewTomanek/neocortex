@@ -185,3 +185,10 @@ stages, three attempts, fixed corpus size, and worker concurrency. Non-terminal 
 exact NOT_MEASURED sidecar. The live auth check uses the repository dev-token map and restores a
 pre-check snapshot. Audit hooks record credential-free model/tool/retry/timing dimensions and exclude
 prompts, outputs, tool arguments, and secrets.
+
+### D30: Require a per-episode parsing report
+**Date**: 2026-09-03 - **Stage**: 7/9
+**Options**: A) publish aggregate metrics only B) publish a fixed 28-row report with machine-readable provenance.
+**Chosen**: B.
+**Rationale**: Aggregate metrics cannot show episode-level failures. The report links each row to database, job, audit, corpus, and snapshot evidence.
+**Controls**: The report uses `NOT MEASURED` for missing evidence. It excludes prompts, hidden reasoning, raw model output, secrets, and sensitive audit fields. A JSON Schema and a fixed episode-set check reject fabricated rows.

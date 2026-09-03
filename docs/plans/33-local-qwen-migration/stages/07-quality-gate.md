@@ -25,16 +25,48 @@ record exists.
    validator: every selected record has a non-empty name, a declared existing type, valid references,
    no artifact/reasoning marker, and a source id in the fixed 28-episode corpus. An empty or fabricated
    sample is `NOT MEASURED` and forces HOLD; do not replace this check with subjective visual approval.
-5. Write `resources/bakeoff-comparison.md` with every metric, arm, delta, verdict, provenance, and
+5. After the Stage 6 full run attempt, collect the machine-readable inputs in the report template.
+6. Write `resources/qwen-parsing-inputs.json` with each input path, SHA-256 value, and availability.
+7. Include the fixed corpus, metrics artifact, job responses, graph export, snapshot, and audit-log path.
+8. Generate `resources/qwen-parsing-report.json` from the input manifest and the source artifacts.
+9. Create one report row for each fixed episode key from `E01` through `E28`.
+10. When a source value is absent, record `NOT MEASURED` and its reason.
+11. Render `resources/qwen-parsing-report.md` from the JSON report.
+12. Validate the JSON report against [qwen-parsing-report.schema.json](../resources/qwen-parsing-report.schema.json).
+13. Validate that the report contains each fixed episode key once and contains no invented row.
+14. Scan the report for prompts, hidden reasoning, raw model output, secrets, and sensitive audit content.
+15. Write `resources/bakeoff-comparison.md` with every metric, arm, delta, verdict, provenance, and
    caveat. Add a short D-entry and backlog item for every HOLD/BLOCKED result. Ask a fresh
    GPT-5.6-Luna xhigh subagent to audit provenance.
-6. Leave Stage 8 eligible only when at least one agent is `MIGRATE`. If none passes, Stage 8 may be
+16. When at least one agent is `MIGRATE`, leave Stage 8 eligible. If none passes, Stage 8 can be
    `SKIPPED` and Stage 9 must publish the technical report rather than force a cutover.
+
+## Per-episode report
+
+The report has a machine-readable JSON form and a Simple English Markdown form. The JSON form is the
+source for the Markdown form. The report template defines the field names, source rules, and safe values.
+
+The input manifest references the fixed corpus, the metrics artifact, the PostgreSQL snapshot, the
+admin job responses, the graph export, and the JSON-lines audit log. It stores paths and SHA-256 values.
+It does not copy credentials or sensitive audit records.
+
+Each episode row contains the episode key and source locator. It contains the ingestion and extraction
+job outcomes, selected model, effort, run id, snapshot path, and source revision. It contains accepted
+domains and the proposal result. It contains proposed, accepted, and rejected ontology type counts.
+It contains extraction counts, stable node and edge ids, and representative safe values. It marks missing
+ids as `NOT MEASURED`.
+It contains librarian action counts. It contains retry, timeout, and rejection values. It contains
+quality and integrity check results with source references.
+
+The report uses counts, stable ids, type names, domain slugs, relation types, and one-way hashes as safe
+values. It does not copy episode text, prompts, hidden reasoning, raw model output, secrets, or sensitive
+audit fields.
 
 ## Verification
 
 - [ ] GATE verdict completeness — all four reasoning agents have one explicit verdict and each verdict traces to current raw evidence; missing or inferred evidence makes this red.
 - [ ] GATE integrity disposition — every critical defect is assigned to an agent or interaction and appears in `resources/bakeoff-comparison.md` and `backlog.md`; silent drops make this red.
+- [ ] GATE per-episode report — the JSON and Markdown reports contain `E01` through `E28` once each, with source references and safe values. Missing, copied, or invented data makes this red.
 - [ ] REPORT quality comparison and fixed sample — record all metrics, baseline availability, the 20-node/20-edge validator output, and `NOT MEASURED` values in `journal.md`.
 
 ## Commit
