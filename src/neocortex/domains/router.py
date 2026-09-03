@@ -13,6 +13,7 @@ from loguru import logger
 
 from neocortex.domains.classifier import AgentDomainClassifier, DomainClassifier
 from neocortex.domains.models import (
+    SEED_DOMAINS,
     DomainClassification,
     ProposedDomain,
     RoutingResult,
@@ -25,6 +26,7 @@ from neocortex.schema_manager import SchemaManager
 
 _SLUG_PATTERN = re.compile(r"[^a-z0-9_]+")
 _REPEATED_UNDERSCORES = re.compile(r"_+")
+_STATIC_DOMAIN_SLUGS = frozenset(domain.slug for domain in SEED_DOMAINS)
 
 
 class DomainRouter:
@@ -112,8 +114,22 @@ class DomainRouter:
             ),
         )
 
-        # Filter matches below threshold
-        matches = [m for m in classification.matched_domains if m.confidence >= self._classification_threshold]
+        # Classifier output is untrusted.  Keep only known domains, remove
+        # duplicate slugs, and apply the confidence threshold before any job
+        # can be enqueued.  This establishes one routed extraction per domain
+        # per route invocation, regardless of repeated model output.
+        known_slugs = {domain.slug for domain in domains}
+        seen_slugs: set[str] = set()
+        matches: list[DomainClassification] = []
+        for match in classification.matched_domains:
+            if (
+                match.domain_slug not in known_slugs
+                or match.domain_slug in seen_slugs
+                or match.confidence < self._classification_threshold
+            ):
+                continue
+            seen_slugs.add(match.domain_slug)
+            matches.append(match)
 
         # Handle proposed new domain
         if classification.proposed_domain is not None and self._schema_mgr is not None:
@@ -202,7 +218,19 @@ class DomainRouter:
         if proposed.parent_slug is not None:
             parent = await self._domain_service.get_domain(proposed.parent_slug)
             if parent is not None:
-                parent_id = parent.id
+                if parent.slug in _STATIC_DOMAIN_SLUGS:
+                    parent_id = parent.id
+                else:
+                    # Dynamic parent seeds can recursively invoke the model
+                    # for every ancestor.  Keep the hierarchy bounded by
+                    # allowing only static seed parents; a dynamic proposal
+                    # becomes a root domain instead.
+                    logger.bind(action_log=True).warning(
+                        "domain_provision_dynamic_parent_flattened",
+                        proposed_slug=slug,
+                        parent_slug=parent.slug,
+                        action="treating_as_root",
+                    )
             else:
                 logger.bind(action_log=True).warning(
                     "domain_provision_parent_not_found",

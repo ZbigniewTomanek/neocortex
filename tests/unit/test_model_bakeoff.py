@@ -44,12 +44,20 @@ def test_dry_run_accounts_for_routing_topology_seed_call_and_ceils_fractional_ti
     assert completed.returncode == 0, completed.stderr
     # The application declares four seed domains.  With 28 episodes, each
     # route can add one proposal, so a later route can fan out to 32 domains.
-    # ceil(0.5 * (1 route + 1 seed + 3 personal + 96 fanout) * 3 * 28 / 2 + 60) = 2181.
-    assert "poll_timeout_s=2181" in completed.stdout
+    # route/extract retry policies are three attempts.  The invariant gives
+    # 84 route invocations, 84 possible proposals, 88 max domains, and 7,392
+    # possible routed extraction jobs.  The resulting call budget is 89,124.
+    # ceil(0.5 * 89124 / 2 + 60) = 22341.
+    assert "poll_timeout_s=22341" in completed.stdout
     assert "domain_routing_enabled=true" in completed.stdout
     assert "initial_domain_count=4" in completed.stdout
-    assert "max_domain_fanout=32" in completed.stdout
-    assert "seed_calls_per_episode=1" in completed.stdout
+    assert "max_domain_fanout=88" in completed.stdout
+    assert "max_dynamic_domains=84" in completed.stdout
+    assert "route_attempts=3" in completed.stdout
+    assert "extraction_attempts=3" in completed.stdout
+    assert "route_seed_calls_max=84" in completed.stdout
+    assert "routed_seed_calls_max=22176" in completed.stdout
+    assert "model_call_budget=89124" in completed.stdout
 
 
 def test_dry_run_can_explicitly_disable_domain_routing() -> None:
@@ -65,7 +73,8 @@ def test_dry_run_can_explicitly_disable_domain_routing() -> None:
     assert "domain_routing_enabled=false" in completed.stdout
     assert "initial_domain_count=0" in completed.stdout
     assert "max_domain_fanout=0" in completed.stdout
-    assert "seed_calls_per_episode=0" in completed.stdout
+    assert "route_seed_calls_max=0" in completed.stdout
+    assert "routed_seed_calls_max=0" in completed.stdout
     assert "domain routing disabled" in completed.stdout
 
 
@@ -103,6 +112,10 @@ if [[ "$*" == *corpus_loader.py* && "$*" == *--dry-run* ]]; then
   seq 1 28
 elif [[ "$*" == *SEED_DOMAINS* ]]; then
   printf '4\\n'
+elif [[ "$*" == *retry_strategy* && "$*" == *extract_episode* ]]; then
+  printf '3\\n'
+elif [[ "$*" == *retry_strategy* && "$*" == *route_episode* ]]; then
+  printf '3\\n'
 elif [[ "$*" == *' -c '* || "$*" == *' -c'* ]]; then
   cat >/dev/null || true
   printf '0\\n'

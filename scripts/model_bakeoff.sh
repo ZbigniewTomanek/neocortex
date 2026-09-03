@@ -47,17 +47,44 @@ esac
 
 INITIAL_DOMAIN_COUNT=0
 MAX_DOMAIN_FANOUT=0
-SEED_CALLS_PER_EPISODE=0
+MAX_DYNAMIC_DOMAINS=0
+ROUTE_ATTEMPTS=0
+EXTRACTION_ATTEMPTS="$(uv run python -c 'from neocortex.jobs.tasks import extract_episode; print(extract_episode.retry_strategy.max_attempts)')"
+is_positive_int "$EXTRACTION_ATTEMPTS" || die "extract_episode retry count is not a positive integer"
+MAX_ROUTE_INVOCATIONS=0
+MAX_ROUTED_EXTRACTION_JOBS=0
+ROUTE_CLASSIFIER_CALLS=0
+ROUTE_SEED_CALLS=0
+PERSONAL_EXTRACTION_CALLS=0
+ROUTED_EXTRACTION_CALLS=0
+ROUTED_SEED_CALLS=0
+MODEL_CALL_BUDGET=0
 if [[ "$DOMAIN_ROUTING_ENABLED" == true ]]; then
   # The fresh run seeds the domains declared by the running application.  A
   # route can add at most one proposed domain per corpus episode, so this is a
   # source-derived upper bound for the domain list seen by any later route.
   INITIAL_DOMAIN_COUNT="$(uv run python -c 'from neocortex.domains.models import SEED_DOMAINS; print(len(SEED_DOMAINS))')"
   is_positive_int "$INITIAL_DOMAIN_COUNT" || die "seed domain count is not a positive integer"
-  MAX_DOMAIN_FANOUT=$((INITIAL_DOMAIN_COUNT + CORPUS_SIZE))
-  # A newly proposed domain can require one SeedGenerator model call before
-  # its extraction.  Each route can propose at most one domain.
-  SEED_CALLS_PER_EPISODE=1
+  ROUTE_ATTEMPTS="$(uv run python -c 'from neocortex.jobs.tasks import route_episode; print(route_episode.retry_strategy.max_attempts)')"
+  is_positive_int "$ROUTE_ATTEMPTS" || die "route_episode retry count is not a positive integer"
+  # A route invocation can provision at most one proposed domain.  A retry is
+  # another invocation, so this derives the complete dynamic-domain ceiling
+  # from the registered task retry policy and fixed corpus size.
+  MAX_DYNAMIC_DOMAINS=$((CORPUS_SIZE * ROUTE_ATTEMPTS))
+  MAX_DOMAIN_FANOUT=$((INITIAL_DOMAIN_COUNT + MAX_DYNAMIC_DOMAINS))
+fi
+
+MAX_ROUTE_INVOCATIONS=$((CORPUS_SIZE * ROUTE_ATTEMPTS))
+MAX_ROUTED_EXTRACTION_JOBS=$((MAX_ROUTE_INVOCATIONS * MAX_DOMAIN_FANOUT))
+ROUTE_CLASSIFIER_CALLS="$MAX_ROUTE_INVOCATIONS"
+ROUTE_SEED_CALLS="$MAX_DYNAMIC_DOMAINS"
+PERSONAL_EXTRACTION_CALLS=$((CORPUS_SIZE * EXTRACTION_ATTEMPTS * 3))
+ROUTED_EXTRACTION_CALLS=$((MAX_ROUTED_EXTRACTION_JOBS * EXTRACTION_ATTEMPTS * 3))
+ROUTED_SEED_CALLS=$((MAX_ROUTED_EXTRACTION_JOBS * EXTRACTION_ATTEMPTS))
+if [[ "$DOMAIN_ROUTING_ENABLED" == true ]]; then
+  MODEL_CALL_BUDGET=$((ROUTE_CLASSIFIER_CALLS + ROUTE_SEED_CALLS + PERSONAL_EXTRACTION_CALLS + ROUTED_EXTRACTION_CALLS + ROUTED_SEED_CALLS))
+else
+  MODEL_CALL_BUDGET="$PERSONAL_EXTRACTION_CALLS"
 fi
 
 if [[ -n "$POLL_TIMEOUT_OVERRIDE" ]]; then
@@ -65,24 +92,21 @@ if [[ -n "$POLL_TIMEOUT_OVERRIDE" ]]; then
   POLL_TIMEOUT="$POLL_TIMEOUT_OVERRIDE"
   POLL_TIMEOUT_SOURCE="explicit BAKEOFF_POLL_TIMEOUT"
 else
-  # A corpus episode always gets one three-stage extraction.  In the default
-  # topology it also gets one domain-classification call, one possible seed
-  # generation call, and up to the source-derived domain fanout of three-stage
-  # extractions.  Jobs retry up to three times.
+  # Jobs are bounded by the registered retry policies.  The router invariant
+  # makes one route invocation emit at most one extraction job per unique
+  # known domain and prevents recursive dynamic seed parents.  Count every
+  # routed job as potentially dynamic for a conservative seed-call bound.
   # Use awk for ceil(): shell arithmetic would silently truncate fractional
   # per-call timeouts and make the bound too small.
   if [[ "$DOMAIN_ROUTING_ENABLED" == true ]]; then
-    MODEL_CALLS_PER_EPISODE=$((1 + SEED_CALLS_PER_EPISODE + 3 + 3 * MAX_DOMAIN_FANOUT))
-    POLL_TIMEOUT_SOURCE="derived: per_call_timeout_s x (1 route + 1 possible seed + 3 personal stages + 3 stages x source-derived max domain fanout) x 3 attempts x corpus_size / worker_concurrency + 60s, rounded up"
+    POLL_TIMEOUT_SOURCE="derived from registered route/extract retry policies, source-derived domain fanout, one classifier/proposal per route invocation, bounded non-recursive seed calls, three-stage extraction, corpus size, and worker concurrency; rounded up + 60s"
   else
-    MODEL_CALLS_PER_EPISODE=3
-    POLL_TIMEOUT_SOURCE="derived: per_call_timeout_s x 3 personal stages x 3 attempts x corpus_size / worker_concurrency + 60s, rounded up (domain routing disabled)"
+    POLL_TIMEOUT_SOURCE="derived from registered extract retry policy, three-stage personal extraction, corpus size, and worker concurrency; rounded up + 60s (domain routing disabled)"
   fi
   POLL_TIMEOUT="$(awk -v timeout="$PER_CALL_TIMEOUT" \
-    -v calls="$MODEL_CALLS_PER_EPISODE" \
-    -v corpus="$CORPUS_SIZE" \
+    -v calls="$MODEL_CALL_BUDGET" \
     -v concurrency="$WORKER_CONCURRENCY" \
-    'BEGIN { seconds = timeout * calls * 3 * corpus / concurrency + 60; whole = int(seconds); if (seconds > whole) whole++; print whole }')"
+    'BEGIN { seconds = timeout * calls / concurrency + 60; whole = int(seconds); if (seconds > whole) whole++; print whole }')"
 fi
 
 ADMIN_TOKEN_SET="no"
@@ -107,7 +131,15 @@ print_configuration() {
     "domain_routing_enabled=$DOMAIN_ROUTING_ENABLED" \
     "initial_domain_count=$INITIAL_DOMAIN_COUNT" \
     "max_domain_fanout=$MAX_DOMAIN_FANOUT" \
-    "seed_calls_per_episode=$SEED_CALLS_PER_EPISODE" \
+    "max_dynamic_domains=$MAX_DYNAMIC_DOMAINS" \
+    "route_attempts=$ROUTE_ATTEMPTS" \
+    "extraction_attempts=$EXTRACTION_ATTEMPTS" \
+    "route_classifier_calls_max=$ROUTE_CLASSIFIER_CALLS" \
+    "route_seed_calls_max=$ROUTE_SEED_CALLS" \
+    "personal_extraction_calls_max=$PERSONAL_EXTRACTION_CALLS" \
+    "routed_extraction_calls_max=$ROUTED_EXTRACTION_CALLS" \
+    "routed_seed_calls_max=$ROUTED_SEED_CALLS" \
+    "model_call_budget=$MODEL_CALL_BUDGET" \
     "per_call_timeout_s=$PER_CALL_TIMEOUT" \
     "corpus_size=$CORPUS_SIZE" \
     "poll_timeout_s=$POLL_TIMEOUT" \
