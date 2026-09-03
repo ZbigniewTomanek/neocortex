@@ -27,6 +27,10 @@ from neocortex.schema_manager import SchemaManager
 _SLUG_PATTERN = re.compile(r"[^a-z0-9_]+")
 _REPEATED_UNDERSCORES = re.compile(r"_+")
 _STATIC_DOMAIN_SLUGS = frozenset(domain.slug for domain in SEED_DOMAINS)
+# The four declared seed domains plus one slot for the proposal produced by a
+# route invocation.  This is an operational fan-out policy, not a model-output
+# guarantee: untrusted matches are deterministically reduced to this many jobs.
+MAX_UNIQUE_ROUTED_DOMAINS = len(SEED_DOMAINS) + 1
 
 
 class DomainRouter:
@@ -119,19 +123,19 @@ class DomainRouter:
         # can be enqueued.  This establishes one routed extraction per domain
         # per route invocation, regardless of repeated model output.
         known_slugs = {domain.slug for domain in domains}
-        seen_slugs: set[str] = set()
-        matches: list[DomainClassification] = []
+        best_matches: dict[str, DomainClassification] = {}
         for match in classification.matched_domains:
-            if (
-                match.domain_slug not in known_slugs
-                or match.domain_slug in seen_slugs
-                or match.confidence < self._classification_threshold
-            ):
+            if match.domain_slug not in known_slugs or match.confidence < self._classification_threshold:
                 continue
-            seen_slugs.add(match.domain_slug)
-            matches.append(match)
+            previous = best_matches.get(match.domain_slug)
+            if previous is None or match.confidence > previous.confidence:
+                best_matches[match.domain_slug] = match
+        # Deterministic confidence-first selection makes the operational cap
+        # reproducible when a model returns more unique domains than allowed.
+        matches = sorted(best_matches.values(), key=lambda match: (-match.confidence, match.domain_slug))
 
         # Handle proposed new domain
+        proposed_match: DomainClassification | None = None
         if classification.proposed_domain is not None and self._schema_mgr is not None:
             new_domain = await self._provision_domain(classification.proposed_domain, agent_id)
             if new_domain is not None:
@@ -141,13 +145,19 @@ class DomainRouter:
                         await self._seed_generator.resolve_seed(new_domain.slug)
                     except Exception:
                         logger.opt(exception=True).warning("seed_cache_warm_failed", slug=new_domain.slug)
-                matches.append(
-                    DomainClassification(
-                        domain_slug=new_domain.slug,
-                        confidence=0.6,
-                        reasoning=f"Auto-provisioned domain: {classification.proposed_domain.reasoning}",
-                    )
+                proposed_match = DomainClassification(
+                    domain_slug=new_domain.slug,
+                    confidence=0.6,
+                    reasoning=f"Auto-provisioned domain: {classification.proposed_domain.reasoning}",
                 )
+
+        # Reserve one slot for a successfully provisioned proposal.  Without
+        # this explicit reservation, a low-confidence proposal could be
+        # silently displaced by known matches and the cap would be ambiguous.
+        if proposed_match is not None:
+            matches = [*matches[: MAX_UNIQUE_ROUTED_DOMAINS - 1], proposed_match]
+        else:
+            matches = matches[:MAX_UNIQUE_ROUTED_DOMAINS]
 
         results: list[RoutingResult] = []
         for match in matches:

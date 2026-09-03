@@ -299,7 +299,6 @@ def test_bakeoff_dry_run_reports_bounds_without_secret() -> None:
             "NEOCORTEX_LOCAL_MODEL_TIMEOUT_S": "37",
             "NEOCORTEX_WORKER_CONCURRENCY": "2",
             "NEOCORTEX_DOMAIN_ROUTING_ENABLED": "true",
-            "NEOCORTEX_BAKEOFF_MAX_DOMAIN_FANOUT": "5",
         }
     )
     completed = subprocess.run(
@@ -315,18 +314,30 @@ def test_bakeoff_dry_run_reports_bounds_without_secret() -> None:
     assert "endpoint=http://127.0.0.1:24000/v1" in output
     assert "per_call_timeout_s=37" in output
     assert "corpus_size=28" in output
-    # Documented routed topology: one classifier call, three personal stages,
-    # and up to five domain routes with three stages each. Every model call
-    # can retry three times, and the harness adds 60 seconds of startup slack.
+    # Documented routed topology: the router exposes a deterministic maximum
+    # of five unique domains per invocation (four known plus one proposal),
+    # and the harness reports an operational stage-invocation acceptance
+    # budget. It does not claim a theoretical per-request upper bound.
     per_call_timeout_s = 37
     corpus_size = 28
     worker_concurrency = 2
-    max_domain_fanout = 5
-    model_calls_per_episode = 1 + 3 + 3 * max_domain_fanout
-    expected_poll_timeout_s = math.ceil(
-        per_call_timeout_s * model_calls_per_episode * 3 * corpus_size / worker_concurrency + 60
+    route_attempts = 3
+    extraction_attempts = 3
+    max_unique_routed_domains = 5
+    max_route_invocations = corpus_size * route_attempts
+    max_routed_jobs = max_route_invocations * max_unique_routed_domains
+    stage_invocations = (
+        max_route_invocations
+        + max_route_invocations
+        + corpus_size * extraction_attempts * 3
+        + max_routed_jobs * extraction_attempts * 3
+        + max_routed_jobs * extraction_attempts
     )
+    expected_poll_timeout_s = math.ceil(per_call_timeout_s * stage_invocations / worker_concurrency + 60)
     assert f"poll_timeout_s={expected_poll_timeout_s}" in output
+    assert "max_unique_routed_domains=5" in output
+    assert "operational_acceptance_stage_invocations=5460" in output
+    assert "PydanticAI theoretical retries" in output
     assert "metrics_path=docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next.json" in output
     assert "measurement-secret-must-not-appear" not in output
     # The printed command contains an environment reference, never its value.

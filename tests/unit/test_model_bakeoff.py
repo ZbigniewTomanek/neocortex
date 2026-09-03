@@ -42,22 +42,23 @@ def test_dry_run_accounts_for_routing_topology_seed_call_and_ceils_fractional_ti
     )
 
     assert completed.returncode == 0, completed.stderr
-    # The application declares four seed domains.  With 28 episodes, each
-    # route can add one proposal, so a later route can fan out to 32 domains.
-    # route/extract retry policies are three attempts.  The invariant gives
-    # 84 route invocations, 84 possible proposals, 88 max domains, and 7,392
-    # possible routed extraction jobs.  The resulting call budget is 89,124.
-    # ceil(0.5 * 89124 / 2 + 60) = 22341.
-    assert "poll_timeout_s=22341" in completed.stdout
+    # The router's source-derived policy allows four known matches plus one
+    # proposed domain per route invocation. With three queue attempts this
+    # gives 84 route invocations and 420 routed jobs. The acceptance budget is
+    # 84 classifier + 84 seed + 252 personal-stage + 3,780 routed-stage +
+    # 1,260 routed-seed invocations = 5,460. ceil(0.5 * 5460 / 2 + 60) = 1425.
+    assert "poll_timeout_s=1425" in completed.stdout
     assert "domain_routing_enabled=true" in completed.stdout
     assert "initial_domain_count=4" in completed.stdout
-    assert "max_domain_fanout=88" in completed.stdout
-    assert "max_dynamic_domains=84" in completed.stdout
+    assert "max_unique_routed_domains=5" in completed.stdout
     assert "route_attempts=3" in completed.stdout
     assert "extraction_attempts=3" in completed.stdout
-    assert "route_seed_calls_max=84" in completed.stdout
-    assert "routed_seed_calls_max=22176" in completed.stdout
-    assert "model_call_budget=89124" in completed.stdout
+    assert "max_route_invocations=84" in completed.stdout
+    assert "max_routed_extraction_jobs=420" in completed.stdout
+    assert "route_seed_stage_invocations_max=84" in completed.stdout
+    assert "routed_seed_stage_invocations_max=1260" in completed.stdout
+    assert "operational_acceptance_stage_invocations=5460" in completed.stdout
+    assert "PydanticAI theoretical retries" in completed.stdout
 
 
 def test_dry_run_can_explicitly_disable_domain_routing() -> None:
@@ -72,9 +73,9 @@ def test_dry_run_can_explicitly_disable_domain_routing() -> None:
     assert "poll_timeout_s=199" in completed.stdout
     assert "domain_routing_enabled=false" in completed.stdout
     assert "initial_domain_count=0" in completed.stdout
-    assert "max_domain_fanout=0" in completed.stdout
-    assert "route_seed_calls_max=0" in completed.stdout
-    assert "routed_seed_calls_max=0" in completed.stdout
+    assert "max_unique_routed_domains=0" in completed.stdout
+    assert "route_seed_stage_invocations_max=0" in completed.stdout
+    assert "routed_seed_stage_invocations_max=0" in completed.stdout
     assert "domain routing disabled" in completed.stdout
 
 
@@ -110,6 +111,8 @@ def fake_bakeoff_project(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
 set -euo pipefail
 if [[ "$*" == *corpus_loader.py* && "$*" == *--dry-run* ]]; then
   seq 1 28
+elif [[ "$*" == *MAX_UNIQUE_ROUTED_DOMAINS* ]]; then
+  printf '5\\n'
 elif [[ "$*" == *SEED_DOMAINS* ]]; then
   printf '4\\n'
 elif [[ "$*" == *retry_strategy* && "$*" == *extract_episode* ]]; then

@@ -46,45 +46,49 @@ esac
 [[ "$CORPUS_SIZE" == "28" ]] || die "fixed corpus parser returned $CORPUS_SIZE episodes, expected 28"
 
 INITIAL_DOMAIN_COUNT=0
-MAX_DOMAIN_FANOUT=0
-MAX_DYNAMIC_DOMAINS=0
+MAX_UNIQUE_ROUTED_DOMAINS=0
 ROUTE_ATTEMPTS=0
 EXTRACTION_ATTEMPTS="$(uv run python -c 'from neocortex.jobs.tasks import extract_episode; print(extract_episode.retry_strategy.max_attempts)')"
 is_positive_int "$EXTRACTION_ATTEMPTS" || die "extract_episode retry count is not a positive integer"
 MAX_ROUTE_INVOCATIONS=0
 MAX_ROUTED_EXTRACTION_JOBS=0
-ROUTE_CLASSIFIER_CALLS=0
-ROUTE_SEED_CALLS=0
-PERSONAL_EXTRACTION_CALLS=0
-ROUTED_EXTRACTION_CALLS=0
-ROUTED_SEED_CALLS=0
-MODEL_CALL_BUDGET=0
+ROUTE_CLASSIFIER_STAGE_INVOCATIONS=0
+ROUTE_SEED_STAGE_INVOCATIONS=0
+PERSONAL_EXTRACTION_STAGE_INVOCATIONS=0
+ROUTED_EXTRACTION_STAGE_INVOCATIONS=0
+ROUTED_SEED_STAGE_INVOCATIONS=0
+OPERATIONAL_ACCEPTANCE_STAGE_INVOCATIONS=0
 if [[ "$DOMAIN_ROUTING_ENABLED" == true ]]; then
   # The fresh run seeds the domains declared by the running application.  A
-  # route can add at most one proposed domain per corpus episode, so this is a
-  # source-derived upper bound for the domain list seen by any later route.
+  # route invocation can add at most one proposed domain, and the router's
+  # explicit cap bounds unique routed domains for that invocation.
   INITIAL_DOMAIN_COUNT="$(uv run python -c 'from neocortex.domains.models import SEED_DOMAINS; print(len(SEED_DOMAINS))')"
   is_positive_int "$INITIAL_DOMAIN_COUNT" || die "seed domain count is not a positive integer"
+  MAX_UNIQUE_ROUTED_DOMAINS="$(uv run python -c 'from neocortex.domains.router import MAX_UNIQUE_ROUTED_DOMAINS; print(MAX_UNIQUE_ROUTED_DOMAINS)')"
+  is_positive_int "$MAX_UNIQUE_ROUTED_DOMAINS" || die "max unique routed domain count is not a positive integer"
+  (( MAX_UNIQUE_ROUTED_DOMAINS >= INITIAL_DOMAIN_COUNT )) \
+    || die "max unique routed domain count is below the seeded-domain count"
   ROUTE_ATTEMPTS="$(uv run python -c 'from neocortex.jobs.tasks import route_episode; print(route_episode.retry_strategy.max_attempts)')"
   is_positive_int "$ROUTE_ATTEMPTS" || die "route_episode retry count is not a positive integer"
-  # A route invocation can provision at most one proposed domain.  A retry is
-  # another invocation, so this derives the complete dynamic-domain ceiling
-  # from the registered task retry policy and fixed corpus size.
-  MAX_DYNAMIC_DOMAINS=$((CORPUS_SIZE * ROUTE_ATTEMPTS))
-  MAX_DOMAIN_FANOUT=$((INITIAL_DOMAIN_COUNT + MAX_DYNAMIC_DOMAINS))
 fi
 
 MAX_ROUTE_INVOCATIONS=$((CORPUS_SIZE * ROUTE_ATTEMPTS))
-MAX_ROUTED_EXTRACTION_JOBS=$((MAX_ROUTE_INVOCATIONS * MAX_DOMAIN_FANOUT))
-ROUTE_CLASSIFIER_CALLS="$MAX_ROUTE_INVOCATIONS"
-ROUTE_SEED_CALLS="$MAX_DYNAMIC_DOMAINS"
-PERSONAL_EXTRACTION_CALLS=$((CORPUS_SIZE * EXTRACTION_ATTEMPTS * 3))
-ROUTED_EXTRACTION_CALLS=$((MAX_ROUTED_EXTRACTION_JOBS * EXTRACTION_ATTEMPTS * 3))
-ROUTED_SEED_CALLS=$((MAX_ROUTED_EXTRACTION_JOBS * EXTRACTION_ATTEMPTS))
+MAX_ROUTED_EXTRACTION_JOBS=$((MAX_ROUTE_INVOCATIONS * MAX_UNIQUE_ROUTED_DOMAINS))
+# The following counters are stage invocations used only for the operational
+# acceptance deadline.  A route invocation can classify once and warm one
+# proposed-domain seed.  Each routed extraction retry can also resolve one
+# domain seed; counting that on every retry is conservative because cache hits
+# may avoid the call.  Internal PydanticAI retries and non-model work remain
+# outside this operational budget.
+ROUTE_CLASSIFIER_STAGE_INVOCATIONS="$MAX_ROUTE_INVOCATIONS"
+ROUTE_SEED_STAGE_INVOCATIONS="$MAX_ROUTE_INVOCATIONS"
+PERSONAL_EXTRACTION_STAGE_INVOCATIONS=$((CORPUS_SIZE * EXTRACTION_ATTEMPTS * 3))
+ROUTED_EXTRACTION_STAGE_INVOCATIONS=$((MAX_ROUTED_EXTRACTION_JOBS * EXTRACTION_ATTEMPTS * 3))
+ROUTED_SEED_STAGE_INVOCATIONS=$((MAX_ROUTED_EXTRACTION_JOBS * EXTRACTION_ATTEMPTS))
 if [[ "$DOMAIN_ROUTING_ENABLED" == true ]]; then
-  MODEL_CALL_BUDGET=$((ROUTE_CLASSIFIER_CALLS + ROUTE_SEED_CALLS + PERSONAL_EXTRACTION_CALLS + ROUTED_EXTRACTION_CALLS + ROUTED_SEED_CALLS))
+  OPERATIONAL_ACCEPTANCE_STAGE_INVOCATIONS=$((ROUTE_CLASSIFIER_STAGE_INVOCATIONS + ROUTE_SEED_STAGE_INVOCATIONS + PERSONAL_EXTRACTION_STAGE_INVOCATIONS + ROUTED_EXTRACTION_STAGE_INVOCATIONS + ROUTED_SEED_STAGE_INVOCATIONS))
 else
-  MODEL_CALL_BUDGET="$PERSONAL_EXTRACTION_CALLS"
+  OPERATIONAL_ACCEPTANCE_STAGE_INVOCATIONS="$PERSONAL_EXTRACTION_STAGE_INVOCATIONS"
 fi
 
 if [[ -n "$POLL_TIMEOUT_OVERRIDE" ]]; then
@@ -92,19 +96,19 @@ if [[ -n "$POLL_TIMEOUT_OVERRIDE" ]]; then
   POLL_TIMEOUT="$POLL_TIMEOUT_OVERRIDE"
   POLL_TIMEOUT_SOURCE="explicit BAKEOFF_POLL_TIMEOUT"
 else
-  # Jobs are bounded by the registered retry policies.  The router invariant
-  # makes one route invocation emit at most one extraction job per unique
-  # known domain and prevents recursive dynamic seed parents.  Count every
-  # routed job as potentially dynamic for a conservative seed-call bound.
-  # Use awk for ceil(): shell arithmetic would silently truncate fractional
-  # per-call timeouts and make the bound too small.
+  # This is an operational acceptance budget for stage invocations.  The
+  # explicit router fan-out policy and registered job retry policies make it
+  # useful for this bake-off, but it is not a theoretical per-request upper
+  # bound: PydanticAI's internal retries and non-model work are excluded.
+  # Exceeding this deadline is a NOT_MEASURED/stability failure.  Use awk for
+  # ceil(): shell arithmetic would silently truncate fractional timeouts.
   if [[ "$DOMAIN_ROUTING_ENABLED" == true ]]; then
-    POLL_TIMEOUT_SOURCE="derived from registered route/extract retry policies, source-derived domain fanout, one classifier/proposal per route invocation, bounded non-recursive seed calls, three-stage extraction, corpus size, and worker concurrency; rounded up + 60s"
+    POLL_TIMEOUT_SOURCE="operational acceptance budget derived from registered route/extract retries, explicit max unique routed domains, route classifier/seed stages, three-stage extraction, corpus size, and worker concurrency; excludes PydanticAI theoretical retries and non-model work; overrun is NOT_MEASURED/stability failure; rounded up + 60s"
   else
-    POLL_TIMEOUT_SOURCE="derived from registered extract retry policy, three-stage personal extraction, corpus size, and worker concurrency; rounded up + 60s (domain routing disabled)"
+    POLL_TIMEOUT_SOURCE="operational acceptance budget derived from registered extract retries, three-stage personal extraction, corpus size, and worker concurrency; excludes PydanticAI theoretical retries and non-model work; overrun is NOT_MEASURED/stability failure; rounded up + 60s (domain routing disabled)"
   fi
   POLL_TIMEOUT="$(awk -v timeout="$PER_CALL_TIMEOUT" \
-    -v calls="$MODEL_CALL_BUDGET" \
+    -v calls="$OPERATIONAL_ACCEPTANCE_STAGE_INVOCATIONS" \
     -v concurrency="$WORKER_CONCURRENCY" \
     'BEGIN { seconds = timeout * calls / concurrency + 60; whole = int(seconds); if (seconds > whole) whole++; print whole }')"
 fi
@@ -130,16 +134,17 @@ print_configuration() {
     "worker_concurrency=$WORKER_CONCURRENCY" \
     "domain_routing_enabled=$DOMAIN_ROUTING_ENABLED" \
     "initial_domain_count=$INITIAL_DOMAIN_COUNT" \
-    "max_domain_fanout=$MAX_DOMAIN_FANOUT" \
-    "max_dynamic_domains=$MAX_DYNAMIC_DOMAINS" \
+    "max_unique_routed_domains=$MAX_UNIQUE_ROUTED_DOMAINS" \
     "route_attempts=$ROUTE_ATTEMPTS" \
     "extraction_attempts=$EXTRACTION_ATTEMPTS" \
-    "route_classifier_calls_max=$ROUTE_CLASSIFIER_CALLS" \
-    "route_seed_calls_max=$ROUTE_SEED_CALLS" \
-    "personal_extraction_calls_max=$PERSONAL_EXTRACTION_CALLS" \
-    "routed_extraction_calls_max=$ROUTED_EXTRACTION_CALLS" \
-    "routed_seed_calls_max=$ROUTED_SEED_CALLS" \
-    "model_call_budget=$MODEL_CALL_BUDGET" \
+    "max_route_invocations=$MAX_ROUTE_INVOCATIONS" \
+    "max_routed_extraction_jobs=$MAX_ROUTED_EXTRACTION_JOBS" \
+    "route_classifier_stage_invocations_max=$ROUTE_CLASSIFIER_STAGE_INVOCATIONS" \
+    "route_seed_stage_invocations_max=$ROUTE_SEED_STAGE_INVOCATIONS" \
+    "personal_extraction_stage_invocations_max=$PERSONAL_EXTRACTION_STAGE_INVOCATIONS" \
+    "routed_extraction_stage_invocations_max=$ROUTED_EXTRACTION_STAGE_INVOCATIONS" \
+    "routed_seed_stage_invocations_max=$ROUTED_SEED_STAGE_INVOCATIONS" \
+    "operational_acceptance_stage_invocations=$OPERATIONAL_ACCEPTANCE_STAGE_INVOCATIONS" \
     "per_call_timeout_s=$PER_CALL_TIMEOUT" \
     "corpus_size=$CORPUS_SIZE" \
     "poll_timeout_s=$POLL_TIMEOUT" \
