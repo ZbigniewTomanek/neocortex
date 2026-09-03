@@ -242,7 +242,7 @@ async def consolidate_apply(
     logger.bind(action_log=True).info(
         "consolidation_applied",
         admin_id=admin_id,
-        schema_name=schema_name,
+        schema_name_present=schema_name is not None,
         merges=len(merges),
         archives=len(archives),
     )

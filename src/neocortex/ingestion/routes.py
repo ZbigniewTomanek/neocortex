@@ -235,7 +235,7 @@ async def ingest_audio(
     logger.bind(action_log=True).info(
         "ingest_audio",
         agent_id=agent_id,
-        filename=file.filename,
+        filename_present=bool(file.filename),
         content_type=content_type,
         status=result.status,
     )
@@ -293,7 +293,7 @@ async def ingest_video(
     logger.bind(action_log=True).info(
         "ingest_video",
         agent_id=agent_id,
-        filename=file.filename,
+        filename_present=bool(file.filename),
         content_type=content_type,
         status=result.status,
     )

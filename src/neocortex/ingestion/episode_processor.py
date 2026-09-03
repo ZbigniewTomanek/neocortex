@@ -72,7 +72,7 @@ class EpisodeProcessor:
             job_id=job_id,
             episode_id=episode_id,
             agent_id=agent_id,
-            target_schema=target_schema,
+            target_schema_present=target_schema is not None,
             source="ingestion",
         )
         return job_id
@@ -451,9 +451,9 @@ class EpisodeProcessor:
                 "media_ingested",
                 media_type=media_type,
                 agent_id=agent_id,
-                filename=filename,
+                filename_present=bool(filename),
                 episode_id=episode_id,
-                media_ref=media_ref.relative_path if media_ref else None,
+                media_ref_present=media_ref is not None,
             )
 
             label = media_type.capitalize()

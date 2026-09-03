@@ -71,7 +71,7 @@ class MediaDescriptionService:
             "media_description_generated",
             media_type="audio",
             model=self._model,
-            file_path=file_path,
+            file_path_present=bool(file_path),
             token_count=result.token_count,
             description_length=len(result.text),
         )
@@ -90,7 +90,7 @@ class MediaDescriptionService:
             "media_description_generated",
             media_type="video",
             model=self._model,
-            file_path=file_path,
+            file_path_present=bool(file_path),
             token_count=result.token_count,
             description_length=len(result.text),
         )

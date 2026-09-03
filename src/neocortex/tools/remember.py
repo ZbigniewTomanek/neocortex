@@ -75,7 +75,7 @@ async def remember(
             job_id=extraction_job_id,
             episode_id=episode_id,
             agent_id=agent_id,
-            target_graph=target_graph,
+            target_graph_present=target_graph is not None,
         )
 
     # Enqueue domain routing if enabled (routes to shared domain graphs)

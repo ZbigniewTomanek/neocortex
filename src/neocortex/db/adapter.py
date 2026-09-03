@@ -535,8 +535,15 @@ class GraphServiceAdapter:
     ) -> NodeType | None:
         try:
             name = normalize_node_type(name)
-        except ValueError as e:
-            logger.bind(action_log=True).warning("invalid_node_type_rejected", raw_name=name, error=str(e))
+        except ValueError:
+            # Type names are model-derived input.  Keep the durable audit event
+            # useful for counters without copying the rejected value or the
+            # exception text (which can include that value).
+            logger.bind(action_log=True).warning(
+                "invalid_node_type_rejected",
+                value_present=bool(name),
+                reason_code="normalization_rejected",
+            )
             return None
         if target_schema is None and (self._pool is None or self._router is None):
             existing = await self._graph.get_node_type_by_name(name)
@@ -566,8 +573,12 @@ class GraphServiceAdapter:
     ) -> EdgeType | None:
         try:
             name = normalize_edge_type(name)
-        except ValueError as e:
-            logger.bind(action_log=True).warning("invalid_edge_type_rejected", raw_name=name, error=str(e))
+        except ValueError:
+            logger.bind(action_log=True).warning(
+                "invalid_edge_type_rejected",
+                value_present=bool(name),
+                reason_code="normalization_rejected",
+            )
             return None
         if target_schema is None and (self._pool is None or self._router is None):
             existing = await self._graph.get_edge_type_by_name(name)
@@ -600,8 +611,8 @@ class GraphServiceAdapter:
             if similar:
                 logger.bind(action_log=True).info(
                     "edge_type_similar_reuse",
-                    requested=name,
-                    reused=similar["name"],
+                    requested_value_present=bool(name),
+                    reused_type_id=similar["id"],
                     similarity=await conn.fetchval("SELECT similarity($1, $2)", name, similar["name"]),
                 )
                 return EdgeType(**dict(similar))
@@ -670,18 +681,18 @@ class GraphServiceAdapter:
                     match = existing_node
                     logger.bind(action_log=True).info(
                         "node_type_drift_caught",
-                        name=name,
-                        existing_type=existing_type,
-                        requested_type=requested_type,
+                        node_id=existing_node.id,
+                        existing_type_id=existing_node.type_id,
+                        requested_type_id=type_id,
                         action="merged",
                         agent_id=agent_id,
                     )
                 else:
                     logger.bind(action_log=True).info(
                         "node_homonym_detected",
-                        name=name,
-                        existing_type=existing_type,
-                        requested_type=requested_type,
+                        node_id=existing_node.id,
+                        existing_type_id=existing_node.type_id,
+                        requested_type_id=type_id,
                         action="created_separate",
                         agent_id=agent_id,
                     )
@@ -740,8 +751,8 @@ class GraphServiceAdapter:
                     rows = list(alias_rows)
                     logger.bind(action_log=True).info(
                         "node_alias_resolved",
-                        alias=name,
-                        candidates=[r["name"] for r in rows],
+                        alias_value_present=bool(name),
+                        candidate_node_ids=[r["id"] for r in rows],
                         agent_id=agent_id,
                     )
                 else:
@@ -760,8 +771,8 @@ class GraphServiceAdapter:
                         rows = [fuzzy_rows[0]]
                         logger.bind(action_log=True).info(
                             "node_fuzzy_matched",
-                            input=name,
-                            matched=fuzzy_rows[0]["name"],
+                            input_value_present=bool(name),
+                            matched_node_id=fuzzy_rows[0]["id"],
                             similarity=float(fuzzy_rows[0]["sim"]),
                             agent_id=agent_id,
                         )
@@ -784,9 +795,9 @@ class GraphServiceAdapter:
                         row = rows[0]
                         logger.bind(action_log=True).info(
                             "node_type_drift_caught",
-                            name=name,
-                            existing_type=existing_type,
-                            requested_type=requested_type,
+                            node_id=rows[0]["id"],
+                            existing_type_id=existing_type_id,
+                            requested_type_id=type_id,
                             action="merged",
                             agent_id=agent_id,
                         )
@@ -794,9 +805,9 @@ class GraphServiceAdapter:
                         # Legitimate homonym — create separate node, log for monitoring
                         logger.bind(action_log=True).info(
                             "node_homonym_detected",
-                            name=name,
-                            existing_type=existing_type,
-                            requested_type=requested_type,
+                            node_id=rows[0]["id"],
+                            existing_type_id=existing_type_id,
+                            requested_type_id=type_id,
                             action="created_separate",
                             agent_id=agent_id,
                         )
@@ -835,10 +846,9 @@ class GraphServiceAdapter:
                     logger.bind(action_log=True).warning(
                         "upsert_node_update_missed",
                         node_id=row["id"],
-                        name=name,
                         agent_id=agent_id,
-                        target_schema=target_schema,
-                        msg="UPDATE matched 0 rows (concurrent delete?), falling back to INSERT",
+                        target_schema_present=target_schema is not None,
+                        reason_code="concurrent_update_missed",
                     )
                     # Fall through to INSERT below
                 else:

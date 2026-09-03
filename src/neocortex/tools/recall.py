@@ -291,10 +291,10 @@ async def recall(query: str, limit: int = 10, ctx: Context | None = None) -> Rec
     logger.bind(action_log=True).info(
         "recall_with_graph_traversal",
         agent_id=agent_id,
-        query=query,
+        query_present=bool(query),
         total_results=len(all_results),
         node_results_with_context=sum(1 for r in all_results if r.graph_context is not None),
-        session_ids_returned=list({r.session_id for r in final_results if r.session_id}),
+        results_with_session_id=sum(1 for r in final_results if r.session_id),
         neighbor_episodes_included=sum(1 for r in final_results if r.neighbor_of is not None),
         episode_role_bias_applied=episode_query_embedding is not None,
     )

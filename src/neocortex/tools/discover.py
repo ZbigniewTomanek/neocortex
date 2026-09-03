@@ -120,7 +120,7 @@ async def discover_ontology(graph_name: str, ctx: Context | None = None) -> Disc
         "tool_call",
         tool="discover_ontology",
         agent_id=agent_id,
-        graph_name=graph_name,
+        graph_name_present=bool(graph_name),
         node_types=len(node_types),
         edge_types=len(edge_types),
     )
@@ -163,9 +163,9 @@ async def discover_details(
         "tool_call",
         tool="discover_details",
         agent_id=agent_id,
-        graph_name=graph_name,
-        type_name=type_name,
-        kind=kind,
+        graph_name_present=bool(graph_name),
+        type_name_present=bool(type_name),
+        kind_is_node=kind == "node",
     )
     return DiscoverDetailsResult(graph_name=graph_name, type_detail=detail)
 
@@ -226,8 +226,8 @@ async def browse_nodes(
         "tool_call",
         tool="browse_nodes",
         agent_id=agent_id,
-        graph_name=graph_name,
-        type_name=type_name,
+        graph_name_present=bool(graph_name),
+        type_name_present=type_name is not None,
         count=len(summaries),
     )
     return BrowseNodesResult(
@@ -263,8 +263,8 @@ async def inspect_node(
             "tool_call",
             tool="inspect_node",
             agent_id=agent_id,
-            graph_name=graph_name,
-            node_name=node_name,
+            graph_name_present=bool(graph_name),
+            node_name_present=bool(node_name),
             found=False,
         )
         return InspectNodeResult(
@@ -336,8 +336,8 @@ async def inspect_node(
         "tool_call",
         tool="inspect_node",
         agent_id=agent_id,
-        graph_name=graph_name,
-        node_name=node_name,
+        graph_name_present=bool(graph_name),
+        node_name_present=bool(node_name),
         edges=len(neighbor_edges),
         neighbors=len(neighbor_summaries),
     )

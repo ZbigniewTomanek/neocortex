@@ -481,8 +481,8 @@ class InMemoryRepository:
                 name_matches = alias_nodes
                 logger.bind(action_log=True).info(
                     "node_alias_resolved",
-                    alias=name,
-                    candidates=[n.name for n in alias_nodes],
+                    alias_value_present=bool(name),
+                    candidate_node_ids=[n.id for n in alias_nodes],
                     agent_id=agent_id,
                 )
             else:
@@ -492,8 +492,8 @@ class InMemoryRepository:
                     name_matches = [fuzzy_matches[0]]
                     logger.bind(action_log=True).info(
                         "node_fuzzy_matched",
-                        input=name,
-                        matched=fuzzy_matches[0].name,
+                        input_value_present=bool(name),
+                        matched_node_id=fuzzy_matches[0].id,
                         agent_id=agent_id,
                     )
 
@@ -514,18 +514,18 @@ class InMemoryRepository:
                 match = existing_node
                 logger.bind(action_log=True).info(
                     "node_type_drift_caught",
-                    name=name,
-                    existing_type=existing_type,
-                    requested_type=requested_type,
+                    node_id=existing_node.id,
+                    existing_type_id=existing_node.type_id,
+                    requested_type_id=type_id,
                     action="merged",
                     agent_id=agent_id,
                 )
             else:
                 logger.bind(action_log=True).info(
                     "node_homonym_detected",
-                    name=name,
-                    existing_type=existing_type,
-                    requested_type=requested_type,
+                    node_id=existing_node.id,
+                    existing_type_id=existing_node.type_id,
+                    requested_type_id=type_id,
                     action="created_separate",
                     agent_id=agent_id,
                 )
