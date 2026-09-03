@@ -1,11 +1,29 @@
 """Unit coverage for per-agent local OpenAI-compatible model routing."""
 
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
+from typing import Any, cast
+
 import pytest
+from openai.types import chat
+from pydantic_ai.messages import (
+    ModelRequest,
+    ModelResponse,
+    SystemPromptPart,
+    ToolCallPart,
+    ToolReturnPart,
+    UserPromptPart,
+)
+from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.output import OutputObjectDefinition
+from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
+from pydantic_ai.tools import ToolDefinition
 
 from neocortex.mcp_settings import MCPSettings
-from neocortex.model_factory import LocalEndpoint, build_model, build_model_settings
+from neocortex.model_factory import LocalEndpoint, LocalOpenAIChatModel, build_model, build_model_settings
 
 
 @pytest.fixture
@@ -23,10 +41,120 @@ def endpoint() -> LocalEndpoint:
 
 def test_local_model_uses_configured_endpoint(endpoint: LocalEndpoint) -> None:
     model = build_model("local:qwen3.8-flash-next", endpoint)
-    assert isinstance(model, OpenAIChatModel)
+    assert isinstance(model, LocalOpenAIChatModel)
     assert model.model_name == "qwen3.8-flash-next"
     assert str(model._provider.base_url).rstrip("/") == "http://local.example/v1"
     assert model._provider.client.api_key == ""
+
+
+@pytest.mark.asyncio
+async def test_local_model_coalesces_static_and_dynamic_instructions(endpoint: LocalEndpoint) -> None:
+    model = build_model("local:qwen3.8-flash-next", endpoint)
+    assert isinstance(model, OpenAIChatModel)
+    messages = [
+        ModelRequest(
+            parts=[SystemPromptPart("static one"), SystemPromptPart("static two"), UserPromptPart("source")],
+            instructions="dynamic context",
+        )
+    ]
+
+    mapped = await model._map_messages(messages, ModelRequestParameters())
+
+    assert [message["role"] for message in mapped] == ["system", "user"]
+    assert mapped[0] == {"role": "system", "content": "static one\n\nstatic two\n\ndynamic context"}
+    assert mapped[1] == {"role": "user", "content": "source"}
+
+
+@pytest.mark.asyncio
+async def test_local_model_preserves_tool_call_return_order_and_ids(endpoint: LocalEndpoint) -> None:
+    model = build_model("local:qwen3.8-flash-next", endpoint)
+    assert isinstance(model, OpenAIChatModel)
+    messages = [
+        ModelRequest(parts=[SystemPromptPart("instructions"), UserPromptPart("source")]),
+        ModelResponse(parts=[ToolCallPart("lookup", '{"query":"source"}', tool_call_id="call-1")]),
+        ModelRequest(parts=[ToolReturnPart("lookup", "result", tool_call_id="call-1")]),
+    ]
+
+    mapped = await model._map_messages(messages, ModelRequestParameters())
+
+    assert [message["role"] for message in mapped] == ["system", "user", "assistant", "tool"]
+    assistant = cast(chat.ChatCompletionAssistantMessageParam, mapped[2])
+    tool = cast(chat.ChatCompletionToolMessageParam, mapped[3])
+    assert next(iter(assistant["tool_calls"]))["id"] == "call-1"
+    assert tool["tool_call_id"] == "call-1"
+    assert tool["content"] == "result"
+
+
+class _EmptyStream:
+    async def __aenter__(self) -> _EmptyStream:
+        return self
+
+    async def __aexit__(self, *_args: object) -> None:
+        return None
+
+    def __aiter__(self) -> AsyncIterator[object]:
+        return self
+
+    async def __anext__(self) -> object:
+        raise StopAsyncIteration
+
+
+@pytest.mark.asyncio
+async def test_local_model_keeps_tools_and_structured_output_request_shape(
+    endpoint: LocalEndpoint, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = build_model("local:qwen3.8-flash-next", endpoint)
+    assert isinstance(model, OpenAIChatModel)
+    captured: dict[str, object] = {}
+
+    async def create(**kwargs: object) -> _EmptyStream:
+        captured.update(kwargs)
+        return _EmptyStream()
+
+    monkeypatch.setattr(model.client.chat.completions, "create", create)
+    hosted_model = OpenAIChatModel(
+        "qwen3.8-flash-next",
+        provider=OpenAIProvider(base_url=endpoint.base_url, api_key=""),
+    )
+    hosted_captured: dict[str, object] = {}
+
+    async def hosted_create(**kwargs: object) -> _EmptyStream:
+        hosted_captured.update(kwargs)
+        return _EmptyStream()
+
+    monkeypatch.setattr(hosted_model.client.chat.completions, "create", hosted_create)
+    params = ModelRequestParameters(
+        function_tools=[
+            ToolDefinition(
+                name="lookup",
+                description="Look up source material.",
+                parameters_json_schema={"type": "object", "properties": {"query": {"type": "string"}}},
+            )
+        ],
+        output_mode="native",
+        output_object=OutputObjectDefinition(
+            name="Answer",
+            json_schema={"type": "object", "properties": {"answer": {"type": "string"}}},
+        ),
+    )
+    messages = [
+        ModelRequest(parts=[SystemPromptPart("static"), UserPromptPart("source")], instructions="dynamic"),
+    ]
+
+    stream = await cast(Any, model)._completions_create(messages, True, {}, params)
+    await cast(Any, hosted_model)._completions_create(messages, True, {}, params)
+
+    assert isinstance(stream, _EmptyStream)
+    assert captured["stream"] is True
+    assert captured["messages"] != hosted_captured["messages"]
+    for key in ("stream", "tool_choice", "tools", "response_format"):
+        assert captured[key] == hosted_captured[key]
+    assert captured["messages"] == [
+        {"role": "system", "content": "static\n\ndynamic"},
+        {"role": "user", "content": "source"},
+    ]
+    hosted_messages = cast(list[chat.ChatCompletionMessageParam], hosted_captured["messages"])
+    assert [message["role"] for message in hosted_messages] == ["system", "system", "user"]
 
 
 def test_hosted_model_keeps_string_routing(endpoint: LocalEndpoint) -> None:

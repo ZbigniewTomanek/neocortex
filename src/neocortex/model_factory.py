@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from typing import cast
 
-from pydantic_ai.models import Model
+from openai.types import chat
+from pydantic_ai.messages import ModelMessage
+from pydantic_ai.models import Model, ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings, ThinkingLevel
@@ -42,6 +46,46 @@ def is_local_model(model_name: str) -> bool:
     return model_name.startswith(LOCAL_PREFIX)
 
 
+class LocalOpenAIChatModel(OpenAIChatModel):
+    """OpenAI chat model adapter for strict local OpenAI-compatible servers.
+
+    PydanticAI 1.72.0 maps each static or dynamic instruction to a separate
+    system message. Some local servers accept only one system message at the
+    start of a chat request. This override uses PydanticAI's private
+    ``_map_messages`` hook, so the pinned dependency must be rechecked before
+    upgrading: a signature or mapping-contract change can invalidate this
+    compatibility adapter.
+    """
+
+    async def _map_messages(
+        self, messages: Sequence[ModelMessage], model_request_parameters: ModelRequestParameters
+    ) -> list[chat.ChatCompletionMessageParam]:
+        """Coalesce mapped system messages while preserving all other messages."""
+        mapped = await super()._map_messages(messages, model_request_parameters)
+        system_content: list[str] = []
+        non_system: list[chat.ChatCompletionMessageParam] = []
+
+        for message in mapped:
+            if message.get("role") != "system":
+                non_system.append(message)
+                continue
+
+            content = cast(str | Iterable[chat.ChatCompletionContentPartTextParam], message["content"])
+            if isinstance(content, str):
+                system_content.append(content)
+            else:
+                system_content.extend(part["text"] for part in content)
+
+        if not system_content:
+            return non_system
+
+        system_message = chat.ChatCompletionSystemMessageParam(
+            role="system",
+            content="\n\n".join(system_content),
+        )
+        return [system_message, *non_system]
+
+
 def build_model(model_name: str, endpoint: LocalEndpoint | None) -> str | Model:
     """Build a model object for local names and preserve hosted string routing."""
     if not is_local_model(model_name):
@@ -51,7 +95,7 @@ def build_model(model_name: str, endpoint: LocalEndpoint | None) -> str | Model:
     api_key = os.environ.get(endpoint.api_key_env, "") if endpoint.api_key_env else ""
     if endpoint.api_key_env and not api_key:
         raise ValueError(f"{model_name!r} requires {endpoint.api_key_env} to be set for the local endpoint")
-    return OpenAIChatModel(
+    return LocalOpenAIChatModel(
         model_name.removeprefix(LOCAL_PREFIX),
         provider=OpenAIProvider(
             base_url=endpoint.base_url,

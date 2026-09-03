@@ -167,3 +167,9 @@ Append-only. Each entry is kept short; detailed measurements belong in `resource
 **Options**: A) make the 28-episode ingestion loader serve probe calls B) retain `load_corpus` for ingestion and expose `load_probe_corpus` for the fixed three-episode Plan 33 corpus.
 **Chosen**: B.
 **Rationale**: The two harnesses intentionally consume different fixed corpora and return different shapes. A compatibility function in the shared loader repairs the stale probe import without changing the ingestion/bake-off contract or corpus contents.
+
+### D28: Prefer the lowest effort that passes quality
+**Date**: 2026-09-03 - **Stage**: 3
+**Options**: A) select xhigh by default B) validate low first and raise effort only when measured quality improves.
+**Chosen**: B.
+**Rationale**: The user observed that Flash Next at xhigh can loop or overthink. Indexing time is acceptable, but unnecessary reasoning increases operational risk; later effort tuning must use measured quality benefit and must not choose xhigh by default.
