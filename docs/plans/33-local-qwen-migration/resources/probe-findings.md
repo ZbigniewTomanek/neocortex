@@ -1,61 +1,85 @@
-# Historical Stage 2 capability probe findings
+# Stage 2 Flash Next capability probe findings
 
-> These findings describe the 2026-08-19 remote `qwen3.8-27b` run. They are retained for context and
-> do not establish capability, quality, or stability for local `qwen3.8-flash-next`.
+These findings are from the active local run on 2026-09-03. They replace the retained
+historical remote-Qwen findings and are limited to the four reasoning-agent surfaces.
 
-The probe corpus contains E1 (factual), E2 (temporal correction), and E3 (adversarial
-type bait). Each effort file contains 60 records: five attempts for each episode and
-each of the four agents. The live sweep used concurrency 6 and a 30-second per-call
-timeout for `low`, `high`, and `xhigh`; the `medium` sweep used a 60-second timeout
-after an initial serial run showed that the 300-second default made the full sweep
-impractical. A timeout is an observed outcome, not a successful response.
+## Run provenance
 
-## Results
+- Model: `local:qwen3.8-flash-next` (the service model id is `qwen3.8-flash-next`).
+- Endpoint: `http://127.0.0.1:24000/v1`.
+- Authentication: the process-only `LITELLM_API_KEY` environment value, selected by
+  `NEOCORTEX_LOCAL_MODEL_API_KEY_ENV=LITELLM_API_KEY`; no key value was recorded.
+- Input: the fixed three-episode corpus in [`probe-corpus.md`](probe-corpus.md). Every record
+  contains the source path and SHA-256 of the exact episode text.
+- Four efforts: low, medium, high, and xhigh.
+- Each effort: 5 attempts × 3 episodes × 4 agents = 60 real attempts; concurrency 2; per-attempt
+  timeout 300 seconds. The N≥5 preference was met for every agent and effort.
+- Ontology and librarian used isolated `InMemoryRepository` instances. This is real PydanticAI
+  agent/tool-surface evidence, not a PostgreSQL persistence or production-latency quality pass.
 
-| Agent | low (success/5) | medium (success/5) | high (success/5) | xhigh (success/5) | Verdict |
+Raw records:
+
+- [`probe-results-low.json`](probe-results-low.json)
+- [`probe-results-medium.json`](probe-results-medium.json)
+- [`probe-results-high.json`](probe-results-high.json)
+- [`probe-results-xhigh.json`](probe-results-xhigh.json)
+
+## Outcome distribution
+
+Success counts are per episode attempt. `HTTP 400/order` is the exact local service rejection
+`System message must be at the beginning.`
+
+| Agent | low | medium | high | xhigh | Provisional surface finding |
 |---|---:|---:|---:|---:|---|
-| Ontology | 0/5 (15 timeouts) | 0/5 (15 timeouts at 60s) | 0/5 (15 timeouts) | 0/5 (15 timeouts) | NEEDS HARDENING |
-| Extractor | 0/5 (15 timeouts) | 1/5 (12 timeouts at 60s) | 0/5 (15 timeouts) | 1/5 (14 timeouts) | NEEDS HARDENING |
-| Librarian | 0/5 (15 timeouts) | 0/5 (14 timeouts at 60s) | 0/5 (15 timeouts) | 0/5 (15 timeouts) | NEEDS HARDENING |
-| Domain classifier | 1/5 (11 timeouts) | 4/5 (3 timeouts at 60s) | 1/5 (13 timeouts) | 1/5 (14 timeouts) | READY WITH TIMEOUT CAVEAT |
+| Ontology | 0/15; 15 HTTP 400/order | 0/15; 15 HTTP 400/order | 0/15; 15 HTTP 400/order | 0/15; 15 HTTP 400/order | NEEDS HARDENING |
+| Extractor | 0/15; 15 HTTP 400/order | 0/15; 15 HTTP 400/order | 0/15; 15 HTTP 400/order | 0/15; 15 HTTP 400/order | NEEDS HARDENING |
+| Librarian | 0/15; 15 HTTP 400/order | 0/15; 15 HTTP 400/order | 0/15; 15 HTTP 400/order | 0/15; 15 HTTP 400/order | NEEDS HARDENING |
+| Domain classifier | 14/15; 1 invalid structured output | 15/15 | 12/15; 3 invalid structured output | 14/15; 1 invalid structured output | NEEDS HARDENING |
 
-The `success/5` column is episode-level: each agent has 15 records, three episodes
-per attempt. The raw JSON remains authoritative for per-episode detail, elapsed time,
-usage, and tool-call order.
+No attempt timed out. The classifier's invalid-output failures were all E3 and ended with
+`UnexpectedModelBehavior: Exceeded maximum retries (1) for output validation`. No model-refusal,
+empty-content, or malformed-tool-argument outcome was observed in this run.
 
-The result is dominated by decode cost at these caps. The successful medium extractor
-record used 3,350 reasoning tokens in the earlier real-schema probe; the present
-medium sweep's successful extractor record is the same class of expensive call. No
-refusal-mode records were detected in any generated file. This does not retire the
-refusal risk: the detector is present, and the earlier raw probe reproduced the
-zero-tool refusal against a weak prompt.
+## Usage and timing
 
-## Tool behavior
+The values below are medians over successful records unless stated otherwise. Failed transport calls
+have no model usage because the service rejected the request before generation. Timing is informational
+and does not block migration.
 
-Successful librarian records emitted real `create_or_update_node` and
-`create_or_update_edge` calls. Successful records preserve tool names in order. No
-probe result showed an explicit forced `tool_choice=required` request; therefore the
-double-wrapped-arguments defect from the raw HTTP probe was **not reproduced through
-these four PydanticAI construction paths**. This is an observation, not proof that
-future output-tool configurations cannot select that path.
+| Effort | Agent | Success | Prompt tokens (median) | Completion tokens (median) | Reasoning tokens (median) | Elapsed p50 / p95 (s) |
+|---|---|---:|---:|---:|---:|---:|
+| low | Ontology / Extractor / Librarian | 0/15 each | NOT MEASURED | NOT MEASURED | NOT MEASURED | 0.085 / 0.141; 0.060 / 0.073; 0.095 / 0.172 |
+| low | Domain classifier | 14/15 | 1069 | 282 | 171 | 15.075 / 29.308 |
+| medium | Ontology / Extractor / Librarian | 0/15 each | NOT MEASURED | NOT MEASURED | NOT MEASURED | 0.098 / 0.164; 0.068 / 0.151; 0.109 / 0.127 |
+| medium | Domain classifier | 15/15 | 1069 | 370 | 256 | 20.626 / 33.819 |
+| high | Ontology / Extractor / Librarian | 0/15 each | NOT MEASURED | NOT MEASURED | NOT MEASURED | 0.076 / 0.141; 0.068 / 0.129; 0.091 / 0.172 |
+| high | Domain classifier | 12/15 | 1069 | 314 | 178 | 17.171 / 49.580 |
+| xhigh | Ontology / Extractor / Librarian | 0/15 each | NOT MEASURED | NOT MEASURED | NOT MEASURED | 0.080 / 0.154; 0.067 / 0.128; 0.101 / 0.164 |
+| xhigh | Domain classifier | 14/15 | 1069 | 345 | 227 | 18.436 / 48.945 |
 
-## Per-agent interpretation for Stage 3
+The classifier's successful records used one request and zero retries. Internal structured-output
+records identify the `final_result` output tool; the usage counter reports zero function tool calls.
+Ontology, extractor, and librarian emitted no tool calls because their requests were rejected first.
+Normalization rejection counts were zero on completed calls and there was no opportunity to exercise
+ontology `propose_type` validation after the transport rejection.
 
-- **Ontology — NEEDS HARDENING.** No capped run completed. Re-probe after the
-  source-text framing and mandatory-first-action prompt changes; preserve the
-  explicit list/find/propose workflow.
-- **Extractor — NEEDS HARDENING.** The real schema remains decode-expensive and
-  higher effort is not demonstrably better. Stage 3 should remove duplicated
-  episode text and evaluate narrowing the open properties dictionaries.
-- **Librarian — NEEDS HARDENING.** The long tool loop did not reliably reach its
-  terminal structured output under the sweep caps. Harden terminal-output
-  instructions and retain the tool budget.
-- **Domain classifier — READY WITH TIMEOUT CAVEAT.** It had the highest completion
-  rate at medium, but the effort sweep is not a quality verdict. Keep its fallback,
-  add explicit source-text framing, and verify again after shared prompt hardening.
+## Failure classification and interpretation
 
-The probe harness used `InMemoryRepository` for repeatability and to avoid mutating
-the shared development graph; the service stack was started as required, but these
-measurements exercise the real agent/tool surfaces rather than production PostgreSQL
-latency. The bake-off stages must use the real graph and the prescribed worker
-concurrency.
+The exact HTTP 400 body was recorded in every ontology, extractor, and librarian failure. It names
+`code: 400` and `System message must be at the beginning.` This is a request-message ordering
+compatibility failure, not a model refusal or an invalid graph result. The affected agents therefore
+did not reach their ontology or librarian tools, and no tool order or persistence quality conclusion
+can be drawn for them.
+
+Classifier E3 failures are a separate structured-output class. They exhausted PydanticAI's one
+validation retry and did not report a transport error. They require a later compatibility/prompt
+investigation before the classifier can be considered ready.
+
+## Provisional finding
+
+**NEEDS HARDENING.** The local service is reachable and the domain classifier can produce valid
+structured classifications, but ontology, extractor, and librarian are all blocked by the same
+reproducible HTTP 400 message-order contract. Classifier E3 output is not reliable at every effort.
+Stage 3 owns the compatibility repair and must re-run these real-agent probes before any quality or
+cutover conclusion. These findings do not claim that the model is intrinsically unable to perform
+the tasks.

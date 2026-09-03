@@ -1,691 +1,1759 @@
 {
-  "concurrency": 6,
+  "concurrency": 2,
   "effort": "low",
-  "model": "local:qwen3.8-27b",
+  "model": "local:qwen3.8-flash-next",
   "records": [
     {
       "agent": "ontology",
       "attempt": 1,
-      "elapsed_s": 30.004,
+      "effort": "low",
+      "elapsed_s": 0.211,
       "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "extractor",
       "attempt": 1,
-      "elapsed_s": 30.014,
+      "effort": "low",
+      "elapsed_s": 0.18,
       "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "librarian",
       "attempt": 1,
-      "elapsed_s": 30.012,
+      "effort": "low",
+      "elapsed_s": 0.098,
       "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "domain_classifier",
       "attempt": 1,
-      "elapsed_s": 30.009,
+      "effort": "low",
+      "elapsed_s": 15.075,
       "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "ontology",
-      "attempt": 1,
-      "elapsed_s": 30.008,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "extractor",
-      "attempt": 1,
-      "elapsed_s": 30.005,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "librarian",
-      "attempt": 1,
-      "elapsed_s": 30.002,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "domain_classifier",
-      "attempt": 1,
-      "elapsed_s": 30.003,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "ontology",
-      "attempt": 1,
-      "elapsed_s": 30.013,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "extractor",
-      "attempt": 1,
-      "elapsed_s": 30.023,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "librarian",
-      "attempt": 1,
-      "elapsed_s": 30.02,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "domain_classifier",
-      "attempt": 1,
-      "elapsed_s": 30.022,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "ontology",
-      "attempt": 2,
-      "elapsed_s": 30.002,
-      "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "extractor",
-      "attempt": 2,
-      "elapsed_s": 30.002,
-      "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "librarian",
-      "attempt": 2,
-      "elapsed_s": 30.004,
-      "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "domain_classifier",
-      "attempt": 2,
-      "elapsed_s": 26.839,
-      "episode": "E1",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
       "output": {
         "matched_domains": [
           {
-            "confidence": 0.9,
+            "confidence": 0.95,
             "domain_slug": "technical_knowledge",
-            "reasoning": "The text describes a system architecture and data-flow detail: NeoCortex uses PostgreSQL for its memory graph, and an extraction worker stores episodes and links them to the database. This is primarily technical knowledge about tools, storage, and engineering design."
+            "reasoning": "The text describes a technical architecture detail: using PostgreSQL for a memory graph and an extraction worker persisting episodes to the database."
           }
         ],
         "proposed_domain": null
       },
-      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer user's request: classify knowledge text into domains. Need use final_result tool. Need think in English? User English. Need produce JSON via tool. Text: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\" This is about a system architecture, tool usage, technical knowledge. Could also be work_context if NeoCortex is ongoing project? It describes architecture: uses PostgreSQL, extraction worker stores episode and links to DB. Most specific technical_knowledge. Maybe domain_knowledge? No. work_context? It mentions project component but not ongoing task/deadline/team. It's technical architecture. So matched_domains technical_knowledge high 0.9. No proposed domain. Need final_result with domain_slug technical_knowledge, confidence 0.9, reasoning.\n\nFinal result processed.",
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer classification. Need analyze in same language as user's request? User request English. Need classify knowledge text: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\"\n\nDomains: technical_knowledge fits: PostgreSQL, database, architecture, worker. Maybe work_context if NeoCortex project ongoing? It says uses PostgreSQL for its memory graph, extraction worker stores episode. Could be technical_knowledge primary. Could also work_context as project context? Need choose most specific. If about project architecture/implementation, technical_knowledge. work_context if project-specific ongoing project. But guideline specific: technical_knowledge. Maybe work_context confidence 0.35 because NeoCortex project? But text is technical architecture. Let's produce matched_domains: technical_knowledge high 0.95. Maybe domain_knowledge low? PostgreSQL general? Not needed. Proposed none.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.95,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text describes a technical architecture detail: using PostgreSQL for a memory graph and an extraction worker persisting episodes to the database."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
       "status": "success",
+      "timeout_s": 300.0,
       "tool_calls": [
         "final_result"
       ],
       "usage": {
-        "completion_tokens": null,
+        "completion_tokens": 282,
         "details": {
-          "reasoning_tokens": 172,
-          "text_tokens": 99
+          "reasoning_tokens": 189
         },
-        "prompt_tokens": null,
-        "reasoning_tokens": 172,
-        "requests": 1
+        "prompt_tokens": 1054,
+        "reasoning_tokens": 189,
+        "requests": 1,
+        "tool_calls": 0
       }
     },
     {
       "agent": "ontology",
-      "attempt": 2,
-      "elapsed_s": 30.004,
+      "attempt": 1,
+      "effort": "low",
+      "elapsed_s": 0.072,
       "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "extractor",
-      "attempt": 2,
-      "elapsed_s": 30.014,
+      "attempt": 1,
+      "effort": "low",
+      "elapsed_s": 0.054,
       "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "librarian",
-      "attempt": 2,
-      "elapsed_s": 30.003,
+      "attempt": 1,
+      "effort": "low",
+      "elapsed_s": 0.172,
       "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "domain_classifier",
-      "attempt": 2,
-      "elapsed_s": 30.003,
+      "attempt": 1,
+      "effort": "low",
+      "elapsed_s": 13.026,
       "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "ontology",
-      "attempt": 2,
-      "elapsed_s": 30.002,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "extractor",
-      "attempt": 2,
-      "elapsed_s": 30.018,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "librarian",
-      "attempt": 2,
-      "elapsed_s": 30.001,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "domain_classifier",
-      "attempt": 2,
-      "elapsed_s": 30.0,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "ontology",
-      "attempt": 3,
-      "elapsed_s": 30.003,
-      "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "extractor",
-      "attempt": 3,
-      "elapsed_s": 30.004,
-      "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "librarian",
-      "attempt": 3,
-      "elapsed_s": 30.004,
-      "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "domain_classifier",
-      "attempt": 3,
-      "elapsed_s": 30.002,
-      "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "ontology",
-      "attempt": 3,
-      "elapsed_s": 30.004,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "extractor",
-      "attempt": 3,
-      "elapsed_s": 30.01,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "librarian",
-      "attempt": 3,
-      "elapsed_s": 30.001,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "domain_classifier",
-      "attempt": 3,
-      "elapsed_s": 26.668,
-      "episode": "E2",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
       "output": {
         "matched_domains": [
           {
             "confidence": 0.95,
             "domain_slug": "work_context",
-            "reasoning": "The text describes a specific migration task, its scheduled vs. actual landing date (14 Aug vs. 15 Aug), and a correction recorded in a release note. This is clearly about an ongoing project/task timeline, a professional activity, and a decision/correction to the record."
+            "reasoning": "The text records a project-related date correction for a migration and notes that the release note reflects the corrected date, which fits ongoing project decisions, deadlines, and activities."
           }
         ],
         "proposed_domain": null
       },
-      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nThe knowledge text is about a migration that was scheduled for 15 August but actually landed on 14 August. This is about a specific event/task/project timeline - a migration landing date correction.\n\nLet me analyze which domains fit:\n\n1. **work_context**: This is about an ongoing project/task - a migration that was scheduled and landed. It involves specific dates, a release note, and a correction to the timeline. This is clearly about professional activities, tasks, and decisions. Strong match.\n\n2. **technical_knowledge**: A \"migration\" could be technical (database migration, system migration), but the content here is really about the scheduling and timing of the event, not about the technical details of how the migration works. Weak match at best.\n\n3. **domain_knowledge**: This is not general factual knowledge - it's a specific event correction. Poor fit.\n\n4. **user_profile**: No personal preferences or habits here. Poor fit.\n\nThe strongest match is **work_context** - it's about a specific task (migration), its timeline (scheduled vs actual), and a correction to the record. This is clearly professional activity knowledge.\n\nConfidence for work_context: 0.95 - very strong match.\nI don't think a new domain is needed here.\n\nFinal result processed.",
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nWe need answer to user: classify knowledge text. Need use final_result tool. Need analyze in English same language as user request. Text: \"The migration was scheduled to land on 15 August. **Correction: it actually landed on 14 August, not the 15th.** The release note records the corrected date.\" This is about a project migration schedule/correction and release note date. Domains: work_context (ongoing projects/tasks/deadlines/decisions/activities) likely high. Maybe domain_knowledge? It's a specific fact about a migration date, not general. Could be work_context. Maybe technical? migration could be technical but no technical detail. Need classify. matched_domains: work_context confidence 0.95. Could also domain_knowledge? No, specific project event. Proposed none.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.95,
+            "domain_slug": "work_context",
+            "reasoning": "The text records a project-related date correction for a migration and notes that the release note reflects the corrected date, which fits ongoing project decisions, deadlines, and activities."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
       "status": "success",
+      "timeout_s": 300.0,
       "tool_calls": [
         "final_result"
       ],
       "usage": {
-        "completion_tokens": null,
+        "completion_tokens": 271,
         "details": {
-          "reasoning_tokens": 268,
-          "text_tokens": 124
+          "reasoning_tokens": 171
         },
-        "prompt_tokens": null,
-        "reasoning_tokens": 268,
-        "requests": 1
+        "prompt_tokens": 1069,
+        "reasoning_tokens": 171,
+        "requests": 1,
+        "tool_calls": 0
       }
     },
     {
       "agent": "ontology",
-      "attempt": 3,
-      "elapsed_s": 30.002,
+      "attempt": 1,
+      "effort": "low",
+      "elapsed_s": 0.125,
       "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "extractor",
-      "attempt": 3,
-      "elapsed_s": 30.001,
+      "attempt": 1,
+      "effort": "low",
+      "elapsed_s": 0.055,
       "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "librarian",
-      "attempt": 3,
-      "elapsed_s": 30.001,
+      "attempt": 1,
+      "effort": "low",
+      "elapsed_s": 0.085,
       "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "domain_classifier",
-      "attempt": 3,
-      "elapsed_s": 30.001,
+      "attempt": 1,
+      "effort": "low",
+      "elapsed_s": 54.105,
       "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "UnexpectedModelBehavior",
+      "failure_class": "invalid_structured_output",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "Exceeded maximum retries (1) for output validation",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "ontology",
-      "attempt": 4,
-      "elapsed_s": 30.004,
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 0.087,
       "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "extractor",
-      "attempt": 4,
-      "elapsed_s": 30.003,
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 0.058,
       "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "librarian",
-      "attempt": 4,
-      "elapsed_s": 30.003,
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 0.086,
       "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "domain_classifier",
-      "attempt": 4,
-      "elapsed_s": 24.432,
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 14.904,
       "episode": "E1",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.86,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "Describes a technical architecture detail: using PostgreSQL as a memory graph store and an extraction worker linking episodes to the database."
+          },
+          {
+            "confidence": 0.42,
+            "domain_slug": "work_context",
+            "reasoning": "Refers to NeoCortex as a system/project component, suggesting it may be part of ongoing work or a product architecture context."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer classification. Need analyze. Knowledge: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\" This is about a system/project architecture using PostgreSQL, extraction worker, memory graph. Could be technical_knowledge (database/architecture) and work_context (ongoing project NeoCortex?). Need classify. NeoCortex likely a project/tool. It describes implementation detail of a project. technical_knowledge fits: PostgreSQL, memory graph, extraction worker, database linking. work_context maybe if NeoCortex is an ongoing project. But no explicit user/team/deadline. Could be domain_knowledge? No. Proposed? no.\n\nNeed final only structured classification. Use tool final_result. Need call.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.86,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "Describes a technical architecture detail: using PostgreSQL as a memory graph store and an extraction worker linking episodes to the database."
+          },
+          {
+            "confidence": 0.42,
+            "domain_slug": "work_context",
+            "reasoning": "Refers to NeoCortex as a system/project component, suggesting it may be part of ongoing work or a product architecture context."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
+      "status": "success",
+      "timeout_s": 300.0,
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": 297,
+        "details": {
+          "reasoning_tokens": 156
+        },
+        "prompt_tokens": 1054,
+        "reasoning_tokens": 156,
+        "requests": 1,
+        "tool_calls": 0
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 0.109,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "extractor",
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 0.066,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "librarian",
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 0.102,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 11.492,
+      "episode": "E2",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
       "output": {
         "matched_domains": [
           {
             "confidence": 0.92,
-            "domain_slug": "technical_knowledge",
-            "reasoning": "The statement describes a system architecture detail: NeoCortex uses PostgreSQL for its memory graph, and an extraction worker stores and links episodes to the database. This is technical knowledge about databases, system components, and data flow."
+            "domain_slug": "work_context",
+            "reasoning": "The knowledge records a project milestone correction: a migration was scheduled for 15 August but actually landed on 14 August, and the release note reflects the corrected date. This is ongoing work/project context."
           }
         ],
         "proposed_domain": null
       },
-      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer user's classification request. Need classify knowledge text: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\"\n\nNeed use final_result tool. Need determine domains. It mentions NeoCortex uses PostgreSQL for memory graph, extraction worker stores episode and links to PostgreSQL database. This is technical knowledge about architecture, tools, database, system design. Could also be work_context? It's about ongoing project? NeoCortex likely a system/project. But statement is factual about system architecture: uses PostgreSQL, extraction worker. Most specific technical_knowledge. Maybe domain_knowledge? No. Could be work_context if it's about project being worked on, but not explicitly user's work. It describes system. So technical_knowledge high confidence 0.9. Could also work_context low? If NeoCortex is a project, knowledge about its architecture may be work_context. But guidelines: work_context ongoing projects, tasks, decisions, professional activities. This is more technical system fact. Multi-label possible but prefer specific. I'd only technical_knowledge. No proposed domain.\n\nNeed final_result with matched_domains array. Ensure JSON schema. confidence 0.9, reasoning.\n\nFinal result processed.",
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nWe need answer classification. Need think in English same language user? User English-ish. Need classify knowledge: correction of migration landing date from 15 Aug to 14 Aug, release note records corrected date. This is work_context: ongoing projects/tasks/deadlines/decisions/meetings? It's about a migration scheduled and actual date. Could be work_context. Also maybe domain_knowledge? No, specific project event. Need return structured final_result. matched_domains work_context high confidence. Maybe technical_knowledge? migration could be technical but no technical details. Only work_context. Could also user_profile no. Need maybe proposed? no.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.92,
+            "domain_slug": "work_context",
+            "reasoning": "The knowledge records a project milestone correction: a migration was scheduled for 15 August but actually landed on 14 August, and the release note reflects the corrected date. This is ongoing work/project context."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
       "status": "success",
+      "timeout_s": 300.0,
       "tool_calls": [
         "final_result"
       ],
       "usage": {
-        "completion_tokens": null,
+        "completion_tokens": 241,
         "details": {
-          "reasoning_tokens": 252,
-          "text_tokens": 96
+          "reasoning_tokens": 132
         },
-        "prompt_tokens": null,
-        "reasoning_tokens": 252,
-        "requests": 1
+        "prompt_tokens": 1069,
+        "reasoning_tokens": 132,
+        "requests": 1,
+        "tool_calls": 0
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 0.082,
+      "episode": "E3",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "extractor",
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 0.06,
+      "episode": "E3",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "librarian",
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 0.1,
+      "episode": "E3",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 2,
+      "effort": "low",
+      "elapsed_s": 28.459,
+      "episode": "E3",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.82,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "Core content is a knowledge/ontology modeling best practice: distinguish individual instance names from reusable ontology types, plus implementation stack details (PostgreSQL event sourcing, API gateway, engine components) \u2014 software architecture and modeling guidance."
+          },
+          {
+            "confidence": 0.45,
+            "domain_slug": "domain_knowledge",
+            "reasoning": "Also conveys general domain-concept knowledge about ontology design vocabulary (reusable entity types such as Dish, Location, Presentation, Vehicle, Database, SoftwareComponent) as a conceptual/industry convention."
+          },
+          {
+            "confidence": 0.3,
+            "domain_slug": "work_context",
+            "reasoning": "Incidental record of a specific project event: a technical demonstration of DreamAiPresentation where DishGreg was served at LocationSalCapeVerde, i.e. project activity details."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nDishGreg was served at LocationSalCapeVerde during a technical demonstration of\nDreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and\nan API gateway. These are individual names and implementation details, not reusable\nontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle,\nDatabase, and SoftwareComponent.\nI need to classify this knowledge text. The content is about an ontology modeling principle: distinguishing individual names (instances) from reusable ontology types. It mentions specific entities (DishGreg, LocationSalCapeVerde, DreamAiPresentation, B47 engine, PostgreSQL event sourcing, API gateway) and then states a modeling guideline: prefer reusable types such as Dish, Location, Presentation, Vehicle, Database, SoftwareComponent.\n\nThis is essentially knowledge about ontology design / knowledge modeling best practices \u2014 technical knowledge (architecture patterns, modeling best practices). Also possibly domain_knowledge about ontology concepts.\n\nWork context: mentions specific project artifacts (DishGreg served at LocationSalCapeVerde during a technical demonstration of DreamAiPresentation) \u2014 that's an ongoing project activity detail, but the main knowledge is the modeling guideline.\n\nI'd match technical_knowledge (high confidence, ~0.8) for the ontology modeling best practice, and domain_knowledge (0.4) for general domain concepts about ontology types. Maybe work_context at low confidence (0.3) for the demonstration event details.\n\nNo new domain needed. Perhaps propose \"ontology_modeling\" under technical_knowledge? Guideline says prefer existing domains; technical_knowledge covers best practices and architecture patterns. I'll not propose a new domain... Though a sub-domain proposal could be valuable. But the instructions say prefer most specific matching domain; if child domain fits use it. There's no child domains listed. I'll just match existing.\n\nConfidence: technical_knowledge 0.8, domain_knowledge 0.45, work_context 0.3.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.82,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "Core content is a knowledge/ontology modeling best practice: distinguish individual instance names from reusable ontology types, plus implementation stack details (PostgreSQL event sourcing, API gateway, engine components) \u2014 software architecture and modeling guidance."
+          },
+          {
+            "confidence": 0.45,
+            "domain_slug": "domain_knowledge",
+            "reasoning": "Also conveys general domain-concept knowledge about ontology design vocabulary (reusable entity types such as Dish, Location, Presentation, Vehicle, Database, SoftwareComponent) as a conceptual/industry convention."
+          },
+          {
+            "confidence": 0.3,
+            "domain_slug": "work_context",
+            "reasoning": "Incidental record of a specific project event: a technical demonstration of DreamAiPresentation where DishGreg was served at LocationSalCapeVerde, i.e. project activity details."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
+      "status": "success",
+      "timeout_s": 300.0,
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": 551,
+        "details": {
+          "reasoning_tokens": 333
+        },
+        "prompt_tokens": 1104,
+        "reasoning_tokens": 333,
+        "requests": 1,
+        "tool_calls": 0
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 0.067,
+      "episode": "E1",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 0.065,
+      "episode": "E1",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 0.147,
+      "episode": "E1",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 13.137,
+      "episode": "E1",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.86,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The knowledge describes a technical architecture choice involving PostgreSQL and an extraction worker for a memory graph, which fits technical systems and database usage."
+          },
+          {
+            "confidence": 0.58,
+            "domain_slug": "work_context",
+            "reasoning": "It also describes implementation details of an ongoing system or project called NeoCortex, which can be relevant work/project context."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer classification. Need call final_result. Knowledge: NeoCortex uses PostgreSQL for memory graph. extraction worker stores episode and links to PostgreSQL database. This is technical_knowledge? It's about system architecture/tool usage, database. Could also work_context ongoing project NeoCortex? It describes architecture choice for a project. Domains available technical_knowledge, work_context. Most specific technical_knowledge for PostgreSQL usage. work_context if NeoCortex project context. Need classify maybe technical_knowledge 0.85, work_context 0.6. No new domain.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.86,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The knowledge describes a technical architecture choice involving PostgreSQL and an extraction worker for a memory graph, which fits technical systems and database usage."
+          },
+          {
+            "confidence": 0.58,
+            "domain_slug": "work_context",
+            "reasoning": "It also describes implementation details of an ongoing system or project called NeoCortex, which can be relevant work/project context."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
+      "status": "success",
+      "timeout_s": 300.0,
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": 258,
+        "details": {
+          "reasoning_tokens": 117
+        },
+        "prompt_tokens": 1054,
+        "reasoning_tokens": 117,
+        "requests": 1,
+        "tool_calls": 0
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 0.063,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 0.073,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 0.097,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 13.033,
+      "episode": "E2",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.95,
+            "domain_slug": "work_context",
+            "reasoning": "The knowledge records a corrected actual date for a migration/release, which is a project event, deadline, and release note detail relevant to ongoing work."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nWe need answer to user: classify knowledge text. Need use final_result tool. Need analyze in English (same language as user request? User request English). Content: \"The migration was scheduled to land on 15 August. Correction: it actually landed on 14 August, not the 15th. The release note records the corrected date.\" This is about a migration/release date correction, likely work context: ongoing project, deadlines, decisions, release notes. Could be work_context. Maybe domain_knowledge? It's specific project event, date. Not technical knowledge unless migration is technical but no details. Work context high. Could also be user_profile? no. Need call final_result with matched_domains. Maybe one domain work_context confidence 0.95. No proposed. Ensure reasoning concise.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.95,
+            "domain_slug": "work_context",
+            "reasoning": "The knowledge records a corrected actual date for a migration/release, which is a project event, deadline, and release note detail relevant to ongoing work."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
+      "status": "success",
+      "timeout_s": 300.0,
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": 260,
+        "details": {
+          "reasoning_tokens": 164
+        },
+        "prompt_tokens": 1069,
+        "reasoning_tokens": 164,
+        "requests": 1,
+        "tool_calls": 0
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 0.123,
+      "episode": "E3",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "extractor",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 0.054,
+      "episode": "E3",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "librarian",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 0.088,
+      "episode": "E3",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 3,
+      "effort": "low",
+      "elapsed_s": 23.297,
+      "episode": "E3",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.85,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "Core content is a software/ontology modeling best practice: abstract individual instances and implementation specifics (PostgreSQL event sourcing, B47 engine, API gateway) into reusable type abstractions (Dish, Location, Presentation, Vehicle, Database, SoftwareComponent). This is architecture/modeling guidance, fitting technical_knowledge."
+          },
+          {
+            "confidence": 0.35,
+            "domain_slug": "domain_knowledge",
+            "reasoning": "The guidance also reflects general knowledge-representation / ontology-design concepts (instance vs. reusable type) that are domain-agnostic factual modeling principles rather than tool-specific technical detail."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nDishGreg was served at LocationSalCapeVerde during a technical demonstration of\nDreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and\nan API gateway. These are individual names and implementation details, not reusable\nontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle,\nDatabase, and SoftwareComponent.\nI need to classify this knowledge text. The content is about an ontology modeling guideline: prefer reusable types over individual names/implementation details. It mentions specific technical details (PostgreSQL, event sourcing, API gateway, B47 engine) but the core knowledge is a modeling principle about ontology types.\n\nLet me consider domains: technical_knowledge (architecture patterns, ontology modeling best practices, software components) \u2014 strong fit. Possibly domain_knowledge for ontology concepts? The core is a best practice for knowledge modeling / ontology design. That's technical knowledge (best practices, engineering approaches). Maybe also user_profile? No.\n\nCould propose a new domain like \"ontology_modeling\" under technical_knowledge. But guidelines say prefer existing specific domains. The content is about ontology/knowledge-graph modeling conventions \u2014 arguably a sub-domain. I could propose \"ontology_modeling\" as a child of technical_knowledge. But is it needed? technical_knowledge covers best practices and architecture patterns. I'd give technical_knowledge high confidence, and domain_knowledge low-ish for the general concept of reusable ontology types.\n\nI'll match technical_knowledge at 0.85 and domain_knowledge at 0.4 (general concepts about ontology types / knowledge representation). Actually knowledge representation is arguably a domain concept. I'll include domain_knowledge at 0.35.\n\nNo proposed domain needed.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.85,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "Core content is a software/ontology modeling best practice: abstract individual instances and implementation specifics (PostgreSQL event sourcing, B47 engine, API gateway) into reusable type abstractions (Dish, Location, Presentation, Vehicle, Database, SoftwareComponent). This is architecture/modeling guidance, fitting technical_knowledge."
+          },
+          {
+            "confidence": 0.35,
+            "domain_slug": "domain_knowledge",
+            "reasoning": "The guidance also reflects general knowledge-representation / ontology-design concepts (instance vs. reusable type) that are domain-agnostic factual modeling principles rather than tool-specific technical detail."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
+      "status": "success",
+      "timeout_s": 300.0,
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": 455,
+        "details": {
+          "reasoning_tokens": 280
+        },
+        "prompt_tokens": 1104,
+        "reasoning_tokens": 280,
+        "requests": 1,
+        "tool_calls": 0
       }
     },
     {
       "agent": "ontology",
       "attempt": 4,
-      "elapsed_s": 30.001,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "effort": "low",
+      "elapsed_s": 0.073,
+      "episode": "E1",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "extractor",
       "attempt": 4,
-      "elapsed_s": 30.012,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "effort": "low",
+      "elapsed_s": 0.069,
+      "episode": "E1",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "librarian",
       "attempt": 4,
-      "elapsed_s": 30.006,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "effort": "low",
+      "elapsed_s": 0.438,
+      "episode": "E1",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "domain_classifier",
       "attempt": 4,
-      "elapsed_s": 30.004,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "ontology",
-      "attempt": 4,
-      "elapsed_s": 30.003,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "extractor",
-      "attempt": 4,
-      "elapsed_s": 30.003,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "librarian",
-      "attempt": 4,
-      "elapsed_s": 30.003,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "domain_classifier",
-      "attempt": 4,
-      "elapsed_s": 30.001,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "ontology",
-      "attempt": 5,
-      "elapsed_s": 30.004,
+      "effort": "low",
+      "elapsed_s": 16.644,
       "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "extractor",
-      "attempt": 5,
-      "elapsed_s": 30.004,
-      "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "librarian",
-      "attempt": 5,
-      "elapsed_s": 30.002,
-      "episode": "E1",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
-    },
-    {
-      "agent": "domain_classifier",
-      "attempt": 5,
-      "elapsed_s": 29.963,
-      "episode": "E1",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
       "output": {
         "matched_domains": [
           {
             "confidence": 0.9,
             "domain_slug": "technical_knowledge",
-            "reasoning": "The text describes a system architecture detail: NeoCortex uses PostgreSQL for its memory graph, and an extraction worker stores an episode and links it to the PostgreSQL database. This is technical knowledge about components, data storage, and system design."
+            "reasoning": "The text describes a technical architecture choice involving PostgreSQL as the backing database for a memory graph and an extraction worker workflow."
+          },
+          {
+            "confidence": 0.65,
+            "domain_slug": "work_context",
+            "reasoning": "It references a specific system or project context, NeoCortex, and how its extraction worker stores and links episodes in the database."
           }
         ],
         "proposed_domain": null
       },
-      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer user's classification request. Need classify knowledge text: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\"\n\nNeed decide domains. It's about a system NeoCortex, its architecture: uses PostgreSQL for memory graph, extraction worker stores episode and links to DB. This is technical knowledge: architecture, tools, database, components. Also work_context? It mentions ongoing project? It says NeoCortex uses... could be project-specific architecture. But domain tree: technical_knowledge includes architecture patterns, tools, technical concepts, how they work. work_context includes ongoing projects, tasks, decisions, professional activities. This is a factual statement about a system architecture, not necessarily ongoing work. Could match technical_knowledge strongly. Maybe domain_knowledge? No, not general. Could also work_context if it's about project NeoCortex? But no specific team/deadline/task, just system design. Prefer most specific: technical_knowledge. Confidence maybe 0.9. Could add work_context 0.3? The guideline multi-label. Since it's a project-specific technical fact, maybe work_context with 0.35? But \"knowledge about what is being worked on, by whom, and when\" not really. It's a system component fact. I'd only technical_knowledge. Need final_result tool.\n\nFinal result processed.",
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer classification. Need analyze. Knowledge text: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\"\n\nNeed classify into domains. It mentions NeoCortex (likely project/system), PostgreSQL, memory graph, extraction worker, stores episode links database. Could be technical_knowledge (PostgreSQL usage, architecture) and work_context (ongoing project NeoCortex? architecture decision). Need matched domains.\n\nDomain tree: technical_knowledge fits: programming tech, architecture patterns, APIs, tools. PostgreSQL database usage. work_context fits: ongoing project NeoCortex, components extraction worker, memory graph? It describes system architecture maybe work context. Also domain_knowledge? no.\n\nNeed propose new? No.\n\nConfidence: technical 0.9, work_context 0.65 maybe because project-specific. Could include user_profile? no.\n\nNeed final only structured classification. Use final_result tool? The user says return only structured classification. Need likely call final_result. We need produce tool call. Ensure valid.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.9,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text describes a technical architecture choice involving PostgreSQL as the backing database for a memory graph and an extraction worker workflow."
+          },
+          {
+            "confidence": 0.65,
+            "domain_slug": "work_context",
+            "reasoning": "It references a specific system or project context, NeoCortex, and how its extraction worker stores and links episodes in the database."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
       "status": "success",
+      "timeout_s": 300.0,
       "tool_calls": [
         "final_result"
       ],
       "usage": {
-        "completion_tokens": null,
+        "completion_tokens": 361,
         "details": {
-          "reasoning_tokens": 284,
-          "text_tokens": 98
+          "reasoning_tokens": 222
         },
-        "prompt_tokens": null,
-        "reasoning_tokens": 284,
-        "requests": 1
+        "prompt_tokens": 1054,
+        "reasoning_tokens": 222,
+        "requests": 1,
+        "tool_calls": 0
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 4,
+      "effort": "low",
+      "elapsed_s": 0.061,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "extractor",
+      "attempt": 4,
+      "effort": "low",
+      "elapsed_s": 0.055,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "librarian",
+      "attempt": 4,
+      "effort": "low",
+      "elapsed_s": 0.094,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 4,
+      "effort": "low",
+      "elapsed_s": 19.074,
+      "episode": "E2",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.93,
+            "domain_slug": "work_context",
+            "reasoning": "The text records a corrected completion date for a migration/release event, which is project- and activity-specific work context."
+          },
+          {
+            "confidence": 0.35,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "It references a migration and release note, suggesting a software/technical project, but the core knowledge is the date correction rather than technical guidance."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nWe need answer user's classification request. Need classify knowledge text: \"The migration was scheduled to land on 15 August. **Correction: it actually landed on 14 August, not the 15th.** The release note records the corrected date.\"\n\nNeed output only structured classification. Need call final_result. Need choose domains. This is about a migration scheduled date corrected, release note. Likely work_context: ongoing projects/tasks/deadlines/decisions/activities. Maybe technical_knowledge? Migration could be technical project but content is a specific project date correction, not general technical knowledge. Could be work_context high. Maybe domain_knowledge? No. Need maybe proposed? No. matched_domains: work_context confidence 0.95 reasoning. Could also technical_knowledge if migration is software migration? But specific event in work context. Maybe include technical_knowledge low 0.35? Guidelines specific prefer work_context. Since migration likely technical release, but knowledge is date correction in project/release note. I'd include work_context only or maybe technical_knowledge 0.35. Need no proposed.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.93,
+            "domain_slug": "work_context",
+            "reasoning": "The text records a corrected completion date for a migration/release event, which is project- and activity-specific work context."
+          },
+          {
+            "confidence": 0.35,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "It references a migration and release note, suggesting a software/technical project, but the core knowledge is the date correction rather than technical guidance."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
+      "status": "success",
+      "timeout_s": 300.0,
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": 369,
+        "details": {
+          "reasoning_tokens": 227
+        },
+        "prompt_tokens": 1069,
+        "reasoning_tokens": 227,
+        "requests": 1,
+        "tool_calls": 0
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 4,
+      "effort": "low",
+      "elapsed_s": 0.088,
+      "episode": "E3",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "extractor",
+      "attempt": 4,
+      "effort": "low",
+      "elapsed_s": 0.066,
+      "episode": "E3",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "librarian",
+      "attempt": 4,
+      "effort": "low",
+      "elapsed_s": 0.095,
+      "episode": "E3",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 4,
+      "effort": "low",
+      "elapsed_s": 24.346,
+      "episode": "E3",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.78,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text conveys engineering/data-modeling guidance: distinguishing ontology instance names (DishGreg, LocationSalCapeVerde) from reusable type entities (Dish, Location, Database, SoftwareComponent), plus implementation stack details (PostgreSQL event sourcing, API gateway). This is technical best-practice knowledge about modeling and system architecture."
+          },
+          {
+            "confidence": 0.45,
+            "domain_slug": "domain_knowledge",
+            "reasoning": "It also expresses a general conceptual principle about ontologies and knowledge representation (types vs. individuals), which is domain-agnostic factual/modeling knowledge rather than tied to a specific project or user preference."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nDishGreg was served at LocationSalCapeVerde during a technical demonstration of\nDreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and\nan API gateway. These are individual names and implementation details, not reusable\nontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle,\nDatabase, and SoftwareComponent.\nI need to classify this knowledge text. It's about an ontology modeling guidance: individual names vs reusable types. It's about ontology design / knowledge modeling best practices \u2014 technical knowledge (architecture patterns, best practices) and possibly domain_knowledge.\n\nContent: \"DishGreg was served at LocationSalCapeVerde during a technical demonstration of DreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and an API gateway. These are individual names and implementation details, not reusable ontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle, Database, and SoftwareComponent.\"\n\nThis is guidance about ontology modeling \u2014 prefer reusable types over instance names. Fits technical_knowledge (best practices, architecture patterns, data modeling). Maybe also domain_knowledge for knowledge ontology concepts. I'd give technical_knowledge high confidence, domain_knowledge moderate.\n\nCould propose a new domain \"ontology_modeling\"? Guidelines say propose new domain if nothing fits well. technical_knowledge fits reasonably. But maybe propose \"ontology_design\" under technical_knowledge? Hmm. The guidance says prefer most specific matching domain; if child fits use it. There are no children here. I think matched: technical_knowledge 0.75, domain_knowledge 0.45. Maybe propose a new domain \"ontology_modeling\" as a child of technical_knowledge? That may be over-proposing. I'll include a proposal with moderate reasoning? The instruction: propose new domains if knowledge doesn't fit well into ANY existing domain. It does fit technical_knowledge. So no proposal.\n\nI'll return two matches.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.78,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text conveys engineering/data-modeling guidance: distinguishing ontology instance names (DishGreg, LocationSalCapeVerde) from reusable type entities (Dish, Location, Database, SoftwareComponent), plus implementation stack details (PostgreSQL event sourcing, API gateway). This is technical best-practice knowledge about modeling and system architecture."
+          },
+          {
+            "confidence": 0.45,
+            "domain_slug": "domain_knowledge",
+            "reasoning": "It also expresses a general conceptual principle about ontologies and knowledge representation (types vs. individuals), which is domain-agnostic factual/modeling knowledge rather than tied to a specific project or user preference."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
+      "status": "success",
+      "timeout_s": 300.0,
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": 514,
+        "details": {
+          "reasoning_tokens": 330
+        },
+        "prompt_tokens": 1104,
+        "reasoning_tokens": 330,
+        "requests": 1,
+        "tool_calls": 0
       }
     },
     {
       "agent": "ontology",
       "attempt": 5,
-      "elapsed_s": 30.004,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "effort": "low",
+      "elapsed_s": 0.085,
+      "episode": "E1",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "extractor",
       "attempt": 5,
-      "elapsed_s": 30.015,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "effort": "low",
+      "elapsed_s": 0.067,
+      "episode": "E1",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "librarian",
       "attempt": 5,
-      "elapsed_s": 30.003,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "effort": "low",
+      "elapsed_s": 0.092,
+      "episode": "E1",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "domain_classifier",
       "attempt": 5,
-      "elapsed_s": 30.001,
-      "episode": "E2",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "effort": "low",
+      "elapsed_s": 13.412,
+      "episode": "E1",
+      "input_sha256": "7ce76a1e7d492676ec977bba970aeb4b30ccdc030fb65070832ba13c550b96bd",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.88,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text describes a system architecture choice and data storage mechanism involving PostgreSQL and an extraction worker, which is technical implementation knowledge."
+          },
+          {
+            "confidence": 0.45,
+            "domain_slug": "work_context",
+            "reasoning": "It references NeoCortex and its extraction worker as part of a project or system context, which may relate to ongoing professional work or project architecture."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nNeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an\nepisode and links it to the PostgreSQL database.\nWe need answer classification. Need analyze. Text: \"NeoCortex uses PostgreSQL for its memory graph. The extraction worker stores an episode and links it to the PostgreSQL database.\" This is technical knowledge about system architecture/database/tool usage. Could also work_context project? NeoCortex likely project component. But knowledge is technical architecture. Match technical_knowledge high. Maybe domain_knowledge? Not necessary. work_context if NeoCortex is ongoing project? The text describes project architecture, could be work_context if it's about a project. But primary technical. Need return structured final_result.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.88,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text describes a system architecture choice and data storage mechanism involving PostgreSQL and an extraction worker, which is technical implementation knowledge."
+          },
+          {
+            "confidence": 0.45,
+            "domain_slug": "work_context",
+            "reasoning": "It references NeoCortex and its extraction worker as part of a project or system context, which may relate to ongoing professional work or project architecture."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
+      "status": "success",
+      "timeout_s": 300.0,
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": 261,
+        "details": {
+          "reasoning_tokens": 117
+        },
+        "prompt_tokens": 1054,
+        "reasoning_tokens": 117,
+        "requests": 1,
+        "tool_calls": 0
+      }
     },
     {
       "agent": "ontology",
       "attempt": 5,
-      "elapsed_s": 30.003,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "effort": "low",
+      "elapsed_s": 0.062,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "extractor",
       "attempt": 5,
-      "elapsed_s": 30.004,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "effort": "low",
+      "elapsed_s": 0.055,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "librarian",
       "attempt": 5,
-      "elapsed_s": 30.003,
-      "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "effort": "low",
+      "elapsed_s": 0.086,
+      "episode": "E2",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
     },
     {
       "agent": "domain_classifier",
       "attempt": 5,
-      "elapsed_s": 30.004,
+      "effort": "low",
+      "elapsed_s": 12.199,
+      "episode": "E2",
+      "input_sha256": "44ebfba47f09a8202b2ade3d2f2b8ed2fa69717fd1aa23df4a93fc861a50921e",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.92,
+            "domain_slug": "work_context",
+            "reasoning": "The knowledge concerns a scheduled migration, its actual landing date correction, and a release note decision, which fits ongoing project/task and deadline tracking."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nThe migration was scheduled to land on 15 August. **Correction: it actually landed\non 14 August, not the 15th.** The release note records the corrected date.\nWe need answer to user: classify knowledge text. Need use final_result. Need analyze in English (same language as user request? user text English). Need classify: migration scheduled 15 Aug, correction actually landed 14 Aug, release note records corrected date. This is about ongoing project/task deadline/meeting? work_context: ongoing projects, tasks, deadlines, decisions. It's a date correction for a migration landing. Could be work_context. Also maybe domain_knowledge? No. Need likely matched_domains work_context high. Maybe technical_knowledge? migration could be technical but no technical details. Just scheduling/correction. Return structured only. Need no prose. Ensure confidence.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.92,
+            "domain_slug": "work_context",
+            "reasoning": "The knowledge concerns a scheduled migration, its actual landing date correction, and a release note decision, which fits ongoing project/task and deadline tracking."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
+      "status": "success",
+      "timeout_s": 300.0,
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": 234,
+        "details": {
+          "reasoning_tokens": 139
+        },
+        "prompt_tokens": 1069,
+        "reasoning_tokens": 139,
+        "requests": 1,
+        "tool_calls": 0
+      }
+    },
+    {
+      "agent": "ontology",
+      "attempt": 5,
+      "effort": "low",
+      "elapsed_s": 0.085,
       "episode": "E3",
-      "exception_type": "TimeoutError",
-      "raw_output": "timeout before a result was returned",
-      "status": "timeout",
-      "tool_calls": []
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "extractor",
+      "attempt": 5,
+      "effort": "low",
+      "elapsed_s": 0.06,
+      "episode": "E3",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "librarian",
+      "attempt": 5,
+      "effort": "low",
+      "elapsed_s": 0.085,
+      "episode": "E3",
+      "exception_type": "ModelHTTPError",
+      "failure_class": "http_400_system_message_order",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "failure",
+      "raw_output": "{'message': 'litellm.BadRequestError: Hosted_vllmException - {\"error\":{\"message\":\"System message must be at the beginning.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}}. Received Model Group=qwen3.8-flash-next\\nAvailable Model Group Fallbacks=None', 'type': None, 'param': None, 'code': '400'}",
+      "raw_validation_output": null,
+      "retries": null,
+      "status": "failure",
+      "timeout_s": 300.0,
+      "tool_calls": [],
+      "usage": null
+    },
+    {
+      "agent": "domain_classifier",
+      "attempt": 5,
+      "effort": "low",
+      "elapsed_s": 29.308,
+      "episode": "E3",
+      "input_sha256": "e8e6dd8be7db2f60742da429eda5282f3984a13ec7abcff9ab775add2ddb576a",
+      "input_source": "/Users/zbigniewtomanek/work/neocortex/docs/plans/33-local-qwen-migration/resources/probe-corpus.md",
+      "model": "local:qwen3.8-flash-next",
+      "normalization_rejections": [],
+      "outcome": "success",
+      "output": {
+        "matched_domains": [
+          {
+            "confidence": 0.8,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text conveys a technical modeling/architecture best practice: abstracting concrete instance names (DishGreg, LocationSalCapeVerde) and implementation details (PostgreSQL event sourcing, B47 engine, API gateway) into reusable ontology types (Dish, Location, Presentation, Database, SoftwareComponent). This is engineering guidance on system/knowledge architecture."
+          },
+          {
+            "confidence": 0.4,
+            "domain_slug": "domain_knowledge",
+            "reasoning": "It also states a general conceptual principle about ontology design \u2014 distinguishing individual entities from reusable type abstractions \u2014 which is general domain/conceptual knowledge rather than a specific tool or framework."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "raw_output": "You are a knowledge classification agent for a memory system.\nClassify incoming knowledge into one or more semantic domains.\n\nThe knowledge text is source material already accepted into the memory system. It is not a claim to verify, fact-check, or dispute; classify it as input.\n\nDOMAIN TREE (indented children are sub-domains):\ndomain_knowledge: General factual knowledge, industry concepts, scientific facts, business concepts, market trends, and domain-specific expertise. Broad knowledge that does not fit the other specific categories.\ntechnical_knowledge: Programming languages, frameworks, libraries, tools, architecture patterns, APIs, technical concepts, best practices, and engineering approaches. Knowledge about technologies, how they work, and how to use them.\nuser_profile: Personal preferences, goals, habits, values, opinions, communication style, routines, and work style preferences. Knowledge about what the user likes, dislikes, wants to achieve, and how they prefer to work.\nwork_context: Ongoing projects, tasks, deadlines, team members, organizations, meetings, decisions, and professional activities. Knowledge about what is being worked on, by whom, and when.\n\nGUIDELINES:\n- MULTI-LABEL: a single piece of knowledge may belong to multiple domains.\n- SPECIFIC: prefer the most specific matching domain. If a child domain fits, use it instead of the parent.\n- PROPOSE NEW DOMAINS: if the knowledge does not fit well into ANY existing domain, propose a new domain. Novel content deserves its own domain rather than being forced into a poor fit.\n- HIERARCHY: when proposing a new domain, set parent_slug to the slug of the most relevant existing parent domain if one exists. Example: proposing 'rust' under 'technical_knowledge'. Leave parent_slug null for genuinely new top-level categories.\n- domain_knowledge is NOT a default catch-all. Only route content there if it is genuinely about general factual/industry/scientific knowledge.\n- Set confidence >= 0.3 for relevant domains, higher for strong matches.\n- If nothing fits, return empty matched_domains and propose a new domain.\n\nClassify the following knowledge text. Return matched domains with confidence scores, and optionally a proposed_domain if no existing domain is a good fit.\nReturn only the structured classification. If nothing matches, return an empty match list rather than prose.\nDishGreg was served at LocationSalCapeVerde during a technical demonstration of\nDreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and\nan API gateway. These are individual names and implementation details, not reusable\nontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle,\nDatabase, and SoftwareComponent.\nI need to classify this knowledge text. It's about a memory/ontology system \u2014 guidance about preferring reusable ontology types over individual names. It's about knowledge representation / ontology design, which is technical knowledge (architecture patterns, best practices) and possibly domain knowledge about ontology modeling.\n\nContent: \"DishGreg was served at LocationSalCapeVerde during a technical demonstration of DreamAiPresentation. The system used PostgreSQL event sourcing, a B47 engine, and an API gateway. These are individual names and implementation details, not reusable ontology types; prefer reusable types such as Dish, Location, Presentation, Vehicle, Database, and SoftwareComponent.\"\n\nThis is a modeling guideline: abstract away instance names into reusable ontology types. That fits technical_knowledge (best practices, architecture patterns, ontology modeling). Could also fit domain_knowledge for ontology concepts? I'd say technical_knowledge primary, maybe a proposed domain like \"ontology-modeling\" under technical_knowledge. Let's consider proposing a new domain: 'knowledge_modeling' or 'ontology_design' under technical_knowledge? The guideline says prefer specific child domains; if none fit, propose new. technical_knowledge covers best practices and architecture patterns, which fits reasonably. But an ontology/knowledge-graph modeling domain could be more specific. I'd propose \"ontology_modeling\" with parent technical_knowledge at moderate confidence? Proposed domain is optional; I think technical_knowledge is a good fit at ~0.75. Maybe also domain_knowledge low ~0.35 for PostgreSQL event sourcing facts? Hmm, PostgreSQL event sourcing is technical.\n\nI'll match technical_knowledge 0.8 and propose ontology_modeling? Proposing new domain when existing fits well may be unnecessary. The content is specifically about ontology type abstraction guidance \u2014 a meta-modeling practice. I'll propose 'knowledge_modeling' as new domain? I think I'll include technical_knowledge and domain_knowledge (low) and propose 'ontology_modeling' under technical_knowledge with reasoning.\n\nActually, guidelines: propose new domain only if doesn't fit well into ANY existing domain. It fits technical_knowledge reasonably. I'll skip proposal... but the specific practice of ontology design for memory systems could be its own. I'll keep it simple: matched technical_knowledge high, domain_knowledge low-ish (0.35) for the general modeling principle. No proposed domain.\n\nHmm, but the \"prefer reusable types\" guidance is about knowledge representation best practice \u2014 technical_knowledge covers \"best practices\". Fine.\n\nFinal result processed.",
+      "raw_validation_output": {
+        "matched_domains": [
+          {
+            "confidence": 0.8,
+            "domain_slug": "technical_knowledge",
+            "reasoning": "The text conveys a technical modeling/architecture best practice: abstracting concrete instance names (DishGreg, LocationSalCapeVerde) and implementation details (PostgreSQL event sourcing, B47 engine, API gateway) into reusable ontology types (Dish, Location, Presentation, Database, SoftwareComponent). This is engineering guidance on system/knowledge architecture."
+          },
+          {
+            "confidence": 0.4,
+            "domain_slug": "domain_knowledge",
+            "reasoning": "It also states a general conceptual principle about ontology design \u2014 distinguishing individual entities from reusable type abstractions \u2014 which is general domain/conceptual knowledge rather than a specific tool or framework."
+          }
+        ],
+        "proposed_domain": null
+      },
+      "retries": 0,
+      "status": "success",
+      "timeout_s": 300.0,
+      "tool_calls": [
+        "final_result"
+      ],
+      "usage": {
+        "completion_tokens": 701,
+        "details": {
+          "reasoning_tokens": 516
+        },
+        "prompt_tokens": 1104,
+        "reasoning_tokens": 516,
+        "requests": 1,
+        "tool_calls": 0
+      }
     }
   ],
   "repeats": 5

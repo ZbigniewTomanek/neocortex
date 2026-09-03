@@ -12,6 +12,7 @@ import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS = ROOT / "docs/plans/18.5-e2e-revalidation/resources/episodes.md"
+PROBE_CORPUS = ROOT / "docs/plans/33-local-qwen-migration/resources/probe-corpus.md"
 _EPISODE = re.compile(
     r"### Episode (\d+) -- (.+?)\n\*\*Importance\*\*: ([0-9.]+)\n" r"\*\*Context\*\*: \"([^\"]+)\"\n\n```\n(.*?)\n```",
     re.DOTALL,
@@ -27,6 +28,22 @@ def load_corpus(path: Path = CORPUS) -> list[dict[str, object]]:
     if len(episodes) != 28:
         raise ValueError(f"expected 28 episodes, parsed {len(episodes)}")
     return episodes
+
+
+def load_probe_corpus(path: Path | None = None) -> list[tuple[str, str]]:
+    """Load the fixed Plan 33 probe corpus as ``(episode_id, source_text)`` pairs.
+
+    ``load_corpus`` is the 28-episode ingestion/bake-off contract.  The capability
+    probe intentionally uses the separate three-episode corpus, so keeping this
+    adapter here prevents the probe from importing a stale symbol while preserving
+    the existing ingestion loader's return shape.
+    """
+    corpus_path = path or PROBE_CORPUS
+    text = corpus_path.read_text(encoding="utf-8")
+    sections = re.findall(r"^##\s+(E\d+)\s+—[^\n]*\n\n(.*?)(?=^##\s+|\Z)", text, re.MULTILINE | re.DOTALL)
+    if len(sections) != 3:
+        raise ValueError(f"expected three probe episodes in {corpus_path}, found {len(sections)}")
+    return [(episode_id, body.strip()) for episode_id, body in sections]
 
 
 async def main() -> int:

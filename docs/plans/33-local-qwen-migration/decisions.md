@@ -161,3 +161,9 @@ Append-only. Each entry is kept short; detailed measurements belong in `resource
 **Options**: A) pass an empty key to the provider and fail later with an opaque HTTP 401 B) raise a clear configuration error when a named key environment is absent, while allowing an explicit empty environment name for unauthenticated local endpoints.
 **Chosen**: B.
 **Rationale**: A configured authenticated endpoint must not silently downgrade to an empty credential. The explicit empty `local_model_api_key_env` option preserves the documented OpenAI-compatible local endpoint support for services such as unauthenticated Ollama.
+
+### D27: Keep separate ingestion and capability-probe corpus contracts
+**Date**: 2026-09-03 - **Stage**: 2
+**Options**: A) make the 28-episode ingestion loader serve probe calls B) retain `load_corpus` for ingestion and expose `load_probe_corpus` for the fixed three-episode Plan 33 corpus.
+**Chosen**: B.
+**Rationale**: The two harnesses intentionally consume different fixed corpora and return different shapes. A compatibility function in the shared loader repairs the stale probe import without changing the ingestion/bake-off contract or corpus contents.

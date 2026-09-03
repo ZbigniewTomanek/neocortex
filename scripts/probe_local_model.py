@@ -9,13 +9,16 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
+import os
+import re
 import time
 from pathlib import Path
 from typing import Any
 
 from corpus_loader import load_probe_corpus  # ty: ignore[unresolved-import]
-from pydantic_ai.messages import ToolCallPart
+from pydantic_ai.messages import RetryPromptPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.settings import ThinkingLevel
 
 from neocortex.db.mock import InMemoryRepository
@@ -44,31 +47,105 @@ def _usage(result: Any) -> dict[str, Any]:
     details = data.get("details") or {}
     return {
         "requests": data.get("requests"),
-        "prompt_tokens": data.get("request_tokens"),
-        "completion_tokens": data.get("response_tokens"),
+        "tool_calls": data.get("tool_calls"),
+        "prompt_tokens": data.get("input_tokens", data.get("request_tokens")),
+        "completion_tokens": data.get("output_tokens", data.get("response_tokens")),
         "reasoning_tokens": details.get("reasoning_tokens"),
         "details": details,
     }
 
 
-def _messages(result: Any) -> tuple[list[str], str]:
+def _messages(result: Any) -> tuple[list[str], str, int, list[str]]:
     names: list[str] = []
     raw: list[str] = []
+    retry_count = 0
+    normalization_rejections: list[str] = []
     for message in result.all_messages():
         for part in getattr(message, "parts", []):
             if isinstance(part, ToolCallPart):
                 names.append(part.tool_name)
+            if isinstance(part, RetryPromptPart):
+                retry_count += 1
             if hasattr(part, "content") and isinstance(part.content, str):
                 raw.append(part.content)
-    return names, "\n".join(raw)
+            if isinstance(part, ToolReturnPart):
+                content = part.content
+                if isinstance(content, dict) and content.get("accepted") is False:
+                    normalization_rejections.append(str(content.get("reason", "rejected")))
+                elif isinstance(content, str) and re.search(r'"accepted"\s*:\s*false', content, re.IGNORECASE):
+                    normalization_rejections.append(content)
+    return names, "\n".join(raw), retry_count, normalization_rejections
+
+
+def _output_dump(result: Any) -> Any:
+    output = getattr(result, "output", None)
+    if hasattr(output, "model_dump"):
+        return output.model_dump(mode="json")
+    return output
+
+
+def _redact(text: str) -> str:
+    """Remove bearer values from exception text before it enters evidence."""
+    text = re.sub(r"(?i)(bearer\s+)[^\s,;}]+", r"\1<redacted>", text)
+    for name in ("LITELLM_API_KEY", "VLLM_API_KEY"):
+        value = os.environ.get(name)
+        if value:
+            text = text.replace(value, "<redacted>")
+    return text
 
 
 def _exception_output(exc: BaseException) -> str:
     for attr in ("raw_output", "body", "output"):
         value = getattr(exc, attr, None)
         if value:
-            return str(value)
-    return str(exc)
+            return _redact(str(value))
+    return _redact(str(exc))
+
+
+def _failure_class(exc: BaseException, raw_output: str) -> str:
+    """Classify a failed call without collapsing transport and model failures."""
+    text = raw_output.lower()
+    if "system message must be at the beginning" in text:
+        return "http_400_system_message_order"
+    if re.search(r"(?:http|status|status_code)[^\n]{0,20}400", text) or "bad request" in text:
+        return "http_400"
+    if any(marker in text for marker in REFUSAL_MARKERS):
+        return "model_refusal"
+    if "empty" in text and ("content" in text or "output" in text):
+        return "empty_content"
+    if "validation" in text or "structured output" in text or "invalid json" in text:
+        return "invalid_structured_output"
+    if "argument" in text and ("tool" in text or "function" in text):
+        return "malformed_tool_arguments"
+    return type(exc).__name__
+
+
+def _record_base(
+    kind: str,
+    episode_id: str,
+    text: str,
+    model: str,
+    effort: ThinkingLevel | None,
+    timeout_s: float,
+    source_path: str,
+) -> dict[str, Any]:
+    return {
+        "agent": kind,
+        "episode": episode_id,
+        "model": model,
+        "effort": effort,
+        "timeout_s": timeout_s,
+        "input_source": source_path,
+        "input_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "status": "failure",
+        "outcome": "failure",
+        "tool_calls": [],
+        "retries": None,
+        "normalization_rejections": [],
+        "raw_output": "",
+        "raw_validation_output": None,
+        "usage": None,
+    }
 
 
 async def _run_with_timeout(awaitable: Any, timeout_s: float) -> Any:
@@ -131,59 +208,104 @@ async def _probe_one(
     text: str,
     config: AgentInferenceConfig,
     timeout_s: float,
+    source_path: str,
 ) -> dict[str, Any]:
     started = time.monotonic()
-    record: dict[str, Any] = {
-        "agent": kind,
-        "episode": episode_id,
-        "status": "failure",
-        "tool_calls": [],
-        "raw_output": "",
-    }
+    record = _record_base(kind, episode_id, text, config.model_name, config.thinking_effort, timeout_s, source_path)
     try:
         result = await _run_with_timeout(_probe_extraction_agent(kind, text, config, InMemoryRepository()), timeout_s)
-        tool_calls, raw_output = _messages(result)
-        record.update(status="success", tool_calls=tool_calls, raw_output=raw_output, usage=_usage(result))
+        tool_calls, raw_output, retries, rejections = _messages(result)
+        record.update(
+            status="success",
+            outcome="success",
+            tool_calls=tool_calls,
+            retries=retries,
+            normalization_rejections=rejections,
+            raw_output=raw_output,
+            raw_validation_output=_output_dump(result),
+            usage=_usage(result),
+        )
         record["refusal_mode"] = not tool_calls and any(marker in raw_output.lower() for marker in REFUSAL_MARKERS)
     except TimeoutError:
         record.update(
-            status="timeout", exception_type="TimeoutError", raw_output="timeout before a result was returned"
+            status="timeout",
+            outcome="timeout",
+            exception_type="TimeoutError",
+            failure_class="timeout",
+            raw_output="timeout before a result was returned",
         )
     except Exception as exc:  # probe output must retain every failure
-        record.update(status="failure", exception_type=type(exc).__name__, raw_output=_exception_output(exc))
+        raw_output = _exception_output(exc)
+        record.update(
+            status="failure",
+            outcome="failure",
+            exception_type=type(exc).__name__,
+            failure_class=_failure_class(exc, raw_output),
+            raw_output=raw_output,
+        )
     record["elapsed_s"] = round(time.monotonic() - started, 3)
     return record
 
 
 async def _probe_classifier(
-    episode_id: str, text: str, model: str, effort: ThinkingLevel, endpoint: LocalEndpoint | None, timeout_s: float
+    episode_id: str,
+    text: str,
+    model: str,
+    effort: ThinkingLevel,
+    endpoint: LocalEndpoint | None,
+    timeout_s: float,
+    source_path: str,
 ) -> dict[str, Any]:
     started = time.monotonic()
     classifier = AgentDomainClassifier(model_name=model, thinking_effort=effort, local_endpoint=endpoint)
-    record: dict[str, Any] = {"agent": "domain_classifier", "episode": episode_id, "tool_calls": [], "raw_output": ""}
+    record = _record_base("domain_classifier", episode_id, text, model, effort, timeout_s, source_path)
     try:
         output = await _run_with_timeout(classifier.classify(text, SEED_DOMAINS), timeout_s)
         result = classifier._last_run_result
         usage = _usage(result) if result is not None else None
-        tool_calls, raw_output = _messages(result) if result is not None else ([], "")
+        tool_calls, raw_output, retries, rejections = _messages(result) if result is not None else ([], "", None, [])
         record.update(
-            status="success", output=output.model_dump(), usage=usage, tool_calls=tool_calls, raw_output=raw_output
+            status="success",
+            outcome="success",
+            output=output.model_dump(mode="json"),
+            raw_validation_output=_output_dump(result) if result is not None else None,
+            usage=usage,
+            tool_calls=tool_calls,
+            retries=retries,
+            normalization_rejections=rejections,
+            raw_output=raw_output,
         )
     except TimeoutError:
         record.update(
-            status="timeout", exception_type="TimeoutError", raw_output="timeout before a result was returned"
+            status="timeout",
+            outcome="timeout",
+            exception_type="TimeoutError",
+            failure_class="timeout",
+            raw_output="timeout before a result was returned",
         )
     except Exception as exc:
-        record.update(status="failure", exception_type=type(exc).__name__, raw_output=_exception_output(exc))
+        raw_output = _exception_output(exc)
+        record.update(
+            status="failure",
+            outcome="failure",
+            exception_type=type(exc).__name__,
+            failure_class=_failure_class(exc, raw_output),
+            raw_output=raw_output,
+        )
     record["elapsed_s"] = round(time.monotonic() - started, 3)
     return record
 
 
 async def run(args: argparse.Namespace) -> dict[str, Any]:
-    settings = MCPSettings()
+    if args.timeout < 300:
+        raise ValueError("Stage 2 probes require a timeout of at least 300 seconds")
+    settings = MCPSettings(_env_file=None)  # ty: ignore[unknown-argument]
     endpoint = LocalEndpoint.from_settings(settings)
     config = AgentInferenceConfig(model_name=args.model, thinking_effort=args.effort, local_endpoint=endpoint)
     corpus = load_probe_corpus(args.corpus)
+    source_path = str(
+        args.corpus or Path(__file__).parents[1] / "docs/plans/33-local-qwen-migration/resources/probe-corpus.md"
+    )
     jobs = [
         (attempt, episode_id, text, kind)
         for attempt in range(1, args.repeats + 1)
@@ -196,9 +318,11 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         attempt, episode_id, text, kind = job
         async with semaphore:
             if kind == "domain_classifier":
-                record = await _probe_classifier(episode_id, text, args.model, args.effort, endpoint, args.timeout)
+                record = await _probe_classifier(
+                    episode_id, text, args.model, args.effort, endpoint, args.timeout, source_path
+                )
             else:
-                record = await _probe_one(kind, episode_id, text, config, args.timeout)
+                record = await _probe_one(kind, episode_id, text, config, args.timeout, source_path)
         record["attempt"] = attempt
         return record
 
