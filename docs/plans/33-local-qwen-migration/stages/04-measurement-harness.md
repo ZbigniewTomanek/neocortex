@@ -25,9 +25,9 @@
 
 ## Verification
 
-- [ ] GATE `uv run python scripts/corpus_loader.py --dry-run` and harness unit tests — the fixed corpus parses and generated metrics contain real input references; parser fabrication makes this red.
-- [ ] GATE auth and timeout self-check — invalid admin/MCP credentials fail clearly and a deliberately non-terminal job cannot produce a PASS metrics file.
-- [ ] REPORT `./scripts/model_bakeoff.sh --dry-run` — record resolved model, endpoint, effort, concurrency, timeout, and output paths without exposing keys.
+- [x] GATE `uv run python scripts/corpus_loader.py --dry-run` and harness unit tests — the fixed corpus parses and generated metrics contain real input references; parser fabrication makes this red.
+- [x] GATE auth and timeout self-check — invalid admin/MCP credentials fail clearly and a deliberately non-terminal job cannot produce a PASS metrics file.
+- [x] REPORT `./scripts/model_bakeoff.sh --dry-run` — record resolved model, endpoint, effort, concurrency, timeout, and output paths without exposing keys.
 
 ## Commit
 

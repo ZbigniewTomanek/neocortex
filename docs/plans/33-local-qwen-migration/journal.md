@@ -204,3 +204,20 @@ services were left stopped. No credential value was printed, logged, or committe
 JSON was created because no local corpus run with terminal jobs and live embedding health was performed.
 **Problems**: Backlog item 8 remains **OPEN** for the full live orchestrator. Backlog item 3 remains
 **OPEN** for a general application startup health policy beyond this bake-off's explicit preflight.
+
+## 2026-09-03 -- Stage 4 acceptance correction -- ACCEPT
+**Did**: Reconciled the Stage 4 record with the independent acceptance of source revision `72c7275`.
+The later docs-only commit `5bbeb6b` is retained as the documentation successor and adds the
+per-episode Qwen parsing report contract. Embedding health, graph-derived recall, and local quality
+metrics remain `NOT MEASURED`; no quality artifact was created.
+**Verification**:
+- GATE privacy/lifecycle focus: `uv run pytest tests/unit/test_dynamic_routing_audit_privacy.py tests/unit/test_domain_router_bounds.py tests/unit/test_domain_routing.py -q` **PASS**, 14 passed. The action audit contained 57 records and five dynamic-routing sentinels were absent.
+- GATE combined focused acceptance: **PASS**, 108 passed under the independent acceptance run.
+- GATE full repository suite: **PASS**, 965 passed and 7 skipped with the restored PostgreSQL snapshot.
+- REPORT explicit dry run: timeout 37 seconds, worker concurrency 2, corpus 28, initial domains 4, routed-domain cap 5, route and extraction attempts 3, maximum route invocations 84, maximum routed extraction jobs 420, and 5,460 operational acceptance stage invocations. The resulting poll budget is 101,070 seconds. With the default 600-second per-call timeout, the corresponding budget is 1,638,060 seconds.
+**Timeout semantics**: The poll value is an operational acceptance budget, not a theoretical upper
+bound. Parent-seed recursion, internal PydanticAI retries, and non-model work are excluded. An
+overrun is `NOT_MEASURED` and a stability failure.
+**Provenance**: The machine-readable evidence is `resources/stage4-harness-evidence.json`; the source
+acceptance is `72c7275` and its docs successor is `5bbeb6b`. No prompt, output, credential, or
+dynamic-routing identifier was recorded in the action audit.

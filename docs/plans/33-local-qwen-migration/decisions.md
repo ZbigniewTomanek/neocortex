@@ -180,11 +180,12 @@ Append-only. Each entry is kept short; detailed measurements belong in `resource
 auth, terminal jobs, embedding health, and source paths before interpreting quality metrics.
 **Chosen**: B.
 **Rationale**: The harness must not convert queued work, missing embeddings, or an untraceable graph
-into a passing result. A derived timeout is based on configured per-call timeout, three serial model
-stages, three attempts, fixed corpus size, and worker concurrency. Non-terminal jobs produce only an
-exact NOT_MEASURED sidecar. The live auth check uses the repository dev-token map and restores a
-pre-check snapshot. Audit hooks record credential-free model/tool/retry/timing dimensions and exclude
-prompts, outputs, tool arguments, and secrets.
+into a passing result. ~~A derived timeout is based on configured per-call timeout, three serial model
+stages, three attempts, fixed corpus size, and worker concurrency.~~ The Stage 4 timeout is an
+operational acceptance budget; D31 records its routed-stage inputs and exclusions. Non-terminal jobs
+produce only an exact NOT_MEASURED sidecar. The live auth check uses the repository dev-token map and
+restores a pre-check snapshot. Audit hooks record credential-free model/tool/retry/timing dimensions
+and exclude prompts, outputs, tool arguments, and secrets.
 
 ### D30: Require a per-episode parsing report
 **Date**: 2026-09-03 - **Stage**: 7/9
@@ -192,3 +193,10 @@ prompts, outputs, tool arguments, and secrets.
 **Chosen**: B.
 **Rationale**: Aggregate metrics cannot show episode-level failures. The report links each row to database, job, audit, corpus, and snapshot evidence.
 **Controls**: The report uses `NOT MEASURED` for missing evidence. It excludes prompts, hidden reasoning, raw model output, secrets, and sensitive audit fields. A JSON Schema and a fixed episode-set check reject fabricated rows.
+
+### D31: Clarify the Stage 4 timeout as an operational acceptance budget
+**Date**: 2026-09-03 - **Stage**: 4 - **Type**: AMENDMENT
+**Original**: D29 described a derived timeout using three serial model stages.
+**Replacement**: The timeout is an operational acceptance budget based on the registered route/extract retry policies, initial domain count 4, routed-domain cap 5, route/extract attempts 3, corpus size 28, and worker concurrency 2. The explicit run uses 5,460 operational stage invocations and a 101,070-second budget at a 37-second per-call timeout; the default 600-second timeout gives 1,638,060 seconds.
+**Exclusions**: Parent-seed recursion, internal PydanticAI retries, and non-model work are outside this budget. An overrun is `NOT_MEASURED` and a stability failure; the budget is not a theoretical upper bound.
+**Evidence**: Stage 4 dry-run provenance and the independent acceptance record in `resources/stage4-harness-evidence.json`.

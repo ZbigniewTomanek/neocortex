@@ -2,7 +2,16 @@
   "schema_version": 1,
   "stage": 4,
   "title": "Harness, instrumentation, and authentication stability",
-  "measured_at_utc": "2026-09-03T11:16:16Z",
+  "measured_at_utc": "2026-09-03T13:21:01Z",
+  "source_revision": "72c7275",
+  "independent_acceptance": {
+    "status": "ACCEPT",
+    "source_commit": "72c7275",
+    "docs_successor": "5bbeb6b",
+    "action_audit_records": 57,
+    "dynamic_routing_sentinels": 5,
+    "dynamic_routing_sentinels_found": 0
+  },
   "active_configuration": {
     "model": "local:qwen3.8-flash-next",
     "endpoint": "http://127.0.0.1:24000/v1",
@@ -29,9 +38,9 @@
   },
   "gates": {
     "harness_unit_and_related_regressions": {
-      "command": "uv run pytest tests/unit/test_measurement_harness.py tests/test_extraction_pipeline.py tests/test_local_provider_routing.py tests/test_domain_classifier.py tests/test_domain_router.py tests/unit/test_domain_routing.py -q",
+      "command": "Independent combined focused acceptance run at source revision 72c7275",
       "status": "PASS",
-      "observed": "68 passed in 0.61s",
+      "observed": "108 passed",
       "input_paths": [
         "tests/unit/test_measurement_harness.py",
         "tests/test_extraction_pipeline.py",
@@ -49,7 +58,7 @@
       "red_if": "A non-terminal admin summary can produce a quality metrics JSON file."
     },
     "dry_run_configuration": {
-      "command": "./scripts/model_bakeoff.sh --arm qwen-flash-next --dry-run",
+      "command": "NEOCORTEX_LOCAL_MODEL_TIMEOUT_S=37 NEOCORTEX_WORKER_CONCURRENCY=2 NEOCORTEX_DOMAIN_ROUTING_ENABLED=true NEOCORTEX_BAKEOFF_MAX_DOMAIN_FANOUT=5 ./scripts/model_bakeoff.sh --arm qwen-flash-next --dry-run",
       "status": "PASS",
       "observed": {
         "model": "local:qwen3.8-flash-next",
@@ -58,11 +67,37 @@
         "worker_concurrency": 2,
         "per_call_timeout_s": 37,
         "corpus_size": 28,
-        "derived_poll_timeout_s": 4722,
+        "initial_domain_count": 4,
+        "max_unique_routed_domains": 5,
+        "route_attempts": 3,
+        "extraction_attempts": 3,
+        "max_route_invocations": 84,
+        "max_routed_extraction_jobs": 420,
+        "operational_acceptance_stage_invocations": 5460,
+        "derived_poll_timeout_s": 101070,
         "metrics_path": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next.json"
       },
+      "default_timeout_check": {
+        "per_call_timeout_s": 600,
+        "operational_acceptance_stage_invocations": 5460,
+        "worker_concurrency": 2,
+        "derived_poll_timeout_s": 1638060,
+        "status": "PASS"
+      },
+      "timeout_semantics": "Operational acceptance budget, not a theoretical upper bound. Parent-seed recursion, internal PydanticAI retries, and non-model work are excluded. An overrun is NOT_MEASURED and a stability failure.",
       "secret_check": "PASS: the command preview contains an environment-variable reference and no credential value.",
       "red_if": "The resolved model, endpoint, bounds, paths, or secret-safety output changes unexpectedly."
+    },
+    "privacy_lifecycle_focused": {
+      "command": "uv run pytest tests/unit/test_dynamic_routing_audit_privacy.py tests/unit/test_domain_router_bounds.py tests/unit/test_domain_routing.py -q",
+      "status": "PASS",
+      "observed": "14 passed; 57 action-audit records; five dynamic-routing sentinels absent.",
+      "red_if": "A lifecycle/privacy regression, action-audit record loss, or dynamic-routing sentinel appears in durable audit fields."
+    },
+    "combined_focused": {
+      "status": "PASS",
+      "observed": "108 passed under the independent acceptance run.",
+      "provenance": "Independent acceptance at source revision 72c7275; the privacy/lifecycle subset is recorded above."
     },
     "live_auth_self_check": {
       "command": "uv run python scripts/auth_self_check.py",
@@ -96,7 +131,7 @@
     "full_repository_regression": {
       "command": "NEOCORTEX_EXTRACTION_ENABLED=true NEOCORTEX_ONTOLOGY_MODEL=openai-responses:gpt-5.4-mini NEOCORTEX_EXTRACTOR_MODEL=openai-responses:gpt-5.4-mini NEOCORTEX_LIBRARIAN_MODEL=openai-responses:gpt-5.4-mini NEOCORTEX_DOMAIN_CLASSIFIER_MODEL=openai-responses:gpt-5.4-mini uv run pytest tests/ -q",
       "status": "PASS",
-      "observed": "935 passed, 7 skipped in 5.44s with PostgreSQL running from the restored pre-check snapshot.",
+      "observed": "965 passed, 7 skipped with PostgreSQL running from the restored pre-check snapshot.",
       "red_if": "A repository regression, explicit-settings failure, or restored-graph setup failure occurs."
     }
   },
@@ -141,9 +176,19 @@
   },
   "not_measured": [
     {
-      "check": "embedding health and graph-derived recall",
+      "check": "embedding health",
       "reason": "GOOGLE_API_KEY was not supplied in the invoking measurement environment; the bake-off now fails clearly instead of treating text-only recall as embedding health.",
       "backlog": 3
+    },
+    {
+      "check": "graph-derived recall",
+      "reason": "Embedding health was not measured, so graph-derived recall is not interpretable.",
+      "backlog": 3
+    },
+    {
+      "check": "local quality metrics",
+      "reason": "No live terminal local corpus run with measured embeddings and quality inputs was performed.",
+      "backlog": 8
     }
   ],
   "provenance": {
@@ -151,6 +196,8 @@
     "bakeoff_script": "scripts/model_bakeoff.sh",
     "auth_self_check": "scripts/auth_self_check.py",
     "audit_log": "log/agent_actions.log",
+    "source_revision": "72c7275",
+    "docs_successor": "5bbeb6b",
     "quality_metrics_artifact": "NOT_CREATED: no live terminal job run was performed"
   }
 }
