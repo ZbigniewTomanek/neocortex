@@ -11,7 +11,7 @@ import re
 import procrastinate
 from loguru import logger
 
-from neocortex.domains.classifier import DomainClassifier
+from neocortex.domains.classifier import AgentDomainClassifier, DomainClassifier
 from neocortex.domains.models import (
     DomainClassification,
     ProposedDomain,
@@ -63,6 +63,7 @@ class DomainRouter:
         episode_text: str,
     ) -> list[RoutingResult]:
         """Classify episode text and route to matching shared domain schemas."""
+        correlation_id = f"route:{agent_id}:{episode_id}"
         domains = await self._domain_service.list_domains()
 
         if not domains:
@@ -75,12 +76,25 @@ class DomainRouter:
             return []
 
         try:
-            classification = await self._classifier.classify(episode_text, domains)
+            if isinstance(self._classifier, AgentDomainClassifier):
+                classification = await self._classifier.classify(
+                    episode_text,
+                    domains,
+                    agent_id=agent_id,
+                    episode_id=episode_id,
+                    correlation_id=correlation_id,
+                )
+            else:
+                # Keep the protocol compatible with deterministic test and
+                # plugin classifiers that implement the original two-argument
+                # method.
+                classification = await self._classifier.classify(episode_text, domains)
         except Exception:
             logger.bind(action_log=True).warning(
                 "domain_classification_failed",
                 agent_id=agent_id,
                 episode_id=episode_id,
+                correlation_id=correlation_id,
             )
             return []
 
@@ -88,6 +102,7 @@ class DomainRouter:
             "domain_classification_result",
             agent_id=agent_id,
             episode_id=episode_id,
+            correlation_id=correlation_id,
             matched_count=len(classification.matched_domains),
             matched_slugs=[m.domain_slug for m in classification.matched_domains],
             method=(
@@ -160,6 +175,7 @@ class DomainRouter:
                 "domain_routing_completed",
                 agent_id=agent_id,
                 episode_id=episode_id,
+                correlation_id=correlation_id,
                 routed_to=[r.schema_name for r in results],
                 domain_count=len(results),
             )
@@ -168,6 +184,7 @@ class DomainRouter:
                 "domain_routing_unrouted",
                 agent_id=agent_id,
                 episode_id=episode_id,
+                correlation_id=correlation_id,
                 matched_count=len(classification.matched_domains),
                 proposed=classification.proposed_domain is not None,
                 reason="no_domains_matched_or_provisioned",

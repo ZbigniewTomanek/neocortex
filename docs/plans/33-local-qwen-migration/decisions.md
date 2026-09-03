@@ -173,3 +173,15 @@ Append-only. Each entry is kept short; detailed measurements belong in `resource
 **Options**: A) select xhigh by default B) validate low first and raise effort only when measured quality improves.
 **Chosen**: B.
 **Rationale**: The user observed that Flash Next at xhigh can loop or overthink. Indexing time is acceptable, but unnecessary reasoning increases operational risk; later effort tuning must use measured quality benefit and must not choose xhigh by default.
+
+### D29: Make measurement provenance fail closed
+**Date**: 2026-09-03 - **Stage**: 4
+**Options**: A) let the bake-off infer completion and continue with degraded recall B) require explicit
+auth, terminal jobs, embedding health, and source paths before interpreting quality metrics.
+**Chosen**: B.
+**Rationale**: The harness must not convert queued work, missing embeddings, or an untraceable graph
+into a passing result. A derived timeout is based on configured per-call timeout, three serial model
+stages, three attempts, fixed corpus size, and worker concurrency. Non-terminal jobs produce only an
+exact NOT_MEASURED sidecar. The live auth check uses the repository dev-token map and restores a
+pre-check snapshot. Audit hooks record credential-free model/tool/retry/timing dimensions and exclude
+prompts, outputs, tool arguments, and secrets.

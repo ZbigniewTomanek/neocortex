@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "stage": 4,
+  "title": "Harness, instrumentation, and authentication stability",
+  "measured_at_utc": "2026-09-03T11:16:16Z",
+  "active_configuration": {
+    "model": "local:qwen3.8-flash-next",
+    "endpoint": "http://127.0.0.1:24000/v1",
+    "api_key_env": "LITELLM_API_KEY",
+    "auth_mode": "dev_token",
+    "effort_defaults": {
+      "ontology": "low",
+      "extractor": "low",
+      "librarian": "low"
+    },
+    "admin_token_env": "NEOCORTEX_ADMIN_TOKEN",
+    "dev_tokens_file": "dev_tokens.json"
+  },
+  "fixed_corpus": {
+    "path": "docs/plans/18.5-e2e-revalidation/resources/episodes.md",
+    "episode_count": 28,
+    "episode_numbers": "1..28",
+    "sha256": "dee5ea4934e042f3f7a12bc7b2b918287c303ff4dd723471ce4279f6f149beff",
+    "dry_run": {
+      "command": "uv run python scripts/corpus_loader.py --dry-run",
+      "status": "PASS",
+      "observed_lines": 28
+    }
+  },
+  "gates": {
+    "harness_unit_and_related_regressions": {
+      "command": "uv run pytest tests/unit/test_measurement_harness.py tests/test_extraction_pipeline.py tests/test_local_provider_routing.py tests/test_domain_classifier.py tests/test_domain_router.py tests/unit/test_domain_routing.py -q",
+      "status": "PASS",
+      "observed": "68 passed in 0.61s",
+      "input_paths": [
+        "tests/unit/test_measurement_harness.py",
+        "tests/test_extraction_pipeline.py",
+        "tests/test_local_provider_routing.py",
+        "tests/test_domain_classifier.py",
+        "tests/test_domain_router.py",
+        "tests/unit/test_domain_routing.py"
+      ],
+      "red_if": "A corpus parser, timeout guard, audit hook, domain, extraction, or routing regression fails."
+    },
+    "non_terminal_job_guard": {
+      "command": "test_non_terminal_cli_writes_only_not_measured_sidecar",
+      "status": "PASS",
+      "observed": "A todo=1 summary returns exit 2, writes only metrics-self-test.not-measured.json with the exact summary, and leaves metrics-self-test.json absent.",
+      "red_if": "A non-terminal admin summary can produce a quality metrics JSON file."
+    },
+    "dry_run_configuration": {
+      "command": "./scripts/model_bakeoff.sh --arm qwen-flash-next --dry-run",
+      "status": "PASS",
+      "observed": {
+        "model": "local:qwen3.8-flash-next",
+        "endpoint": "http://127.0.0.1:24000/v1",
+        "effort": "low",
+        "worker_concurrency": 2,
+        "per_call_timeout_s": 37,
+        "corpus_size": 28,
+        "derived_poll_timeout_s": 4722,
+        "metrics_path": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next.json"
+      },
+      "secret_check": "PASS: the command preview contains an environment-variable reference and no credential value.",
+      "red_if": "The resolved model, endpoint, bounds, paths, or secret-safety output changes unexpectedly."
+    },
+    "live_auth_self_check": {
+      "command": "uv run python scripts/auth_self_check.py",
+      "status": "PASS",
+      "observed": "Invalid admin and MCP credentials were rejected; valid admin-token credentials were accepted.",
+      "input_paths": [
+        "scripts/auth_self_check.py",
+        "dev_tokens.json",
+        "http://127.0.0.1:8001/admin/graphs",
+        "http://127.0.0.1:8000/mcp"
+      ],
+      "red_if": "An invalid credential is accepted, a valid credential is rejected, or the endpoint/tool result is missing."
+    },
+    "snapshot_preservation": {
+      "status": "PASS",
+      "observed": "A snapshot was saved before the authenticated live check, then loaded after the check; app services were left stopped and PostgreSQL data remained running.",
+      "snapshot_name": "stage4-auth-live-pre",
+      "red_if": "The pre-check snapshot cannot be saved or restored, or live checks leave unrecorded graph mutations."
+    },
+    "static_checks": {
+      "status": "PASS",
+      "observed": [
+        "uv run black --check (changed Python files)",
+        "uv run ruff check (changed Python files)",
+        "uv run ty check (changed source, scripts, and harness test)",
+        "bash -n scripts/model_bakeoff.sh",
+        "git diff --check"
+      ],
+      "red_if": "Formatting, lint, type, shell, or whitespace validation fails."
+    },
+    "full_repository_regression": {
+      "command": "NEOCORTEX_EXTRACTION_ENABLED=true NEOCORTEX_ONTOLOGY_MODEL=openai-responses:gpt-5.4-mini NEOCORTEX_EXTRACTOR_MODEL=openai-responses:gpt-5.4-mini NEOCORTEX_LIBRARIAN_MODEL=openai-responses:gpt-5.4-mini NEOCORTEX_DOMAIN_CLASSIFIER_MODEL=openai-responses:gpt-5.4-mini uv run pytest tests/ -q",
+      "status": "PASS",
+      "observed": "935 passed, 7 skipped in 5.44s with PostgreSQL running from the restored pre-check snapshot.",
+      "red_if": "A repository regression, explicit-settings failure, or restored-graph setup failure occurs."
+    }
+  },
+  "instrumentation": {
+    "runtime_smoke": {
+      "status": "PASS",
+      "observed": "A TestModel ontology run emitted 14 action-log events, including model_request_started/completed and tool_call_started/completed; required model, endpoint, agent, effort, and correlation_id dimensions were present.",
+      "input": "build_ontology_agent(AgentInferenceConfig(use_test_model=True)) with episode_id=1 and correlation_id=stage4-smoke:1",
+      "red_if": "A model/tool event is absent or any required dimension is unavailable."
+    },
+    "events": [
+      "model_request_started",
+      "model_request_completed",
+      "model_request_failed",
+      "tool_call_started",
+      "tool_call_completed",
+      "tool_call_failed",
+      "tool_validation_rejected",
+      "output_validation_retry",
+      "stage_timing",
+      "agent_usage",
+      "normalization rejection events"
+    ],
+    "dimensions": [
+      "model",
+      "endpoint",
+      "agent",
+      "effort",
+      "agent_id",
+      "episode_id",
+      "correlation_id",
+      "run_id"
+    ],
+    "secret_policy": "Prompts, outputs, tool arguments, authorization values, and API keys are excluded from audit records.",
+    "source_paths": [
+      "src/neocortex/extraction/agents.py",
+      "src/neocortex/extraction/pipeline.py",
+      "src/neocortex/domains/classifier.py",
+      "src/neocortex/jobs/tasks.py",
+      "log/agent_actions.log"
+    ]
+  },
+  "not_measured": [
+    {
+      "check": "embedding health and graph-derived recall",
+      "reason": "GOOGLE_API_KEY was not supplied in the invoking measurement environment; the bake-off now fails clearly instead of treating text-only recall as embedding health.",
+      "backlog": 3
+    }
+  ],
+  "provenance": {
+    "metrics_script": "scripts/compute_metrics.py",
+    "bakeoff_script": "scripts/model_bakeoff.sh",
+    "auth_self_check": "scripts/auth_self_check.py",
+    "audit_log": "log/agent_actions.log",
+    "quality_metrics_artifact": "NOT_CREATED: no live terminal job run was performed"
+  }
+}

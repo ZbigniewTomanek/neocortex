@@ -6,6 +6,9 @@ more semantic domains from the upper ontology.
 
 from __future__ import annotations
 
+import os
+import uuid
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from loguru import logger
@@ -17,12 +20,22 @@ from neocortex.domains.models import (
     DomainClassification,
     SemanticDomain,
 )
+from neocortex.extraction.agents import AgentInferenceConfig, _endpoint_identity, build_audit_hooks
 from neocortex.model_factory import LocalEndpoint, build_model, build_model_settings
 
 
 @runtime_checkable
 class DomainClassifier(Protocol):
     async def classify(self, text: str, domains: list[SemanticDomain]) -> ClassificationResult: ...
+
+
+@dataclass
+class DomainAuditDeps:
+    """Non-secret context attached to classifier audit events."""
+
+    agent_id: str = ""
+    episode_id: int | None = None
+    correlation_id: str | None = None
 
 
 def format_domain_tree(domains: list[SemanticDomain]) -> str:
@@ -52,7 +65,15 @@ class AgentDomainClassifier:
         self._local_endpoint = local_endpoint
         self._last_run_result = None
 
-    async def classify(self, text: str, domains: list[SemanticDomain]) -> ClassificationResult:
+    async def classify(
+        self,
+        text: str,
+        domains: list[SemanticDomain],
+        *,
+        agent_id: str | None = None,
+        episode_id: int | None = None,
+        correlation_id: str | None = None,
+    ) -> ClassificationResult:
         if not domains:
             logger.warning("classifier_received_empty_domains")
             return ClassificationResult(matched_domains=[], proposed_domain=None)
@@ -85,14 +106,28 @@ class AgentDomainClassifier:
             "rather than prose."
         )
 
-        agent: Agent[None, ClassificationResult] = Agent(  # ty: ignore[invalid-assignment]
-            build_model(self._model_name, self._local_endpoint),
-            output_type=ClassificationResult,
-            system_prompt=prompt,
+        config = AgentInferenceConfig(
+            model_name=self._model_name,
+            thinking_effort=self._thinking_effort,
+            local_endpoint=self._local_endpoint,
+        )
+        agent: Agent[DomainAuditDeps, ClassificationResult] = (  # ty: ignore[invalid-assignment]
+            Agent(  # ty: ignore[no-matching-overload]
+                build_model(self._model_name, self._local_endpoint),
+                output_type=ClassificationResult,
+                deps_type=DomainAuditDeps,
+                capabilities=[build_audit_hooks("domain_classifier", config)],
+                system_prompt=prompt,
+            )
         )
 
         result = await agent.run(
             text,
+            deps=DomainAuditDeps(
+                agent_id=agent_id or "unknown",
+                episode_id=episode_id,
+                correlation_id=correlation_id or f"domain:{uuid.uuid4().hex}",
+            ),
             model_settings=build_model_settings(self._thinking_effort, self._model_name, self._local_endpoint),
         )
         usage = result.usage()
@@ -100,6 +135,14 @@ class AgentDomainClassifier:
         logger.bind(action_log=True).info(
             "agent_usage",
             stage="domain_classifier",
+            agent="domain_classifier",
+            agent_id=agent_id or "unknown",
+            episode_id=episode_id,
+            correlation_id=correlation_id or "unavailable",
+            model=self._model_name.removeprefix("local:"),
+            endpoint=_endpoint_identity(config),
+            effort=self._thinking_effort,
+            run_id=os.environ.get("NEOCORTEX_BAKEOFF_RUN_ID") or "unavailable",
             requests=int(getattr(usage, "requests", 0)),
             tool_calls=int(getattr(usage, "tool_calls", 0)),
             input_tokens=int(getattr(usage, "input_tokens", 0)),

@@ -6,11 +6,16 @@ Agents are domain-agnostic — they work with any text, not just medical content
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from time import monotonic
+from typing import TYPE_CHECKING, Any, Literal
 
 from loguru import logger
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.capabilities import Hooks
+from pydantic_ai.exceptions import ModelRetry
+from pydantic_ai.messages import ToolCallPart
 from pydantic_ai.models import Model
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.settings import ModelSettings, ThinkingLevel
@@ -52,6 +57,198 @@ class AgentInferenceConfig:
         return None
 
 
+def _endpoint_identity(config: AgentInferenceConfig) -> str:
+    """Return a credential-free endpoint identity for audit events."""
+    if config.local_endpoint is None or not config.local_endpoint.base_url:
+        return "hosted"
+    # The configured endpoint is an operator-controlled URL.  Keep only its
+    # scheme, host, and path so a malformed URL cannot copy credentials or
+    # query parameters into the durable action log.
+    from urllib.parse import urlsplit, urlunsplit
+
+    parsed = urlsplit(config.local_endpoint.base_url)
+    host = parsed.hostname or ""
+    if parsed.port is not None:
+        host = f"{host}:{parsed.port}"
+    return urlunsplit((parsed.scheme, host, parsed.path.rstrip("/"), "", ""))
+
+
+def _audit_dimensions(ctx: RunContext[Any], agent_name: str, config: AgentInferenceConfig) -> dict[str, object]:
+    """Build common, non-secret fields for model/tool audit records."""
+    deps = ctx.deps
+    return {
+        "agent": agent_name,
+        "agent_id": getattr(deps, "agent_id", None) or "unknown",
+        "episode_id": getattr(deps, "episode_id", None),
+        "correlation_id": getattr(deps, "correlation_id", None) or "unavailable",
+        "model": config.model_name.removeprefix("local:"),
+        "endpoint": _endpoint_identity(config),
+        "effort": config.thinking_effort,
+        "run_id": os.environ.get("NEOCORTEX_BAKEOFF_RUN_ID") or ctx.run_id,
+    }
+
+
+def build_audit_hooks(agent_name: str, config: AgentInferenceConfig) -> Hooks:
+    """Create PydanticAI lifecycle hooks for the structured action log.
+
+    The hooks deliberately record event metadata only.  Prompts, model output,
+    tool arguments, and credentials do not belong in ``agent_actions.log``.
+    PydanticAI retries output validation and tool execution through the model
+    request loop; request records include the retry counter, and validation or
+    tool errors identify the rejection cause.
+    """
+    started: dict[tuple[str, str], float] = {}
+
+    def key(kind: str, identifier: str | None, ctx: RunContext[Any]) -> tuple[str, str]:
+        return kind, identifier or f"step-{ctx.run_step}"
+
+    async def before_run(ctx: RunContext[Any]) -> None:
+        logger.bind(action_log=True).info(
+            "agent_run_started",
+            **_audit_dimensions(ctx, agent_name, config),
+        )
+        started[key("run", ctx.run_id, ctx)] = monotonic()
+
+    async def after_run(ctx: RunContext[Any], *, result: Any) -> Any:
+        run_key = key("run", ctx.run_id, ctx)
+        logger.bind(action_log=True).info(
+            "agent_run_completed",
+            **_audit_dimensions(ctx, agent_name, config),
+            elapsed_s=round(monotonic() - started.pop(run_key, monotonic()), 4),
+            output_type=type(result.output).__name__,
+        )
+        return result
+
+    async def on_run_error(ctx: RunContext[Any], *, error: BaseException) -> Any:
+        logger.bind(action_log=True).warning(
+            "agent_run_failed",
+            **_audit_dimensions(ctx, agent_name, config),
+            error_type=type(error).__name__,
+            retry=ctx.retry,
+            max_retries=ctx.max_retries,
+        )
+        raise error
+
+    async def before_model_request(ctx: RunContext[Any], request_context: Any) -> Any:
+        request_key = key("model", str(ctx.run_step), ctx)
+        started[request_key] = monotonic()
+        dimensions = _audit_dimensions(ctx, agent_name, config)
+        logger.bind(action_log=True).info(
+            "model_request_started",
+            **dimensions,
+            request_step=ctx.run_step,
+            retry=ctx.retry,
+            max_retries=ctx.max_retries,
+        )
+        if ctx.retry > 0:
+            logger.bind(action_log=True).info(
+                "output_validation_retry",
+                **dimensions,
+                request_step=ctx.run_step,
+                retry=ctx.retry,
+                max_retries=ctx.max_retries,
+                cause="agent_retry_loop",
+            )
+        return request_context
+
+    async def after_model_request(ctx: RunContext[Any], *, request_context: Any, response: Any) -> Any:
+        request_key = key("model", str(ctx.run_step), ctx)
+        logger.bind(action_log=True).info(
+            "model_request_completed",
+            **_audit_dimensions(ctx, agent_name, config),
+            request_step=ctx.run_step,
+            retry=ctx.retry,
+            elapsed_s=round(monotonic() - started.pop(request_key, monotonic()), 4),
+        )
+        return response
+
+    async def on_model_request_error(ctx: RunContext[Any], *, request_context: Any, error: Exception) -> Any:
+        request_key = key("model", str(ctx.run_step), ctx)
+        logger.bind(action_log=True).warning(
+            "model_request_failed",
+            **_audit_dimensions(ctx, agent_name, config),
+            request_step=ctx.run_step,
+            retry=ctx.retry,
+            elapsed_s=round(monotonic() - started.pop(request_key, monotonic()), 4),
+            error_type=type(error).__name__,
+        )
+        raise error
+
+    async def before_tool_execute(ctx: RunContext[Any], *, call: ToolCallPart, tool_def: Any, args: Any) -> Any:
+        del tool_def
+        call_key = key("tool", call.tool_call_id, ctx)
+        started[call_key] = monotonic()
+        logger.bind(action_log=True).info(
+            "tool_call_started",
+            **_audit_dimensions(ctx, agent_name, config),
+            tool=call.tool_name,
+            tool_call_id=call.tool_call_id,
+            retry=ctx.retry,
+        )
+        return args
+
+    async def after_tool_execute(
+        ctx: RunContext[Any], *, call: ToolCallPart, tool_def: Any, args: Any, result: Any
+    ) -> Any:
+        del tool_def, args
+        call_key = key("tool", call.tool_call_id, ctx)
+        logger.bind(action_log=True).info(
+            "tool_call_completed",
+            **_audit_dimensions(ctx, agent_name, config),
+            tool=call.tool_name,
+            tool_call_id=call.tool_call_id,
+            retry=ctx.retry,
+            elapsed_s=round(monotonic() - started.pop(call_key, monotonic()), 4),
+            result_type=type(result).__name__,
+        )
+        return result
+
+    async def on_tool_execute_error(
+        ctx: RunContext[Any], *, call: ToolCallPart, tool_def: Any, args: Any, error: Exception
+    ) -> Any:
+        del tool_def, args
+        call_key = key("tool", call.tool_call_id, ctx)
+        logger.bind(action_log=True).warning(
+            "tool_call_failed",
+            **_audit_dimensions(ctx, agent_name, config),
+            tool=call.tool_name,
+            tool_call_id=call.tool_call_id,
+            retry=ctx.retry,
+            elapsed_s=round(monotonic() - started.pop(call_key, monotonic()), 4),
+            error_type=type(error).__name__,
+        )
+        raise error
+
+    async def on_tool_validate_error(
+        ctx: RunContext[Any], *, call: ToolCallPart, tool_def: Any, args: Any, error: Any
+    ) -> Any:
+        del tool_def, args
+        logger.bind(action_log=True).warning(
+            "tool_validation_rejected",
+            **_audit_dimensions(ctx, agent_name, config),
+            tool=call.tool_name,
+            tool_call_id=call.tool_call_id,
+            retry=ctx.retry,
+            max_retries=ctx.max_retries,
+            error_type=type(error).__name__,
+            retryable=isinstance(error, ModelRetry),
+        )
+        raise error
+
+    return Hooks(
+        before_run=before_run,
+        after_run=after_run,
+        run_error=on_run_error,
+        before_model_request=before_model_request,
+        after_model_request=after_model_request,
+        model_request_error=on_model_request_error,
+        before_tool_execute=before_tool_execute,
+        after_tool_execute=after_tool_execute,
+        tool_execute_error=on_tool_execute_error,
+        tool_validate_error=on_tool_validate_error,
+    )
+
+
 def _build_model(config: AgentInferenceConfig) -> str | Model:
     """Build the LLM model from inference config."""
     if config.use_test_model:
@@ -79,6 +276,8 @@ class OntologyAgentDeps:
     repo: MemoryRepository | None = None
     agent_id: str = ""
     target_schema: str | None = None
+    episode_id: int | None = None
+    correlation_id: str | None = None
 
 
 def build_ontology_agent(
@@ -86,10 +285,11 @@ def build_ontology_agent(
 ) -> Agent[OntologyAgentDeps, OntologyProposal]:
     cfg = config or AgentInferenceConfig()
     model = _build_model(cfg)
-    agent = Agent(
+    agent = Agent(  # ty: ignore[no-matching-overload]
         model,
         output_type=OntologyProposal,
         deps_type=OntologyAgentDeps,
+        capabilities=[build_audit_hooks("ontology", cfg)],
         system_prompt=(
             "You are an ontology engineer for a personal knowledge graph. Your job is to "
             "decide whether the existing ontology covers the concepts in a text, and propose "
@@ -254,7 +454,7 @@ def build_ontology_agent(
             "similar_existing": similar,
         }
 
-    @agent.instructions
+    @agent.instructions  # ty: ignore[no-matching-overload]
     async def inject_context(ctx: RunContext[OntologyAgentDeps]) -> str:
         parts: list[str] = []
         if ctx.deps.domain_hint:
@@ -299,6 +499,9 @@ class ExtractorAgentDeps:
     edge_type_descriptions: dict[str, str] | None = None
     domain_hint: str | None = None
     type_examples: dict[str, list[str]] | None = None  # {type_name: [entity_names]}
+    agent_id: str = ""
+    episode_id: int | None = None
+    correlation_id: str | None = None
 
 
 def build_extractor_agent(
@@ -306,10 +509,11 @@ def build_extractor_agent(
 ) -> Agent[ExtractorAgentDeps, ExtractionResult]:
     cfg = config or AgentInferenceConfig()
     model = _build_model(cfg)
-    agent = Agent(
+    agent = Agent(  # ty: ignore[no-matching-overload]
         model,
         output_type=ExtractionResult,
         deps_type=ExtractorAgentDeps,
+        capabilities=[build_audit_hooks("extractor", cfg)],
         system_prompt=(
             "You are a knowledge extraction specialist. Extract entities and relations "
             "from the given text, aligned to the provided ontology types.",
@@ -347,7 +551,7 @@ def build_extractor_agent(
         ),
     )
 
-    @agent.instructions
+    @agent.instructions  # ty: ignore[no-matching-overload]
     async def inject_context(ctx: RunContext[ExtractorAgentDeps]) -> str:
         parts: list[str] = []
         if ctx.deps.domain_hint:
@@ -416,6 +620,7 @@ class LibrarianAgentDeps:
     agent_id: str
     target_schema: str | None = None
     episode_id: int | None = None  # Source tracking in mutation tools
+    correlation_id: str | None = None
     known_node_names: list[str] | None = None  # Fallback dedup context (non-tool mode)
     precomputed_embeddings: dict[str, list[float]] = field(default_factory=dict)
 
@@ -525,10 +730,11 @@ def build_librarian_agent(
             "ALWAYS provide a description for every entity.",
         )
 
-    agent = Agent(
+    agent = Agent(  # ty: ignore[no-matching-overload]
         model,
         output_type=output_type,
         deps_type=LibrarianAgentDeps,
+        capabilities=[build_audit_hooks("librarian", cfg)],
         system_prompt=system_prompt,
     )
 
@@ -896,10 +1102,10 @@ def build_librarian_agent(
             action = "created" if is_new else "updated"
             logger.bind(action_log=True).info(
                 "librarian_tool_call",
+                **_audit_dimensions(ctx, "librarian", cfg),
                 tool="create_or_update_node",
                 node_name=name,
                 action=action,
-                agent_id=ctx.deps.agent_id,
             )
             return {
                 "node_id": node.id,
@@ -976,11 +1182,11 @@ def build_librarian_agent(
                 return {"error": f"Failed to upsert edge '{source_name}' -> '{target_name}' ({edge_type})"}
             logger.bind(action_log=True).info(
                 "librarian_tool_call",
+                **_audit_dimensions(ctx, "librarian", cfg),
                 tool="create_or_update_edge",
                 source=source_name,
                 target=target_name,
                 edge_type=edge_type,
-                agent_id=ctx.deps.agent_id,
             )
             return {
                 "edge_id": edge.id,
@@ -1014,10 +1220,10 @@ def build_librarian_agent(
             )
             logger.bind(action_log=True).info(
                 "librarian_tool_call",
+                **_audit_dimensions(ctx, "librarian", cfg),
                 tool="archive_node",
                 node_id=node_id,
                 reason=reason,
-                agent_id=ctx.deps.agent_id,
             )
             return {
                 "archived": count > 0,
@@ -1049,10 +1255,10 @@ def build_librarian_agent(
             )
             logger.bind(action_log=True).info(
                 "librarian_tool_call",
+                **_audit_dimensions(ctx, "librarian", cfg),
                 tool="remove_edge",
                 edge_id=edge_id,
                 reason=reason,
-                agent_id=ctx.deps.agent_id,
             )
             return {
                 "removed": deleted,
@@ -1062,7 +1268,7 @@ def build_librarian_agent(
 
     # ── Context injection ──
 
-    @agent.instructions
+    @agent.instructions  # ty: ignore[no-matching-overload]
     async def inject_context(ctx: RunContext[LibrarianAgentDeps]) -> str:
         def _format_entity(e: ExtractedEntity) -> str:
             base = f"- {e.name} [{e.type_name}]: {e.description or 'no description'}"

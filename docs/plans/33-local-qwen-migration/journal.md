@@ -179,3 +179,28 @@ names the verified repository map explicitly.
 ## 2026-09-03 -- Code review follow-up: Stage 3 backlog disposition -- RECORDED
 **Review outcome**: A five-axis review found no correctness, edge-case, SQL-performance, security, or modularity defect in the Stage 3 source change. The review scope was the already committed adapter/tests and Plan 33 evidence; no source or SQL edits were required.
 **Disposition**: Fixed the confirmed bookkeeping finding by marking backlog item 9 **RESOLVED** with implementation commit `1df6c2a` and the measured medium/low rerun references. Backlog item 12 remains **OPEN** for the separately measured ontology timeout and stochastic classifier structured-output risk.
+
+## 2026-09-03 -- Stage 4: measurement harness, instrumentation, and auth stability -- DONE
+**Did**: Completed the bake-off harness for the fixed 28-episode ingestion corpus. Metrics now record
+live graph, snapshot, audit-log, admin jobs API, corpus, run id, model, endpoint identity, effort,
+worker, timeout, and source revision metadata. Model, tool, retry/rejection, stage-timing, usage, and
+normalization-rejection events carry agent, agent id, episode id, correlation id, model, credential-free
+endpoint, effort, and run id. The harness uses explicit admin and MCP tokens, rejects absent or
+misplaced credentials, derives a bounded poll timeout from per-call timeout/corpus/concurrency, refuses
+quality output for non-terminal jobs, and preserves/restores a snapshot around a live auth check.
+Embedding health fails clearly when GOOGLE_API_KEY is not supplied; no text-only recall result is
+certified as embedding health.
+**Verification**:
+- GATE fixed corpus and related harness regressions: uv run pytest tests/unit/test_measurement_harness.py tests/test_extraction_pipeline.py tests/test_local_provider_routing.py tests/test_domain_classifier.py tests/test_domain_router.py tests/unit/test_domain_routing.py -q **PASS**, 68 passed. Input paths and the exact corpus SHA-256 are recorded in resources/stage4-harness-evidence.json; a parser change, fabricated episode, or instrumentation regression turns this red.
+- GATE non-terminal safeguard: test_non_terminal_cli_writes_only_not_measured_sidecar **PASS**. A summary with todo=1 returns exit 2, writes an exact NOT_MEASURED sidecar, and leaves the quality metrics path absent. Input: the test's temporary output directory and exact job summary; writing a quality artifact before terminal completion turns this red.
+- GATE admin/MCP authentication: uv run python scripts/auth_self_check.py **PASS** against the live services. Invalid admin and MCP credentials were rejected and the valid admin-token mapping in dev_tokens.json was accepted. Input paths: scripts/auth_self_check.py, dev_tokens.json, /admin/graphs, and /mcp; accepting an invalid token or rejecting the valid token turns this red.
+- GATE timeout/report dry run: ./scripts/model_bakeoff.sh --arm qwen-flash-next --dry-run **PASS**, resolved model local:qwen3.8-flash-next, endpoint http://127.0.0.1:24000/v1, low default effort, worker concurrency 2, per-call timeout 37 seconds, corpus size 28, derived poll timeout 4722 seconds, and the metrics/audit paths. Input: the script, fixed corpus, and environment-only token names; a secret value, stale model, missing path, or unbounded timeout turns this red.
+- CHECK static validation: focused Black, Ruff, Ty, bash -n scripts/model_bakeoff.sh, and git diff --check **PASS**.
+- REPORT full repository regression: explicit hosted-model overrides produced 935 passed and 7 skipped in 5.44 seconds with PostgreSQL running from the restored pre-check snapshot; no test was weakened or removed.
+- REPORT embedding health and recall: NOT MEASURED because the invoking measurement environment did not supply GOOGLE_API_KEY; the harness exits before a recall claim rather than silently degrading.
+**Provenance**: The complete machine-readable record is resources/stage4-harness-evidence.json. The
+live auth check used the pre-check snapshot stage4-auth-live-pre and loaded it after the check; app
+services were left stopped. No credential value was printed, logged, or committed. No quality metrics
+JSON was created because no local corpus run with terminal jobs and live embedding health was performed.
+**Problems**: Backlog item 8 remains **OPEN** for the full live orchestrator. Backlog item 3 remains
+**OPEN** for a general application startup health policy beyond this bake-off's explicit preflight.

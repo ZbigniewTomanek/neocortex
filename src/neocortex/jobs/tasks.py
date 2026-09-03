@@ -25,6 +25,7 @@ async def extract_episode(
     source_schema: str | None = None,
     domain_hint: str | None = None,
     domain_slug: str | None = None,
+    correlation_id: str | None = None,
 ) -> None:
     """Run extraction pipeline for a batch of episodes.
 
@@ -40,7 +41,9 @@ async def extract_episode(
         domain_slug: Optional domain slug used to look up domain-specific seed
                      ontology recommendations.
     """
-    logger.info(
+    provided_correlation_id = correlation_id
+    correlation_id = correlation_id or f"job:{agent_id}:{episode_ids[0] if episode_ids else 'empty'}"
+    logger.bind(action_log=True).info(
         "extract_episode_started",
         agent_id=agent_id,
         episode_ids=episode_ids,
@@ -48,6 +51,7 @@ async def extract_episode(
         source_schema=source_schema,
         domain_hint=domain_hint,
         domain_slug=domain_slug,
+        correlation_id=correlation_id,
     )
     from neocortex.extraction.agents import AgentInferenceConfig
     from neocortex.extraction.pipeline import run_extraction
@@ -66,7 +70,7 @@ async def extract_episode(
     elif source_schema is not None:
         extra["source_schema"] = source_schema
 
-    await run_extraction(
+    run_kwargs: dict[str, object] = dict(
         repo=services["repo"],
         embeddings=services["embeddings"],
         agent_id=agent_id,
@@ -96,11 +100,18 @@ async def extract_episode(
         domain_slug=domain_slug,
         seed_generator=services.get("seed_generator"),
     )
-    logger.info(
+    # Keep the optional argument absent for backwards-compatible direct task
+    # callers, while production jobs get one correlation id for all audit
+    # records emitted by the extraction pipeline.
+    if provided_correlation_id is not None:
+        run_kwargs["correlation_id"] = provided_correlation_id
+    await run_extraction(**run_kwargs)  # ty: ignore[invalid-argument-type]
+    logger.bind(action_log=True).info(
         "extract_episode_completed",
         agent_id=agent_id,
         episode_ids=episode_ids,
         target_schema=target_schema,
+        correlation_id=correlation_id,
     )
 
 
@@ -115,7 +126,10 @@ async def route_episode(
     episode_text: str,
 ) -> None:
     """Route an episode to shared graphs via domain classification."""
-    logger.info("route_episode_started", agent_id=agent_id, episode_id=episode_id)
+    correlation_id = f"route:{agent_id}:{episode_id}"
+    logger.bind(action_log=True).info(
+        "route_episode_started", agent_id=agent_id, episode_id=episode_id, correlation_id=correlation_id
+    )
     from neocortex.jobs.context import get_services
 
     services = get_services()
@@ -137,6 +151,7 @@ async def route_episode(
         "route_episode_completed",
         agent_id=agent_id,
         episode_id=episode_id,
+        correlation_id=correlation_id,
         routed_to=[r.schema_name for r in results],
         domain_count=len(results),
     )

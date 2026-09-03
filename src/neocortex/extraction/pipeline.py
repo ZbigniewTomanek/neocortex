@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import os
 import time
+import uuid
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -37,7 +39,14 @@ if TYPE_CHECKING:
 _UNSET: str = "__UNSET__"
 
 
-def _audit_usage(stage: str, result: Any) -> None:
+def _audit_usage(
+    stage: str,
+    result: Any,
+    config: AgentInferenceConfig | None = None,
+    agent_id: str | None = None,
+    correlation_id: str | None = None,
+    episode_id: int | None = None,
+) -> None:
     """Write provider-neutral numeric usage fields to the durable action log."""
     usage = result.usage()  # type: ignore[attr-defined]
     if inspect.isawaitable(usage):
@@ -47,15 +56,54 @@ def _audit_usage(stage: str, result: Any) -> None:
             usage.close()
         return
     details = getattr(usage, "details", {}) or {}
+    fields: dict[str, object] = {
+        "stage": stage,
+        "agent": stage.removesuffix("_agent"),
+        "agent_id": agent_id or "unknown",
+        "episode_id": episode_id,
+        "correlation_id": correlation_id or "unavailable",
+    }
+    if config is not None:
+        fields.update(_audit_fields(stage, config, agent_id or "unknown", correlation_id or "unavailable", episode_id))
     logger.bind(action_log=True).info(
         "agent_usage",
-        stage=stage,
+        **fields,
         requests=int(getattr(usage, "requests", 0)),
         tool_calls=int(getattr(usage, "tool_calls", 0)),
         input_tokens=int(getattr(usage, "input_tokens", 0)),
         output_tokens=int(getattr(usage, "output_tokens", 0)),
         reasoning_tokens=details.get("reasoning_tokens"),
     )
+
+
+def _audit_fields(
+    stage: str,
+    config: AgentInferenceConfig,
+    agent_id: str,
+    correlation_id: str,
+    episode_id: int | None = None,
+) -> dict[str, object]:
+    """Return common non-secret fields for pipeline audit events."""
+    endpoint = "hosted"
+    if config.local_endpoint is not None and config.local_endpoint.base_url:
+        from urllib.parse import urlsplit, urlunsplit
+
+        parsed = urlsplit(config.local_endpoint.base_url)
+        host = parsed.hostname or ""
+        if parsed.port is not None:
+            host = f"{host}:{parsed.port}"
+        endpoint = urlunsplit((parsed.scheme, host, parsed.path.rstrip("/"), "", ""))
+    return {
+        "stage": stage,
+        "agent": stage.removesuffix("_agent"),
+        "agent_id": agent_id,
+        "episode_id": episode_id,
+        "correlation_id": correlation_id,
+        "model": config.model_name.removeprefix("local:"),
+        "endpoint": endpoint,
+        "effort": config.thinking_effort,
+        "run_id": os.environ.get("NEOCORTEX_BAKEOFF_RUN_ID") or "unavailable",
+    }
 
 
 async def run_extraction(
@@ -71,6 +119,7 @@ async def run_extraction(
     domain_hint: str | None = None,
     domain_slug: str | None = None,
     seed_generator: SeedGenerator | None = None,
+    correlation_id: str | None = None,
     librarian_use_tools: bool = True,
     tool_calls_limit: int = 150,
     ontology_tool_calls_limit: int = 30,
@@ -103,6 +152,8 @@ async def run_extraction(
     ont_cfg = ontology_config or AgentInferenceConfig()
     ext_cfg = extractor_config or AgentInferenceConfig()
     lib_cfg = librarian_config or AgentInferenceConfig()
+
+    correlation_id = correlation_id or f"extract:{agent_id}:{uuid.uuid4().hex}"
 
     read_schema: str | None = target_schema if source_schema is _UNSET else source_schema
 
@@ -154,7 +205,9 @@ async def run_extraction(
             repo.get_type_examples(agent_id, target_schema=target_schema),
         )
         logger.bind(action_log=True).info(
-            "stage_timing", stage="metadata_fetch", elapsed_s=round(time.monotonic() - t0, 2)
+            "stage_timing",
+            **_audit_fields("metadata_fetch", ont_cfg, agent_id, correlation_id, episode_id),
+            elapsed_s=round(time.monotonic() - t0, 2),
         )
 
         # Build type description dicts for richer context
@@ -182,13 +235,19 @@ async def run_extraction(
                 repo=repo,
                 agent_id=agent_id,
                 target_schema=target_schema,
+                episode_id=episode_id,
+                correlation_id=correlation_id,
             ),
             model_settings=ont_cfg.model_settings,
             usage_limits=UsageLimits(tool_calls_limit=ontology_tool_calls_limit),
         )
         ontology_elapsed = round(time.monotonic() - t0, 2)
-        _audit_usage("ontology_agent", ontology_result)
-        logger.bind(action_log=True).info("stage_timing", stage="ontology_agent", elapsed_s=ontology_elapsed)
+        _audit_usage("ontology_agent", ontology_result, ont_cfg, agent_id, correlation_id, episode_id)
+        logger.bind(action_log=True).info(
+            "stage_timing",
+            **_audit_fields("ontology_agent", ont_cfg, agent_id, correlation_id, episode_id),
+            elapsed_s=ontology_elapsed,
+        )
 
         # Ontology agent observability: log model info, token usage, tool call count
         ontology_tool_calls = sum(
@@ -198,9 +257,7 @@ async def run_extraction(
         )
         logger.bind(action_log=True).info(
             "ontology_agent_complete",
-            episode_id=episode_id,
-            agent_id=agent_id,
-            model=ont_cfg.model_name,
+            **_audit_fields("ontology_agent", ont_cfg, agent_id, correlation_id, episode_id),
             thinking=ont_cfg.thinking_effort,
             proposed_node_types=len(ontology_result.output.new_node_types),
             proposed_edge_types=len(ontology_result.output.new_edge_types),
@@ -234,7 +291,10 @@ async def run_extraction(
             created = await repo.get_or_create_node_type(agent_id, nt.name, nt.description, target_schema=target_schema)
             if created is None:
                 logger.bind(action_log=True).warning(
-                    "skipping_invalid_node_type", name=nt.name, error="normalization rejected type"
+                    "skipping_invalid_node_type",
+                    **_audit_fields("type_persist", ont_cfg, agent_id, correlation_id, episode_id),
+                    name=nt.name,
+                    error="normalization rejected type",
                 )
             elif created.name not in existing_node_names:
                 node_types.append(TypeInfo(id=created.id, name=created.name, description=created.description))
@@ -245,7 +305,10 @@ async def run_extraction(
             created = await repo.get_or_create_edge_type(agent_id, et.name, et.description, target_schema=target_schema)
             if created is None:
                 logger.bind(action_log=True).warning(
-                    "skipping_invalid_edge_type", name=et.name, error="normalization rejected type"
+                    "skipping_invalid_edge_type",
+                    **_audit_fields("type_persist", ont_cfg, agent_id, correlation_id, episode_id),
+                    name=et.name,
+                    error="normalization rejected type",
                 )
             elif created.name not in existing_edge_names:
                 edge_types.append(TypeInfo(id=created.id, name=created.name, description=created.description))
@@ -255,7 +318,9 @@ async def run_extraction(
         node_type_descs = {t.name: (t.description or "") for t in node_types}
         edge_type_descs = {t.name: (t.description or "") for t in edge_types}
         logger.bind(action_log=True).info(
-            "stage_timing", stage="type_persist", elapsed_s=round(time.monotonic() - t0, 2)
+            "stage_timing",
+            **_audit_fields("type_persist", ont_cfg, agent_id, correlation_id, episode_id),
+            elapsed_s=round(time.monotonic() - t0, 2),
         )
 
         # 4. Extraction stage
@@ -270,12 +335,17 @@ async def run_extraction(
                 edge_type_descriptions=edge_type_descs,
                 domain_hint=domain_hint,
                 type_examples=type_examples,
+                agent_id=agent_id,
+                episode_id=episode_id,
+                correlation_id=correlation_id,
             ),
             model_settings=ext_cfg.model_settings,
         )
-        _audit_usage("extractor_agent", extraction_result)
+        _audit_usage("extractor_agent", extraction_result, ext_cfg, agent_id, correlation_id, episode_id)
         logger.bind(action_log=True).info(
-            "stage_timing", stage="extractor_agent", elapsed_s=round(time.monotonic() - t0, 2)
+            "stage_timing",
+            **_audit_fields("extractor_agent", ext_cfg, agent_id, correlation_id, episode_id),
+            elapsed_s=round(time.monotonic() - t0, 2),
         )
 
         # 5. Librarian stage
@@ -295,7 +365,9 @@ async def run_extraction(
                         if emb is not None:
                             precomputed_embeddings[desc] = emb
             logger.bind(action_log=True).info(
-                "stage_timing", stage="embedding_precompute", elapsed_s=round(time.monotonic() - t0, 2)
+                "stage_timing",
+                **_audit_fields("embedding_precompute", lib_cfg, agent_id, correlation_id, episode_id),
+                elapsed_s=round(time.monotonic() - t0, 2),
             )
 
             t0 = time.monotonic()
@@ -312,15 +384,18 @@ async def run_extraction(
                     agent_id=agent_id,
                     target_schema=target_schema,
                     episode_id=episode_id,
+                    correlation_id=correlation_id,
                     precomputed_embeddings=precomputed_embeddings,
                 ),
                 model_settings=lib_cfg.model_settings,
                 usage_limits=UsageLimits(tool_calls_limit=tool_calls_limit),
             )
 
-            _audit_usage("librarian_agent", librarian_result)
+            _audit_usage("librarian_agent", librarian_result, lib_cfg, agent_id, correlation_id, episode_id)
             logger.bind(action_log=True).info(
-                "stage_timing", stage="librarian_agent", elapsed_s=round(time.monotonic() - t0, 2)
+                "stage_timing",
+                **_audit_fields("librarian_agent", lib_cfg, agent_id, correlation_id, episode_id),
+                elapsed_s=round(time.monotonic() - t0, 2),
             )
 
             # Mark episode as consolidated
@@ -333,8 +408,7 @@ async def run_extraction(
             assert isinstance(summary, CurationSummary)
             logger.bind(action_log=True).info(
                 "curation_complete",
-                episode_id=episode_id,
-                agent_id=agent_id,
+                **_audit_fields("librarian_agent", lib_cfg, agent_id, correlation_id, episode_id),
                 created=summary.entities_created,
                 updated=summary.entities_updated,
                 archived=summary.entities_archived,
@@ -377,14 +451,17 @@ async def run_extraction(
                     agent_id=agent_id,
                     target_schema=target_schema,
                     episode_id=episode_id,
+                    correlation_id=correlation_id,
                     known_node_names=known_names,
                 ),
                 model_settings=lib_cfg.model_settings,
                 usage_limits=UsageLimits(tool_calls_limit=tool_calls_limit),
             )
-            _audit_usage("librarian_agent", librarian_result)
+            _audit_usage("librarian_agent", librarian_result, lib_cfg, agent_id, correlation_id, episode_id)
             logger.bind(action_log=True).info(
-                "stage_timing", stage="librarian_agent", elapsed_s=round(time.monotonic() - t0, 2)
+                "stage_timing",
+                **_audit_fields("librarian_agent", lib_cfg, agent_id, correlation_id, episode_id),
+                elapsed_s=round(time.monotonic() - t0, 2),
             )
 
             # Build fallback map from extractor descriptions
@@ -404,15 +481,17 @@ async def run_extraction(
                 target_schema=target_schema,
                 extractor_descriptions=extractor_descriptions,
                 episode_schema=read_schema,
+                audit_fields=_audit_fields("persist_payload", lib_cfg, agent_id, correlation_id, episode_id),
             )
             logger.bind(action_log=True).info(
-                "stage_timing", stage="persist_payload", elapsed_s=round(time.monotonic() - t0, 2)
+                "stage_timing",
+                **_audit_fields("persist_payload", lib_cfg, agent_id, correlation_id, episode_id),
+                elapsed_s=round(time.monotonic() - t0, 2),
             )
 
-            logger.info(
+            logger.bind(action_log=True).info(
                 "extraction_complete",
-                episode_id=episode_id,
-                agent_id=agent_id,
+                **_audit_fields("extraction", lib_cfg, agent_id, correlation_id, episode_id),
                 target_schema=target_schema,
                 entities=len(payload.entities),
                 relations=len(payload.relations),
@@ -444,6 +523,7 @@ async def _persist_payload(
     target_schema: str | None = None,
     extractor_descriptions: dict[str, str] | None = None,
     episode_schema: str | None = None,
+    audit_fields: dict[str, object] | None = None,
 ) -> None:
     """Persist librarian output to the knowledge graph.
 
@@ -459,13 +539,17 @@ async def _persist_payload(
     # Persist any remaining type proposals (skip invalid names)
     for nt in payload.accepted_node_types:
         if await repo.get_or_create_node_type(agent_id, nt.name, nt.description, target_schema=target_schema) is None:
-            logger.bind(action_log=True).warning(
-                "skipping_invalid_node_type", name=nt.name, error="normalization rejected type"
+            logger.bind(action_log=True, **(audit_fields or {})).warning(
+                "skipping_invalid_node_type",
+                name=nt.name,
+                error="normalization rejected type",
             )
     for et in payload.accepted_edge_types:
         if await repo.get_or_create_edge_type(agent_id, et.name, et.description, target_schema=target_schema) is None:
-            logger.bind(action_log=True).warning(
-                "skipping_invalid_edge_type", name=et.name, error="normalization rejected type"
+            logger.bind(action_log=True, **(audit_fields or {})).warning(
+                "skipping_invalid_edge_type",
+                name=et.name,
+                error="normalization rejected type",
             )
 
     # Batch-embed entity descriptions (single API call instead of N+1)
@@ -493,7 +577,7 @@ async def _persist_payload(
     for i, entity in enumerate(payload.entities):
         node_type = await repo.get_or_create_node_type(agent_id, entity.type_name, target_schema=target_schema)
         if node_type is None:
-            logger.bind(action_log=True).warning(
+            logger.bind(action_log=True, **(audit_fields or {})).warning(
                 "skipping_entity_invalid_type",
                 name=entity.name,
                 type_name=entity.type_name,
@@ -535,7 +619,7 @@ async def _persist_payload(
                 tgt_nodes = await repo.find_nodes_by_name(agent_id, rel.target_name, target_schema=target_schema)
                 tgt_id = tgt_nodes[0].id if tgt_nodes else None
         if src_id is None or tgt_id is None:
-            logger.warning(
+            logger.bind(action_log=True, **(audit_fields or {})).warning(
                 "edge_skipped_missing_node",
                 source=rel.source_name,
                 target=rel.target_name,
@@ -543,7 +627,9 @@ async def _persist_payload(
             continue
         edge_type = await repo.get_or_create_edge_type(agent_id, rel.relation_type, target_schema=target_schema)
         if edge_type is None:
-            logger.warning("edge_skipped_invalid_type", relation_type=rel.relation_type)
+            logger.bind(action_log=True, **(audit_fields or {})).warning(
+                "edge_skipped_invalid_type", relation_type=rel.relation_type
+            )
             continue
         await repo.upsert_edge(
             agent_id=agent_id,
