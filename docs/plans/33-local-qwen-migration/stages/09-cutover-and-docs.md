@@ -1,7 +1,8 @@
 # Stage 9: Conditional Cutover or ASD-STE100 Technical Report
 
 **Goal**: Cut over only validated agents, or explain the inadequate result in a clear technical report with root cause and a concrete next action.
-**Dependencies**: Stage 8 DONE, or Stage 8 SKIPPED because no agent passed.
+**Dependencies**: Stage 8 DONE. Stage 8 is a control stage and records a no-op `DONE` outcome when no
+agent passes, so this stage always remains reachable for the ASD-STE100 report path.
 
 ## Steps
 

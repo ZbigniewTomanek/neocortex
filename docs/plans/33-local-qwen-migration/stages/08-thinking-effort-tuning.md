@@ -5,8 +5,9 @@
 
 ## Steps
 
-1. If Stage 7 produced no `MIGRATE`, record `SKIPPED` and explain why in `journal.md`; do not tune an
-   agent that has no validated migration path.
+1. If Stage 7 produced no `MIGRATE`, record a no-op outcome and explain why in `journal.md`; mark this
+   control stage `DONE`, not `SKIPPED`, so Stage 9 can publish the required ASD-STE100 report. Do not
+   tune an agent that has no validated migration path.
 2. For each migratable agent, sweep `low`, `medium`, `high`, and `xhigh` against an identical prompt
    and representative fixture at N≥5 where the endpoint permits. Keep all other agents at their
    Stage 6 settings. Use at least 300 seconds per extractor call and record timeouts explicitly.

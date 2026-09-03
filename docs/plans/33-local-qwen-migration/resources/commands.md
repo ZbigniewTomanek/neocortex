@@ -7,6 +7,8 @@ The key is read from the environment supplied by the supervisor.
 
 ```bash
 export NEOCORTEX_LOCAL_MODEL_BASE_URL=http://127.0.0.1:24000/v1
+export NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json
+export NEOCORTEX_ADMIN_TOKEN=admin-token
 test -n "${VLLM_API_KEY:-}" || { echo 'VLLM_API_KEY is required' >&2; exit 1; }
 curl --fail --silent --show-error \
   "$NEOCORTEX_LOCAL_MODEL_BASE_URL/models" \
@@ -21,6 +23,8 @@ Use the same header for `/chat/completions`. Do not put the header or key into a
 ```bash
 export NEOCORTEX_LOCAL_MODEL_BASE_URL=http://127.0.0.1:24000/v1
 export NEOCORTEX_LOCAL_MODEL_API_KEY_ENV=VLLM_API_KEY
+export NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json
+export NEOCORTEX_ADMIN_TOKEN=admin-token
 export NEOCORTEX_ONTOLOGY_MODEL=local:qwen3.8-flash-next
 export NEOCORTEX_EXTRACTOR_MODEL=local:qwen3.8-flash-next
 export NEOCORTEX_LIBRARIAN_MODEL=local:qwen3.8-flash-next
@@ -51,7 +55,8 @@ run. The local arm must not merge into a populated output directory.
 uv run python scripts/corpus_loader.py --dry-run
 uv run python scripts/probe_local_model.py --model local:qwen3.8-flash-next --effort medium --timeout 300
 uv run python scripts/compute_metrics.py --arm qwen-flash-next
-./scripts/model_bakeoff.sh --arm qwen-flash-next
+NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json NEOCORTEX_ADMIN_TOKEN=admin-token \
+  ./scripts/model_bakeoff.sh --arm qwen-flash-next
 ./scripts/model_bakeoff.sh --dry-run
 ```
 

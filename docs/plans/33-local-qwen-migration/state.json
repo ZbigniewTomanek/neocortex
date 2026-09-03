@@ -8,8 +8,8 @@
     {"id": 4, "title": "Harness, instrumentation, and auth stability", "file": "stages/04-measurement-harness.md", "status": "PENDING", "depends_on": [1], "commit": null, "note": null, "blocked_by": []},
     {"id": 5, "title": "Optional hosted baseline comparison", "file": "stages/05-baseline-arm.md", "status": "PENDING", "depends_on": [4], "commit": null, "note": null, "blocked_by": []},
     {"id": 6, "title": "Full local stability and quality run", "file": "stages/06-qwen-arm.md", "status": "PENDING", "depends_on": [3, 4], "commit": null, "note": null, "blocked_by": []},
-    {"id": "6b", "title": "Isolation and root-cause diagnosis", "file": "stages/06b-isolation-arms.md", "status": "PENDING", "depends_on": [6], "commit": null, "note": null, "blocked_by": []},
-    {"id": 7, "title": "Quality decision and evidence report", "file": "stages/07-quality-gate.md", "status": "PENDING", "depends_on": [6], "commit": null, "note": null, "blocked_by": []},
+    {"id": "6b", "title": "Isolation and root-cause diagnosis", "file": "stages/06b-isolation-arms.md", "status": "PENDING", "depends_on": [3, 4], "commit": null, "note": null, "blocked_by": []},
+    {"id": 7, "title": "Quality decision and evidence report", "file": "stages/07-quality-gate.md", "status": "PENDING", "depends_on": ["6b"], "commit": null, "note": null, "blocked_by": []},
     {"id": 8, "title": "Thinking-effort tuning", "file": "stages/08-thinking-effort-tuning.md", "status": "PENDING", "depends_on": [7], "commit": null, "note": null, "blocked_by": []},
     {"id": 9, "title": "Conditional cutover or ASD-STE100 report", "file": "stages/09-cutover-and-docs.md", "status": "PENDING", "depends_on": [8], "commit": null, "note": null, "blocked_by": []}
   ]

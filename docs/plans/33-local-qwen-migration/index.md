@@ -46,6 +46,12 @@ Phase C (Stages 7–9) records the quality decision, tunes effort only for agent
 cuts over those agents with rollback or publishes an ASD-STE100 technical report explaining why quality
 was inadequate and what root cause/design change is required.
 
+Execution ordering is deliberate. Stage 6b depends on Stages 3 and 4, not Stage 6, and appears after
+Stage 6 in `state.json`; therefore the runner attempts the local arm first, then runs diagnosis even
+when Stage 6 is `BLOCKED`. Stage 7 depends on 6b, so it cannot run before the diagnosis/no-op outcome.
+Stage 6b and Stage 8 always finish `DONE` with an explicit outcome or no-op note. This keeps the
+no-agent-pass path reachable to Stage 9, which publishes the technical report.
+
 ## Success Criteria
 
 GATE blocks the owning stage. REPORT is measured, recorded in `journal.md`, and never blocks. A GATE
@@ -55,11 +61,12 @@ for a REPORT. Every measured GATE names its input and the defect that would turn
 
 | Metric | Baseline | Target | Kind | If missed | If unmeasurable |
 |--------|----------|--------|------|-----------|-----------------|
-| Every GATE value is derived from this run's inputs | n/a | no literal/default/midpoint/generated row | GATE | block stage | REPORT `NOT MEASURED` and block |
+| Every GATE value is derived from a measurement of this run's own inputs | n/a | no literal/default/midpoint/generated row | GATE | block stage | REPORT `NOT MEASURED` and block |
 | Authenticated model preflight | endpoint response | `/v1/models` contains exactly `qwen3.8-flash-next`; authenticated chat and PydanticAI calls succeed | GATE | block Stage 1 and diagnose auth/compatibility | REPORT `NOT MEASURED` and block |
 | Unit and harness regression suite | current repository tests | all relevant tests pass; no assertion is weakened or deleted | GATE | block owning stage | n/a |
 | Full local corpus completion | not yet measured | every submitted episode reaches a terminal job state within the configured timeout; failure/stall rate ≤10% from `/admin/jobs/summary` | GATE | block local stability and diagnose root cause | REPORT `NOT MEASURED` and block |
 | Critical integrity defects | not yet measured | zero stored artifact types, leaked reasoning markers, invalid type names, or unhandled auth/structured-output failures in the measured run | GATE | block affected agent and diagnose | REPORT `NOT MEASURED` and block |
+| Absolute quality rubric when baseline is unavailable | not yet measured | `MIGRATE` only when all five real quality inputs are measured and pass: extraction smoke exits 0; episodic-memory and cognitive-recall checks exit 0; Plan 15 score is ≥11/14; Plan 17 score is ≥13/14; and a fixed 20-node/20-edge sample from the named local snapshot passes the mechanical schema/reference checks in Stage 7. Any `NOT MEASURED` quality input means `HOLD`. | REPORT | publish `HOLD` and continue to report | publish `NOT MEASURED`; never `MIGRATE` |
 | Quality versus hosted baseline | prior baseline incomplete | per-agent quality verdict supported by current local evidence; baseline is used only when two complete same-prompt runs exist | REPORT | publish and continue | publish `NOT MEASURED`, continue local decision |
 | Reasoning/tool compatibility | historical remote probes only | real-agent probes record output validity, tool order, retries, and rejection causes for every agent and selected effort | REPORT | publish and continue | publish `NOT MEASURED`, open backlog |
 | Effort/quality and cost | not measured for Flash Next | selected effort per migrated agent, with token and p50/p95 duration distributions; latency is informational | REPORT | publish and continue | publish `NOT MEASURED`, open backlog |

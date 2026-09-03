@@ -8,10 +8,15 @@
 1. Preflight again immediately before the arm. Set `NEOCORTEX_LOCAL_MODEL_BASE_URL` to
    `http://127.0.0.1:24000/v1`, each in-scope model to `local:qwen3.8-flash-next`, and provide
    `VLLM_API_KEY` through the environment. Confirm `/v1/models` before starting; do not print the key.
+   Use the repository token map explicitly: `NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json` and
+   `NEOCORTEX_ADMIN_TOKEN=admin-token`. These names are verified in the repository root:
+   `dev_tokens.json` maps `admin-token` to the bootstrap `admin` identity. Do not use the test token
+   file or the obsolete `admin-token-neocortex` fallback for this arm.
 2. Use the fixed 28-episode corpus, identical Stage 3 prompts/schema, and a worker concurrency safe
    for this local service. Configure explicit per-call and job-poll timeouts. Long processing is
    acceptable, but a non-terminal job after the derived deadline is a stability failure, not success.
-3. Run `scripts/model_bakeoff.sh --arm qwen-flash-next` (update the harness if its arm name or model
+3. Run `NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json NEOCORTEX_ADMIN_TOKEN=admin-token
+   ./scripts/model_bakeoff.sh --arm qwen-flash-next` (update the harness if its arm name or model
    defaults still refer to the superseded remote target). Save raw job events, metrics JSON, and a named graph
    snapshot. Include model id, endpoint, effort, seed/schema version, and commit in metadata.
 4. Inspect Tier 1 integrity: stored type names, artifact markers in names/content, normalization

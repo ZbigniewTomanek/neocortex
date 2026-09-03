@@ -58,3 +58,38 @@ loader exposes `load_corpus`.
 read into this record.
 **Problems**: Stage 3 owns system-message coalescing or a local-only adapter; Stage 4 owns probe-import
 compatibility and auth/timeout instrumentation.
+
+## 2026-09-03 -- Pre-review correction -- execution paths and quality rubric -- RECORDED
+**Did**: Corrected `state.json` so 6b depends on Stages 3 and 4 and follows Stage 6 by ordering, while
+Stage 7 depends on 6b. Stage 6b and Stage 8 are control stages that finish `DONE` with explicit
+no-op/`NOT MEASURED` outcomes. Stage 9 therefore remains reachable when the local arm is blocked or
+when no agent passes.
+**Verification**: State dependencies use only `DONE` unlock semantics. `state.json` does not propagate
+`BLOCKED`; the ordered 6b diagnosis runs after a Stage 6 attempt even if Stage 6 is blocked.
+**Provenance**: Dependency values are read from this plan's `state.json`; an accidental dependency on
+6 for 6b or 6 for 7 would make the intended recovery path unreachable.
+**Problems**: Previous control flow could deadlock diagnosis behind a blocked local arm; corrected in
+the stage briefs and state file.
+
+## 2026-09-03 -- Pre-review correction -- absolute quality rubric -- RECORDED
+**Did**: Added a deterministic no-baseline rubric: extraction smoke, episodic-memory, and cognitive-
+recall checks exit 0; Plan 15 score is at least 11/14; Plan 17 score is at least 13/14; integrity
+metrics pass; and exactly 20 real nodes plus 20 real edges from the named local snapshot pass mechanical
+schema, reference, marker, and fixed-corpus source checks.
+**Verification**: Any missing input or `NOT MEASURED` quality value forces `HOLD`; a subjective visual
+comparison cannot produce `MIGRATE`. Stage 7 records all source paths in the comparison artefact.
+**Provenance**: Scores come from script output lines, integrity values from `compute_metrics.py`, and
+sample rows from the local snapshot. Fabricated rows or copied target values are forbidden.
+**Problems**: The prior plan allowed a subjective same-artifact judgement when the hosted baseline was
+missing; the rubric now makes that path deterministic.
+
+## 2026-09-03 -- Pre-review correction -- repository authentication -- RECORDED
+**Did**: Verified the repository root contains `dev_tokens.json` and that it maps `admin-token` to
+`admin`. Updated the local arm commands to export `NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json` and
+`NEOCORTEX_ADMIN_TOKEN=admin-token`; the test token file and obsolete fallback are excluded.
+**Verification**: No `VLLM_API_KEY` value was read or recorded. The exact key name remains an
+environment-only input for the local model endpoint.
+**Provenance**: Token path/name read from `dev_tokens.json` and `scripts/manage.sh`; a wrong file or
+fallback token would cause admin/seed checks to return 401 or use the wrong agent identity.
+**Problems**: Existing bake-off defaults were ambiguous about test versus real dev tokens; the plan now
+names the verified repository map explicitly.

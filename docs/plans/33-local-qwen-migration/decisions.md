@@ -109,3 +109,30 @@ Append-only. Each entry is kept short; detailed measurements belong in `resource
 **Options**: A) cut over on superficial pass rates B) require root-cause analysis and an ASD-STE100 report when quality is inadequate.
 **Chosen**: B.
 **Rationale**: A local setup is valuable only when its stored graph and agent behavior are trustworthy.
+
+### D19: Amend Stage 6b dependency for blocked-arm diagnosis
+**Date**: 2026-09-03 - **Stage**: planning - **Type**: AMENDMENT
+**Original**: "**Dependencies**: Stage 6 DONE."
+**Replacement**: "Stages 3 and 4 DONE; Stage 6b follows Stage 6 by state ordering and runs after a blocked attempt."
+**Evidence**: The runner unlocks dependencies only when they are `DONE`; journal correction entry 2026-09-03.
+**Class**: execution dependency, not a quality relaxation.
+
+### D20: Amend control-stage dispositions
+**Date**: 2026-09-03 - **Stage**: planning - **Type**: AMENDMENT
+**Original**: "otherwise mark it `SKIPPED`" and "Stage 8 may be `SKIPPED`".
+**Replacement**: Stage 6b and Stage 8 finish `DONE` with an explicit no-op or `NOT MEASURED` outcome.
+**Evidence**: Stage 7/9 dependencies require `DONE`; journal correction entry 2026-09-03.
+**Class**: execution control, not a correctness relaxation.
+
+### D21: Amend no-baseline quality decision
+**Date**: 2026-09-03 - **Stage**: planning - **Type**: AMENDMENT
+**Original**: "use absolute checks and qualitative review".
+**Replacement**: Require measured passing extraction, episodic, cognitive, Plan 15 (≥11/14), Plan 17 (≥13/14), integrity, and fixed 20-node/20-edge mechanical sample checks; any `NOT MEASURED` forces `HOLD`.
+**Evidence**: The prior wording allowed subjective same-artifact approval; journal correction entry 2026-09-03.
+**Class**: measurement rubric, amendable because it defines evidence, not a product invariant.
+
+### D22: Use the repository's real dev-token map
+**Date**: 2026-09-03 - **Stage**: planning
+**Options**: A) test token file and fallback admin token B) root `dev_tokens.json` with `admin-token`.
+**Chosen**: B.
+**Rationale**: `dev_tokens.json` is the repository production-dev map and explicitly maps `admin-token` to `admin`; this aligns model bake-off admin and seed-schema checks.
