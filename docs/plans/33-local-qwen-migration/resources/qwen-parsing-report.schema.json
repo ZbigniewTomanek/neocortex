@@ -47,6 +47,242 @@
     }
   },
   "$defs": {
+    "opaqueDomainId": {
+      "description": "Use the database domain id. Never use a domain value or schema name.",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "const": "NOT_MEASURED"
+        }
+      ]
+    },
+    "oneWayHash": {
+      "description": "Use a SHA-256 value for a dynamic domain value.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "measurementReason": {
+      "enum": [
+        "source_missing",
+        "source_incomplete",
+        "outside_selected_run",
+        "not_submitted",
+        "not_applicable"
+      ]
+    },
+    "safeReference": {
+      "description": "Use a source reference without a schema name.",
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "pattern": "ncx_[a-z0-9]+__[a-z0-9_]+"
+      }
+    },
+    "staticDomainRef": {
+      "description": "Use one of the four built-in domain references.",
+      "enum": [
+        "user_profile",
+        "technical_knowledge",
+        "work_context",
+        "domain_knowledge"
+      ]
+    },
+    "domainProposal": {
+      "description": "Record proposal status, an opaque id, a one-way hash, and a static parent reference.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "accepted",
+            "rejected",
+            "not_proposed",
+            "NOT_MEASURED"
+          ]
+        },
+        "domain_id": {
+          "$ref": "#/$defs/opaqueDomainId"
+        },
+        "dynamic_proposal_hash": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/oneWayHash"
+            },
+            {
+              "const": "NOT_MEASURED"
+            }
+          ]
+        },
+        "static_parent_ref": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/staticDomainRef"
+            },
+            {
+              "const": "NONE"
+            },
+            {
+              "const": "NOT_MEASURED"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "accepted",
+                  "rejected"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "dynamic_proposal_hash"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "accepted"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "domain_id"
+            ]
+          }
+        }
+      ]
+    },
+    "safeValue": {
+      "description": "Use only typed values that do not contain source text or schema names.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "opaque_id"
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "one_way_hash"
+            },
+            "value": {
+              "$ref": "#/$defs/oneWayHash"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "type_name"
+            },
+            "value": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Za-z0-9]{0,59}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "relation_type"
+            },
+            "value": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,59}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "static_domain_ref"
+            },
+            "value": {
+              "$ref": "#/$defs/staticDomainRef"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "action"
+            },
+            "value": {
+              "enum": [
+                "created_node",
+                "updated_node",
+                "archived_node",
+                "created_edge",
+                "removed_edge"
+              ]
+            }
+          }
+        }
+      ]
+    },
     "value": {
       "oneOf": [
         {
@@ -88,16 +324,14 @@
           "minLength": 1
         },
         "corpus_path": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/safeReference"
         },
         "corpus_sha256": {
           "type": "string",
           "minLength": 1
         },
         "snapshot_path": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/safeReference"
         }
       }
     },
@@ -122,8 +356,7 @@
           ]
         },
         "path": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/safeReference"
         },
         "sha256": {
           "type": "string",
@@ -136,7 +369,7 @@
           ]
         },
         "reason": {
-          "type": "string"
+          "$ref": "#/$defs/measurementReason"
         }
       }
     },
@@ -169,12 +402,10 @@
           ],
           "properties": {
             "path": {
-              "type": "string",
-              "minLength": 1
+              "$ref": "#/$defs/safeReference"
             },
             "locator": {
-              "type": "string",
-              "minLength": 1
+              "$ref": "#/$defs/safeReference"
             }
           }
         },
@@ -197,33 +428,43 @@
           ],
           "properties": {
             "accepted": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "proposal": {
               "type": "object",
               "additionalProperties": false,
               "required": [
-                "status"
+                "availability",
+                "static_refs",
+                "domain_ids",
+                "dynamic_domain_hashes"
               ],
               "properties": {
-                "status": {
+                "availability": {
                   "enum": [
-                    "accepted",
-                    "rejected",
-                    "not_proposed",
+                    "MEASURED",
                     "NOT_MEASURED"
                   ]
                 },
-                "slug": {
-                  "type": "string"
+                "static_refs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/staticDomainRef"
+                  }
                 },
-                "safe_value": {
-                  "type": "string"
+                "domain_ids": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/opaqueDomainId"
+                  }
+                },
+                "dynamic_domain_hashes": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/oneWayHash"
+                  }
                 }
               }
+            },
+            "proposal": {
+              "$ref": "#/$defs/domainProposal"
             }
           }
         },
@@ -316,7 +557,7 @@
                 "representative_safe_values": {
                   "type": "array",
                   "items": {
-                    "type": "string"
+                    "$ref": "#/$defs/safeValue"
                   }
                 }
               }
@@ -382,8 +623,7 @@
                     ]
                   },
                   "source": {
-                    "type": "string",
-                    "minLength": 1
+                    "$ref": "#/$defs/safeReference"
                   }
                 }
               }
@@ -431,8 +671,16 @@
               ]
             },
             "outcome": {
-              "type": "string",
-              "minLength": 1
+              "enum": [
+                "queued",
+                "running",
+                "succeeded",
+                "failed",
+                "cancelled",
+                "not_submitted",
+                "not_started",
+                "NOT_MEASURED"
+              ]
             }
           }
         },
@@ -460,8 +708,7 @@
           "minLength": 1
         },
         "snapshot_path": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/safeReference"
         },
         "source_revision": {
           "type": "string",
@@ -491,13 +738,14 @@
         "stable_ids": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "integer",
+            "minimum": 0
           }
         },
         "representative_safe_values": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/$defs/safeValue"
           }
         }
       }
@@ -527,7 +775,8 @@
         "no_invented_rows",
         "hidden_reasoning_absent",
         "raw_secrets_absent",
-        "sensitive_audit_absent"
+        "sensitive_audit_absent",
+        "domain_privacy"
       ],
       "properties": {
         "episode_set": {
@@ -562,6 +811,13 @@
           ]
         },
         "sensitive_audit_absent": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_MEASURED"
+          ]
+        },
+        "domain_privacy": {
           "enum": [
             "PASS",
             "FAIL",
