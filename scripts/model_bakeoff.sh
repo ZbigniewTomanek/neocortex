@@ -11,6 +11,9 @@ CORPUS_PATH="docs/plans/18.5-e2e-revalidation/resources/episodes.md"
 CORPUS_SIZE="$(uv run python "$ROOT/scripts/corpus_loader.py" --dry-run | wc -l | tr -d ' ')"
 WORKER_CONCURRENCY="${NEOCORTEX_WORKER_CONCURRENCY:-2}"
 PER_CALL_TIMEOUT="${NEOCORTEX_LOCAL_MODEL_TIMEOUT_S:-600}"
+DOMAIN_ROUTING_ENABLED="${NEOCORTEX_DOMAIN_ROUTING_ENABLED:-true}"
+# Four seeded domains plus one possible classifier-proposed domain.
+MAX_DOMAIN_FANOUT="${NEOCORTEX_BAKEOFF_MAX_DOMAIN_FANOUT:-5}"
 POLL_TIMEOUT_OVERRIDE="${BAKEOFF_POLL_TIMEOUT:-}"
 POLL_TIMEOUT_ARG=""
 POLL_TIMEOUT=""
@@ -37,6 +40,12 @@ is_positive_int() { [[ "$1" =~ ^[1-9][0-9]*$ ]]; }
 is_positive_number() { [[ "$1" =~ ^[1-9][0-9]*(\.[0-9]+)?$|^0\.[0-9]+$ ]]; }
 is_positive_int "$WORKER_CONCURRENCY" || die "NEOCORTEX_WORKER_CONCURRENCY must be a positive integer"
 is_positive_number "$PER_CALL_TIMEOUT" || die "NEOCORTEX_LOCAL_MODEL_TIMEOUT_S must be a positive number"
+is_positive_int "$MAX_DOMAIN_FANOUT" || die "NEOCORTEX_BAKEOFF_MAX_DOMAIN_FANOUT must be a positive integer"
+case "${DOMAIN_ROUTING_ENABLED,,}" in
+  true|1|yes) DOMAIN_ROUTING_ENABLED=true ;;
+  false|0|no) DOMAIN_ROUTING_ENABLED=false ;;
+  *) die "NEOCORTEX_DOMAIN_ROUTING_ENABLED must be true or false" ;;
+esac
 [[ "$CORPUS_SIZE" == "28" ]] || die "fixed corpus parser returned $CORPUS_SIZE episodes, expected 28"
 
 if [[ -n "$POLL_TIMEOUT_OVERRIDE" ]]; then
@@ -44,13 +53,23 @@ if [[ -n "$POLL_TIMEOUT_OVERRIDE" ]]; then
   POLL_TIMEOUT="$POLL_TIMEOUT_OVERRIDE"
   POLL_TIMEOUT_SOURCE="explicit BAKEOFF_POLL_TIMEOUT"
 else
-  # Three model stages run serially per episode, with up to three attempts;
-  # divide by worker concurrency and add a bounded startup allowance.
-  PER_CALL_TIMEOUT_INT="${PER_CALL_TIMEOUT%.*}"
-  [[ -n "$PER_CALL_TIMEOUT_INT" ]] || PER_CALL_TIMEOUT_INT=1
-  (( PER_CALL_TIMEOUT_INT > 0 )) || PER_CALL_TIMEOUT_INT=1
-  POLL_TIMEOUT=$((PER_CALL_TIMEOUT_INT * 3 * 3 * CORPUS_SIZE / WORKER_CONCURRENCY + 60))
-  POLL_TIMEOUT_SOURCE="derived: per_call_timeout_s x 3 stages x 3 attempts x corpus_size / worker_concurrency + 60s"
+  # A corpus episode always gets one three-stage extraction.  In the default
+  # topology it also gets one domain-classification call and up to one
+  # three-stage extraction per matching domain.  Jobs retry up to three times.
+  # Use awk for ceil(): shell arithmetic would silently truncate fractional
+  # per-call timeouts and make the bound too small.
+  if [[ "$DOMAIN_ROUTING_ENABLED" == true ]]; then
+    MODEL_CALLS_PER_EPISODE=$((1 + 3 + 3 * MAX_DOMAIN_FANOUT))
+    POLL_TIMEOUT_SOURCE="derived: per_call_timeout_s x (1 route + 3 personal stages + 3 stages x max domain fanout) x 3 attempts x corpus_size / worker_concurrency + 60s, rounded up"
+  else
+    MODEL_CALLS_PER_EPISODE=3
+    POLL_TIMEOUT_SOURCE="derived: per_call_timeout_s x 3 personal stages x 3 attempts x corpus_size / worker_concurrency + 60s, rounded up (domain routing disabled)"
+  fi
+  POLL_TIMEOUT="$(awk -v timeout="$PER_CALL_TIMEOUT" \
+    -v calls="$MODEL_CALLS_PER_EPISODE" \
+    -v corpus="$CORPUS_SIZE" \
+    -v concurrency="$WORKER_CONCURRENCY" \
+    'BEGIN { seconds = timeout * calls * 3 * corpus / concurrency + 60; whole = int(seconds); if (seconds > whole) whole++; print whole }')"
 fi
 
 ADMIN_TOKEN_SET="no"
@@ -61,15 +80,19 @@ MCP_TOKEN_SET="no"
 [[ -n "$TOKENS_FILE" ]] && TOKENS_FILE_SET="yes"
 
 print_configuration() {
+  local endpoint_identity
+  endpoint_identity="$(redact_endpoint "$ENDPOINT")"
   printf '%s\n' \
     "bakeoff_run_id=$RUN_ID" \
     "arm=$ARM" \
     "model=$MODEL" \
-    "endpoint=$ENDPOINT" \
+    "endpoint=$endpoint_identity" \
     "effort_ontology=${NEOCORTEX_ONTOLOGY_THINKING_EFFORT:-low}" \
     "effort_extractor=${NEOCORTEX_EXTRACTOR_THINKING_EFFORT:-low}" \
     "effort_librarian=${NEOCORTEX_LIBRARIAN_THINKING_EFFORT:-low}" \
     "worker_concurrency=$WORKER_CONCURRENCY" \
+    "domain_routing_enabled=$DOMAIN_ROUTING_ENABLED" \
+    "max_domain_fanout=$MAX_DOMAIN_FANOUT" \
     "per_call_timeout_s=$PER_CALL_TIMEOUT" \
     "corpus_size=$CORPUS_SIZE" \
     "poll_timeout_s=$POLL_TIMEOUT" \
@@ -83,14 +106,39 @@ print_configuration() {
     "mcp_auth_mode=dev_token"
 }
 
+redact_endpoint() {
+  local endpoint="$1"
+  # Preserve the endpoint identity (scheme, host, port, and base path) while
+  # removing URL userinfo and query/fragment values that can carry credentials.
+  if [[ "$endpoint" =~ ^([[:alpha:]][[:alnum:]+.-]*://)([^/?#]+)([^?#]*) ]]; then
+    local scheme="${BASH_REMATCH[1]}"
+    local authority="${BASH_REMATCH[2]}"
+    local path="${BASH_REMATCH[3]}"
+    authority="${authority##*@}"
+    printf '%s%s%s\n' "$scheme" "$authority" "$path"
+  else
+    endpoint="${endpoint%%\?*}"
+    endpoint="${endpoint%%#*}"
+    printf '%s\n' "$endpoint"
+  fi
+}
+
 run() { printf '+ '; printf '%q ' "$@"; printf '\n'; (( DRY_RUN )) || "$@"; }
 run_shell() { printf '+ %s\n' "$1"; (( DRY_RUN )) || bash -c "$1"; }
 
+RESTORE_FAILURE_STATUS=3
 restore_preserved_snapshot() {
   local exit_code=$?
   if [[ -n "$PRE_SNAPSHOT" && "$DRY_RUN" -eq 0 ]]; then
-    "$ROOT/scripts/manage.sh" snapshot load "$PRE_SNAPSHOT" >/dev/null 2>&1 \
-      || echo "model bake-off: failed to restore preserved snapshot $PRE_SNAPSHOT" >&2
+    if ! "$ROOT/scripts/manage.sh" snapshot load "$PRE_SNAPSHOT" >/dev/null 2>&1; then
+      local restore_status="$RESTORE_FAILURE_STATUS"
+      # Keep the restoration outcome distinguishable even if the command that
+      # triggered EXIT happened to return the reserved status already.
+      (( exit_code == restore_status )) && restore_status=4
+      echo "model bake-off: failed to restore preserved snapshot $PRE_SNAPSHOT" >&2
+      echo "model bake-off: restoration failure status=$restore_status (original status=$exit_code)" >&2
+      exit "$restore_status"
+    fi
   fi
   exit "$exit_code"
 }
@@ -104,7 +152,10 @@ else
   [[ -n "$TOKENS_FILE" ]] || die "NEOCORTEX_DEV_TOKENS_FILE is required"
   [[ -f "$TOKENS_FILE" ]] || die "dev-token file does not exist: $TOKENS_FILE"
   command -v jq >/dev/null 2>&1 || die "jq is required to validate the dev-token map"
-  jq -e --arg token "$NEOCORTEX_ADMIN_TOKEN" 'type == "object" and has($token)' "$TOKENS_FILE" >/dev/null \
+  # Feed the credential through stdin.  Passing it via jq --arg would expose
+  # it in argv to process observers.
+  jq -e --rawfile token /dev/stdin 'type == "object" and has(($token | rtrimstr("\n")))' "$TOKENS_FILE" \
+    <<<"$NEOCORTEX_ADMIN_TOKEN" >/dev/null \
     || die "NEOCORTEX_ADMIN_TOKEN is not present in NEOCORTEX_DEV_TOKENS_FILE"
   [[ -n "${GOOGLE_API_KEY:-}" ]] || die "GOOGLE_API_KEY is required for embedding health; recall metrics are NOT MEASURED"
 fi
@@ -123,21 +174,39 @@ export NEOCORTEX_LIBRARIAN_MODEL="${NEOCORTEX_LIBRARIAN_MODEL:-$MODEL}"
 export NEOCORTEX_DOMAIN_CLASSIFIER_MODEL="${NEOCORTEX_DOMAIN_CLASSIFIER_MODEL:-$MODEL}"
 export NEOCORTEX_WORKER_CONCURRENCY="$WORKER_CONCURRENCY"
 export NEOCORTEX_LOCAL_MODEL_TIMEOUT_S="$PER_CALL_TIMEOUT"
+export NEOCORTEX_DOMAIN_ROUTING_ENABLED="$DOMAIN_ROUTING_ENABLED"
 
-if (( ! DRY_RUN )) && docker compose -f "$ROOT/docker-compose.yml" exec -T postgres \
-  pg_isready -U neocortex -d neocortex >/dev/null 2>&1; then
-  PRE_SNAPSHOT="${ARM}-pre-${RUN_ID}"
-  run "$ROOT/scripts/manage.sh" snapshot save "$PRE_SNAPSHOT"
+if (( ! DRY_RUN )); then
+  # A fresh start destroys the PostgreSQL volume.  If PostgreSQL is stopped,
+  # first start it non-destructively so a recoverable snapshot can be made.
+  if ! docker compose -f "$ROOT/docker-compose.yml" exec -T postgres \
+    pg_isready -U neocortex -d neocortex >/dev/null 2>&1; then
+    echo "model bake-off: PostgreSQL is stopped; starting non-destructively before snapshot" >&2
+    run "$ROOT/scripts/manage.sh" start
+  fi
+  docker compose -f "$ROOT/docker-compose.yml" exec -T postgres \
+    pg_isready -U neocortex -d neocortex >/dev/null 2>&1 \
+    || die "PostgreSQL is not ready; refusing destructive start --fresh without a recovery snapshot"
+  PRE_SNAPSHOT_NAME="${ARM}-pre-${RUN_ID}"
+  run "$ROOT/scripts/manage.sh" snapshot save "$PRE_SNAPSHOT_NAME"
+  PRE_SNAPSHOT_FILE="$(find "$ROOT/backups" -maxdepth 1 -type f -name "$PRE_SNAPSHOT_NAME-*.tar.gz" -print 2>/dev/null | sort | tail -1)"
+  [[ -n "$PRE_SNAPSHOT_FILE" && -s "$PRE_SNAPSHOT_FILE" ]] \
+    || die "pre-run snapshot archive is missing; refusing destructive start --fresh"
+  tar -tzf "$PRE_SNAPSHOT_FILE" >/dev/null 2>&1 \
+    || die "pre-run snapshot archive is invalid; refusing destructive start --fresh"
+  PRE_SNAPSHOT="$PRE_SNAPSHOT_NAME"
 fi
 
 run "$ROOT/scripts/manage.sh" start --fresh
 if (( ! DRY_RUN )); then
   uv run python -c 'import asyncio, os; from neocortex.embedding_service import EmbeddingService; from neocortex.mcp_settings import MCPSettings; assert os.environ.get("GOOGLE_API_KEY"), "GOOGLE_API_KEY is required; embedding health NOT MEASURED"; v=asyncio.run(EmbeddingService(model=MCPSettings().embedding_model).embed("bakeoff probe")); assert v is not None and len(v)==768, "EMBEDDINGS DEAD"; print("embeddings OK")'
-  curl --fail --silent --show-error "http://127.0.0.1:8001/admin/graphs" -H "Authorization: Bearer ${NEOCORTEX_ADMIN_TOKEN}" | grep -q 'ncx_shared__' || { echo 'seed schemas missing' >&2; exit 1; }
+  curl --fail --silent --show-error "http://127.0.0.1:8001/admin/graphs" -H @- \
+    <<<"Authorization: Bearer ${NEOCORTEX_ADMIN_TOKEN}" \
+    | grep -q 'ncx_shared__' || { echo 'seed schemas missing' >&2; exit 1; }
   run uv run python "$ROOT/scripts/auth_self_check.py"
 fi
 run uv run python "$ROOT/scripts/corpus_loader.py"
-run_shell 'deadline=$(date +%s)+'"$POLL_TIMEOUT"'; while :; do state=$(curl --fail --silent http://127.0.0.1:8001/admin/jobs/summary -H "Authorization: Bearer ${NEOCORTEX_ADMIN_TOKEN}"); todo=$(printf "%s" "$state" | uv run python -c '\''import json,sys; x=json.load(sys.stdin); print(x.get("todo",0)+x.get("doing",0))'\''); echo "jobs outstanding: $todo"; [[ "$todo" == 0 ]] && break; (( $(date +%s) >= deadline )) && { echo "job poll timed out; metrics not written (NOT_MEASURED)" >&2; exit 1; }; sleep 5; done'
+run_shell 'deadline=$(date +%s)+'"$POLL_TIMEOUT"'; while :; do state=$(curl --fail --silent http://127.0.0.1:8001/admin/jobs/summary -H @- <<< "Authorization: Bearer ${NEOCORTEX_ADMIN_TOKEN}"); todo=$(printf "%s" "$state" | uv run python -c '\''import json,sys; x=json.load(sys.stdin); print(x.get("todo",0)+x.get("doing",0))'\''); echo "jobs outstanding: $todo"; [[ "$todo" == 0 ]] && break; (( $(date +%s) >= deadline )) && { echo "job poll timed out; metrics not written (NOT_MEASURED)" >&2; exit 1; }; sleep 5; done'
 run "$ROOT/scripts/manage.sh" snapshot save "$ARM"
 if (( DRY_RUN )); then
   POST_SNAPSHOT="$ROOT/backups/${ARM}-${RUN_ID}.tar.gz"
