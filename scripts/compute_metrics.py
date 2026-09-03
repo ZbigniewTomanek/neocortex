@@ -48,7 +48,6 @@ EXPECTED_RUN_SCOPED_EVENTS = frozenset(
         "model_request_completed",
         "model_request_failed",
         "agent_usage",
-        "stage_timing",
     }
 )
 

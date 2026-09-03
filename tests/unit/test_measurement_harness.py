@@ -193,6 +193,101 @@ def test_main_passes_one_effective_run_id_to_collect_and_audit(monkeypatch: pyte
     assert seen["collect"]
 
 
+def test_stage_timing_only_audit_is_not_model_execution_evidence(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Metadata timing before the first model call cannot certify a run."""
+    import asyncio
+    import sys
+
+    import scripts.compute_metrics as metrics  # ty: ignore[unresolved-import]
+
+    run_id = "stage-only-run"
+    log_path = tmp_path / "log" / "agent_actions.log"
+    log_path.parent.mkdir()
+    log_path.write_text(
+        json.dumps(
+            {
+                "record": {
+                    "message": "stage_timing",
+                    "extra": {"run_id": run_id, "correlation_id": "corr-1"},
+                }
+            }
+        )
+        + "\n"
+    )
+
+    async def fake_collect(*args: object, **kwargs: object) -> dict[str, object]:
+        assert kwargs["run_id"] == run_id
+        return {"job_summary": {"todo": 0, "doing": 0}}
+
+    monkeypatch.setattr(metrics, "ROOT", tmp_path)
+    monkeypatch.setattr(metrics, "PLAN_RESOURCES", tmp_path / "resources")
+    monkeypatch.setattr(metrics, "collect", fake_collect)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["compute_metrics.py", "--arm", "stage-only", "--run-id", run_id, "--ingestion-url", "http://127.0.0.1:8001"],
+    )
+
+    assert asyncio.run(metrics.main()) == 2
+    destination = tmp_path / "resources" / "metrics-stage-only.json"
+    marker = json.loads((tmp_path / "resources" / "metrics-stage-only.not-measured.json").read_text())
+    assert marker["status"] == "NOT_MEASURED"
+    assert marker["reason"] == "missing_expected_run_event"
+    assert not destination.exists()
+
+
+def test_model_request_error_is_valid_execution_evidence(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """A run where every model call fails still has measurable failure evidence."""
+    import asyncio
+    import sys
+
+    import scripts.compute_metrics as metrics  # ty: ignore[unresolved-import]
+
+    run_id = "model-error-run"
+    log_path = tmp_path / "log" / "agent_actions.log"
+    log_path.parent.mkdir()
+    log_path.write_text(
+        json.dumps(
+            {
+                "record": {
+                    "message": "model_request_failed",
+                    "extra": {
+                        "run_id": run_id,
+                        "correlation_id": "corr-1",
+                        "model": "qwen3.8-flash-next",
+                        "endpoint": "http://127.0.0.1:24000/v1",
+                        "agent": "ontology",
+                        "effort": "low",
+                    },
+                }
+            }
+        )
+        + "\n"
+    )
+
+    async def fake_collect(*args: object, **kwargs: object) -> dict[str, object]:
+        assert kwargs["run_id"] == run_id
+        return {"job_summary": {"todo": 0, "doing": 0}}
+
+    monkeypatch.setattr(metrics, "ROOT", tmp_path)
+    monkeypatch.setattr(metrics, "PLAN_RESOURCES", tmp_path / "resources")
+    monkeypatch.setattr(metrics, "collect", fake_collect)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["compute_metrics.py", "--arm", "model-error", "--run-id", run_id, "--ingestion-url", "http://127.0.0.1:8001"],
+    )
+
+    assert asyncio.run(metrics.main()) == 0
+    destination = tmp_path / "resources" / "metrics-model-error.json"
+    output = json.loads(destination.read_text())
+    assert output["audit"]["status"] == "MEASURED"
+    assert output["audit"]["matched_expected_run_events"] == ["model_request_failed"]
+    assert output["audit"]["audit_event_counts"] == {"model_request_failed": 1}
+
+
 def test_bakeoff_dry_run_reports_bounds_without_secret() -> None:
     env = os.environ.copy()
     env.update(
