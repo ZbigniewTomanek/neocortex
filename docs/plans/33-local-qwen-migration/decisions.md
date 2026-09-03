@@ -136,3 +136,15 @@ Append-only. Each entry is kept short; detailed measurements belong in `resource
 **Options**: A) test token file and fallback admin token B) root `dev_tokens.json` with `admin-token`.
 **Chosen**: B.
 **Rationale**: `dev_tokens.json` is the repository production-dev map and explicitly maps `admin-token` to `admin`; this aligns model bake-off admin and seed-schema checks.
+
+### D23: Preserve the explicit local credential variable
+**Date**: 2026-09-03 - **Stage**: 1
+**Options**: A) change the product default to `LITELLM_API_KEY` B) retain `VLLM_API_KEY` and diagnose the credential mismatch.
+**Chosen**: B.
+**Rationale**: The required contract names `VLLM_API_KEY`; the environment value was rejected with HTTP 401, while a process-only alias of the usable credential passed. No secret or `.env` value is changed.
+
+### D24: Isolate routing tests from malformed developer `.env`
+**Date**: 2026-09-03 - **Stage**: 1
+**Options**: A) edit `.env` B) pass `_env_file=None` in unit fixtures and use explicit environment overrides for live checks.
+**Chosen**: B.
+**Rationale**: `.env` contains an invalid boolean representation for `extraction_enabled`; tests must remain deterministic without modifying or committing the local file.

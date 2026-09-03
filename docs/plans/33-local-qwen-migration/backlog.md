@@ -15,7 +15,7 @@ as an excuse to propagate `BLOCKED` to a dependent stage.
 | 8 | Harness live verification | Stage 4 | medium | Unit/dry-run checks cannot prove admin auth, job polling, or snapshot integrity | Run the preflight and full orchestrator in the dedicated environment; record raw JSON and timelines | OPEN |
 | 9 | System-message compatibility repair | Stage 2/3 | high | Ontology and extractor received HTTP 400 when multiple system messages were emitted | Add a local-only message coalescing/adapter path, then rerun real-agent probes and preserve hosted behavior | OPEN |
 | 10 | Probe corpus loader symbol drift | Stage 2/4 | medium | Probe code may import `load_probe_corpus` while the loader now exports `load_corpus` | Add a compatibility alias or update all call sites; add an import test | OPEN |
-| 11 | Local endpoint identity or auth failure | Stage 1 | high | The service may be down, return 401, or expose a different model id | Check `/v1/models` with `$VLLM_API_KEY` without printing it; record exact status and defer only the dependent stage | OPEN |
+| 11 | Local endpoint identity or auth failure | Stage 1 | high | Exact environment `VLLM_API_KEY` returns HTTP 401 although the endpoint exposes the required model; a process-only credential alias succeeds | Provide the endpoint's expected LiteLLM virtual key under the required environment name, then rerun the authenticated preflight without recording the key | IN_PROGRESS |
 
 Statuses: `OPEN` -> `IN_PROGRESS` -> `RESOLVED`. When an item is resolved, revisit its origin stage in
 the same commit and record the evidence in `journal.md`. If an item remains outside this plan's scope,
