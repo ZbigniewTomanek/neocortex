@@ -267,3 +267,18 @@ Commit `6a2c0b3` records extraction-side request-budget and audit-privacy correc
 establish repository-wide privacy acceptance.
 **Problems**: Stage 6 remains **PENDING**. Stage 4 is reopened as **IN_PROGRESS** pending repository-
 wide audit-privacy acceptance. No Stage 6 gate passed, and no local quality outcome was measured.
+
+## 2026-09-03 -- Stage 4: repository-wide action-audit privacy acceptance -- DONE / ACCEPT
+**Did**: Applied the librarian request-budget implementation in `dc5fd15` and the repository and
+ingestion privacy cleanup in `f1ba3bc`. An independent acceptance audited 90 `action_log=True` call
+sites and found zero raw source/model field violations.
+**Verification**:
+- GATE focused extraction/privacy checks: **PASS**, 76 passed.
+- GATE full safe suite: **PASS**, 977 passed and 7 skipped.
+- CHECK `git diff --check`: **PASS**; the worktree was clean.
+- REPORT acceptance verdict: **ACCEPT**. This closes backlog item 13 and does not change the
+  certification-invalid disposition of the interrupted Stage 6 run.
+**Provenance**: Evidence covers corrective source commits `dc5fd15` and `f1ba3bc`, the repository-wide
+action-log call-site audit, focused extraction/privacy tests, the full safe suite, and the clean
+worktree check. Stage 6 remains **PENDING** and requires a new valid run with its own metrics, snapshot,
+and per-episode Qwen parsing report.
