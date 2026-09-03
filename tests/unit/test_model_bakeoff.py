@@ -45,8 +45,9 @@ def test_dry_run_accounts_for_routing_topology_seed_call_and_ceils_fractional_ti
     # The router's source-derived policy allows four known matches plus one
     # proposed domain per route invocation. With three queue attempts this
     # gives 84 route invocations and 420 routed jobs. The acceptance budget is
-    # 84 classifier + 84 seed + 252 personal-stage + 3,780 routed-stage +
-    # 1,260 routed-seed invocations = 5,460. ceil(0.5 * 5460 / 2 + 60) = 1425.
+    # 84 classifier + 84 top-level seed-resolution + 252 personal-stage +
+    # 3,780 routed-stage + 1,260 routed-seed invocations = 5,460.
+    # ceil(0.5 * 5460 / 2 + 60) = 1425.
     assert "poll_timeout_s=1425" in completed.stdout
     assert "domain_routing_enabled=true" in completed.stdout
     assert "initial_domain_count=4" in completed.stdout
@@ -55,10 +56,11 @@ def test_dry_run_accounts_for_routing_topology_seed_call_and_ceils_fractional_ti
     assert "extraction_attempts=3" in completed.stdout
     assert "max_route_invocations=84" in completed.stdout
     assert "max_routed_extraction_jobs=420" in completed.stdout
-    assert "route_seed_stage_invocations_max=84" in completed.stdout
+    assert "top_level_seed_resolution_stage_invocations_max=84" in completed.stdout
     assert "routed_seed_stage_invocations_max=1260" in completed.stdout
     assert "operational_acceptance_stage_invocations=5460" in completed.stdout
     assert "PydanticAI theoretical retries" in completed.stdout
+    assert "excludes parent-seed recursion" in completed.stdout
 
 
 def test_dry_run_can_explicitly_disable_domain_routing() -> None:
@@ -74,7 +76,7 @@ def test_dry_run_can_explicitly_disable_domain_routing() -> None:
     assert "domain_routing_enabled=false" in completed.stdout
     assert "initial_domain_count=0" in completed.stdout
     assert "max_unique_routed_domains=0" in completed.stdout
-    assert "route_seed_stage_invocations_max=0" in completed.stdout
+    assert "top_level_seed_resolution_stage_invocations_max=0" in completed.stdout
     assert "routed_seed_stage_invocations_max=0" in completed.stdout
     assert "domain routing disabled" in completed.stdout
 

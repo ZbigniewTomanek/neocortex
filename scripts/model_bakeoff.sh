@@ -53,7 +53,7 @@ is_positive_int "$EXTRACTION_ATTEMPTS" || die "extract_episode retry count is no
 MAX_ROUTE_INVOCATIONS=0
 MAX_ROUTED_EXTRACTION_JOBS=0
 ROUTE_CLASSIFIER_STAGE_INVOCATIONS=0
-ROUTE_SEED_STAGE_INVOCATIONS=0
+TOP_LEVEL_SEED_RESOLUTION_STAGE_INVOCATIONS=0
 PERSONAL_EXTRACTION_STAGE_INVOCATIONS=0
 ROUTED_EXTRACTION_STAGE_INVOCATIONS=0
 ROUTED_SEED_STAGE_INVOCATIONS=0
@@ -76,17 +76,17 @@ MAX_ROUTE_INVOCATIONS=$((CORPUS_SIZE * ROUTE_ATTEMPTS))
 MAX_ROUTED_EXTRACTION_JOBS=$((MAX_ROUTE_INVOCATIONS * MAX_UNIQUE_ROUTED_DOMAINS))
 # The following counters are stage invocations used only for the operational
 # acceptance deadline.  A route invocation can classify once and warm one
-# proposed-domain seed.  Each routed extraction retry can also resolve one
-# domain seed; counting that on every retry is conservative because cache hits
-# may avoid the call.  Internal PydanticAI retries and non-model work remain
-# outside this operational budget.
+# proposed-domain seed at the top level.  Each routed extraction retry can
+# also resolve one domain seed; counting that on every retry is conservative
+# because cache hits may avoid the call.  Parent-seed recursion, internal
+# PydanticAI retries, and non-model work remain outside this budget.
 ROUTE_CLASSIFIER_STAGE_INVOCATIONS="$MAX_ROUTE_INVOCATIONS"
-ROUTE_SEED_STAGE_INVOCATIONS="$MAX_ROUTE_INVOCATIONS"
+TOP_LEVEL_SEED_RESOLUTION_STAGE_INVOCATIONS="$MAX_ROUTE_INVOCATIONS"
 PERSONAL_EXTRACTION_STAGE_INVOCATIONS=$((CORPUS_SIZE * EXTRACTION_ATTEMPTS * 3))
 ROUTED_EXTRACTION_STAGE_INVOCATIONS=$((MAX_ROUTED_EXTRACTION_JOBS * EXTRACTION_ATTEMPTS * 3))
 ROUTED_SEED_STAGE_INVOCATIONS=$((MAX_ROUTED_EXTRACTION_JOBS * EXTRACTION_ATTEMPTS))
 if [[ "$DOMAIN_ROUTING_ENABLED" == true ]]; then
-  OPERATIONAL_ACCEPTANCE_STAGE_INVOCATIONS=$((ROUTE_CLASSIFIER_STAGE_INVOCATIONS + ROUTE_SEED_STAGE_INVOCATIONS + PERSONAL_EXTRACTION_STAGE_INVOCATIONS + ROUTED_EXTRACTION_STAGE_INVOCATIONS + ROUTED_SEED_STAGE_INVOCATIONS))
+  OPERATIONAL_ACCEPTANCE_STAGE_INVOCATIONS=$((ROUTE_CLASSIFIER_STAGE_INVOCATIONS + TOP_LEVEL_SEED_RESOLUTION_STAGE_INVOCATIONS + PERSONAL_EXTRACTION_STAGE_INVOCATIONS + ROUTED_EXTRACTION_STAGE_INVOCATIONS + ROUTED_SEED_STAGE_INVOCATIONS))
 else
   OPERATIONAL_ACCEPTANCE_STAGE_INVOCATIONS="$PERSONAL_EXTRACTION_STAGE_INVOCATIONS"
 fi
@@ -103,7 +103,7 @@ else
   # Exceeding this deadline is a NOT_MEASURED/stability failure.  Use awk for
   # ceil(): shell arithmetic would silently truncate fractional timeouts.
   if [[ "$DOMAIN_ROUTING_ENABLED" == true ]]; then
-    POLL_TIMEOUT_SOURCE="operational acceptance budget derived from registered route/extract retries, explicit max unique routed domains, route classifier/seed stages, three-stage extraction, corpus size, and worker concurrency; excludes PydanticAI theoretical retries and non-model work; overrun is NOT_MEASURED/stability failure; rounded up + 60s"
+    POLL_TIMEOUT_SOURCE="operational acceptance budget derived from registered route/extract retries, explicit max unique routed domains, route classifier/top-level seed-resolution stages, three-stage extraction, corpus size, and worker concurrency; excludes parent-seed recursion, PydanticAI theoretical retries, and non-model work; overrun is NOT_MEASURED/stability failure; rounded up + 60s"
   else
     POLL_TIMEOUT_SOURCE="operational acceptance budget derived from registered extract retries, three-stage personal extraction, corpus size, and worker concurrency; excludes PydanticAI theoretical retries and non-model work; overrun is NOT_MEASURED/stability failure; rounded up + 60s (domain routing disabled)"
   fi
@@ -140,7 +140,7 @@ print_configuration() {
     "max_route_invocations=$MAX_ROUTE_INVOCATIONS" \
     "max_routed_extraction_jobs=$MAX_ROUTED_EXTRACTION_JOBS" \
     "route_classifier_stage_invocations_max=$ROUTE_CLASSIFIER_STAGE_INVOCATIONS" \
-    "route_seed_stage_invocations_max=$ROUTE_SEED_STAGE_INVOCATIONS" \
+    "top_level_seed_resolution_stage_invocations_max=$TOP_LEVEL_SEED_RESOLUTION_STAGE_INVOCATIONS" \
     "personal_extraction_stage_invocations_max=$PERSONAL_EXTRACTION_STAGE_INVOCATIONS" \
     "routed_extraction_stage_invocations_max=$ROUTED_EXTRACTION_STAGE_INVOCATIONS" \
     "routed_seed_stage_invocations_max=$ROUTED_SEED_STAGE_INVOCATIONS" \

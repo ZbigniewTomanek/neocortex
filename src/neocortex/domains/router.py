@@ -26,7 +26,6 @@ from neocortex.schema_manager import SchemaManager
 
 _SLUG_PATTERN = re.compile(r"[^a-z0-9_]+")
 _REPEATED_UNDERSCORES = re.compile(r"_+")
-_STATIC_DOMAIN_SLUGS = frozenset(domain.slug for domain in SEED_DOMAINS)
 # The four declared seed domains plus one slot for the proposal produced by a
 # route invocation.  This is an operational fan-out policy, not a model-output
 # guarantee: untrusted matches are deterministically reduced to this many jobs.
@@ -219,7 +218,18 @@ class DomainRouter:
 
     async def _provision_domain(self, proposed: ProposedDomain, agent_id: str) -> SemanticDomain | None:
         """Create a new domain, provision its shared schema, and grant permissions."""
-        slug = _sanitize_slug(proposed.slug)
+        try:
+            slug = _sanitize_slug(proposed.slug)
+        except (AttributeError, TypeError, ValueError):
+            # Do not include model-provided source text in the audit event.  An
+            # invalid proposal must not prevent valid classifier matches from
+            # being routed.
+            logger.bind(action_log=True).warning(
+                "domain_provision_invalid_slug",
+                agent_id=agent_id,
+                reason="sanitized_slug_empty_or_invalid",
+            )
+            return None
 
         # Resolve parent_slug to parent_id (D3: do not auto-create missing parents).
         # If the parent slug does not resolve, treat the proposal as root-level
@@ -228,19 +238,10 @@ class DomainRouter:
         if proposed.parent_slug is not None:
             parent = await self._domain_service.get_domain(proposed.parent_slug)
             if parent is not None:
-                if parent.slug in _STATIC_DOMAIN_SLUGS:
-                    parent_id = parent.id
-                else:
-                    # Dynamic parent seeds can recursively invoke the model
-                    # for every ancestor.  Keep the hierarchy bounded by
-                    # allowing only static seed parents; a dynamic proposal
-                    # becomes a root domain instead.
-                    logger.bind(action_log=True).warning(
-                        "domain_provision_dynamic_parent_flattened",
-                        proposed_slug=slug,
-                        parent_slug=parent.slug,
-                        action="treating_as_root",
-                    )
+                # Preserve the existing hierarchy semantics.  Parent seed
+                # traversal is internal work and is intentionally outside the
+                # bake-off's operational stage-invocation acceptance budget.
+                parent_id = parent.id
             else:
                 logger.bind(action_log=True).warning(
                     "domain_provision_parent_not_found",

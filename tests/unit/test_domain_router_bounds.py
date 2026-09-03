@@ -45,6 +45,38 @@ async def test_untrusted_duplicate_and_unknown_matches_enqueue_one_job_per_known
 
 
 @pytest.mark.asyncio
+async def test_invalid_proposal_slug_is_discarded_without_blocking_known_matches() -> None:
+    domain_service = InMemoryDomainService()
+    await domain_service.seed_defaults()
+    permissions = InMemoryPermissionService(bootstrap_admin_id="admin")
+    await permissions.grant("agent", "ncx_shared__technical_knowledge", True, True, "test")
+    classifier = AsyncMock()
+    classifier.classify.return_value = ClassificationResult(
+        matched_domains=[DomainClassification(domain_slug="technical_knowledge", confidence=0.9, reasoning="match")],
+        proposed_domain=ProposedDomain(
+            slug="!!!",
+            name="Invalid proposal",
+            description="The slug sanitizes to an empty value",
+            reasoning="adversarial input",
+        ),
+    )
+    schema_mgr = AsyncMock()
+    schema_mgr.get_graph.return_value = {"schema_name": "existing"}
+
+    router = DomainRouter(
+        domain_service=domain_service,
+        classifier=classifier,
+        schema_mgr=schema_mgr,
+        permissions=permissions,
+    )
+
+    results = await router.route_and_extract("agent", 1, "technical text")
+
+    assert [result.domain_slug for result in results] == ["technical_knowledge"]
+    schema_mgr.create_graph.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_route_cap_is_five_and_reserves_one_slot_for_a_proposal() -> None:
     domain_service = InMemoryDomainService()
     await domain_service.seed_defaults()
@@ -107,7 +139,7 @@ async def test_route_cap_is_five_and_reserves_one_slot_for_a_proposal() -> None:
 
 
 @pytest.mark.asyncio
-async def test_dynamic_parent_is_flattened_so_seed_resolution_cannot_recurse() -> None:
+async def test_dynamic_parent_is_preserved_for_existing_hierarchy_semantics() -> None:
     domain_service = InMemoryDomainService()
     await domain_service.seed_defaults()
     dynamic_parent = await domain_service.create_domain(
@@ -144,5 +176,5 @@ async def test_dynamic_parent_is_flattened_so_seed_resolution_cannot_recurse() -
 
     assert len(results) == 1
     assert child is not None
-    assert child.parent_id is None
+    assert child.parent_id == dynamic_parent.id
     seed_generator.resolve_seed.assert_awaited_once_with("dynamic_child")

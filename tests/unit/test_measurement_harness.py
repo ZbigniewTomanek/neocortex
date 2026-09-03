@@ -338,6 +338,7 @@ def test_bakeoff_dry_run_reports_bounds_without_secret() -> None:
     assert "max_unique_routed_domains=5" in output
     assert "operational_acceptance_stage_invocations=5460" in output
     assert "PydanticAI theoretical retries" in output
+    assert "excludes parent-seed recursion" in output
     assert "metrics_path=docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next.json" in output
     assert "measurement-secret-must-not-appear" not in output
     # The printed command contains an environment reference, never its value.
