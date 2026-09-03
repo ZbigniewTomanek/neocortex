@@ -221,3 +221,24 @@ overrun is `NOT_MEASURED` and a stability failure.
 **Provenance**: The machine-readable evidence is `resources/stage4-harness-evidence.json`; the source
 acceptance is `72c7275` and its docs successor is `5bbeb6b`. No prompt, output, credential, or
 dynamic-routing identifier was recorded in the action audit.
+
+## 2026-09-03 -- Stage 5: optional hosted baseline comparison -- DONE / NOT MEASURED
+**Did**: Checked credential and hosted-configuration environment-variable presence by name only. `OPENAI_API_KEY`
+was present, but this execution had no provisioned isolated hosted runtime or current same-prompt hosted
+comparison environment. No hosted request was made. The historical `resources/metrics-baseline-gpt54mini.json`
+is a single 2026-08-19 run-one artifact with no current source revision, corpus hash, run id, or job summary;
+it is retained as context and is not a baseline threshold.
+**Verification**:
+- GATE baseline disposition: **NOT MEASURED**. Two complete, same-input hosted runs and raw artefacts were
+  unavailable; `resources/baseline-comparison.md` remains intentionally absent under the Stage 5 no-op path.
+- GATE same-input check: **NOT MEASURED**. The historical one-run file cannot prove current Stage 3 prompt,
+  schema, corpus, concurrency, timeout, or instrumentation identity.
+- REPORT hosted latency, token, quality, and variance distributions: **NOT MEASURED**. No values were
+  inferred from the historical partial evidence.
+**Provenance**: The only current credential signal was the presence of `OPENAI_API_KEY`; its value was never
+  read, printed, logged, or persisted. `NEOCORTEX_HOSTED_MODEL_API_KEY_ENV`, `NEOCORTEX_HOSTED_ENDPOINT`,
+  and `NEOCORTEX_HOSTED_MODEL` were absent. Existing artifact SHA-256 is
+  `b447c4af9c5bf67c8459bf93d2e061b9da0fd48c0777773c9b450892c165b714`. Stage 5 is an optional no-op and does
+  not block the local Stage 6 run; backlog item 6 remains **OPEN**.
+**Problems**: No hosted variance, tolerance, or quality comparison can be claimed. The local run remains
+  eligible and must produce its own terminal, run-scoped evidence.

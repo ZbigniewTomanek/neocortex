@@ -58,7 +58,7 @@
       "red_if": "A non-terminal admin summary can produce a quality metrics JSON file."
     },
     "dry_run_configuration": {
-      "command": "NEOCORTEX_LOCAL_MODEL_TIMEOUT_S=37 NEOCORTEX_WORKER_CONCURRENCY=2 NEOCORTEX_DOMAIN_ROUTING_ENABLED=true NEOCORTEX_BAKEOFF_MAX_DOMAIN_FANOUT=5 ./scripts/model_bakeoff.sh --arm qwen-flash-next --dry-run",
+      "command": "NEOCORTEX_LOCAL_MODEL_TIMEOUT_S=37 NEOCORTEX_WORKER_CONCURRENCY=2 NEOCORTEX_DOMAIN_ROUTING_ENABLED=true ./scripts/model_bakeoff.sh --arm qwen-flash-next --dry-run",
       "status": "PASS",
       "observed": {
         "model": "local:qwen3.8-flash-next",
