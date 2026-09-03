@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import subprocess
 from pathlib import Path
@@ -202,6 +203,8 @@ def test_bakeoff_dry_run_reports_bounds_without_secret() -> None:
             "NEOCORTEX_ONTOLOGY_MODEL": "local:qwen3.8-flash-next",
             "NEOCORTEX_LOCAL_MODEL_TIMEOUT_S": "37",
             "NEOCORTEX_WORKER_CONCURRENCY": "2",
+            "NEOCORTEX_DOMAIN_ROUTING_ENABLED": "true",
+            "NEOCORTEX_BAKEOFF_MAX_DOMAIN_FANOUT": "5",
         }
     )
     completed = subprocess.run(
@@ -217,7 +220,18 @@ def test_bakeoff_dry_run_reports_bounds_without_secret() -> None:
     assert "endpoint=http://127.0.0.1:24000/v1" in output
     assert "per_call_timeout_s=37" in output
     assert "corpus_size=28" in output
-    assert "poll_timeout_s=4722" in output  # 37 x 3 x 3 x 28 / 2 + 60
+    # Documented routed topology: one classifier call, three personal stages,
+    # and up to five domain routes with three stages each. Every model call
+    # can retry three times, and the harness adds 60 seconds of startup slack.
+    per_call_timeout_s = 37
+    corpus_size = 28
+    worker_concurrency = 2
+    max_domain_fanout = 5
+    model_calls_per_episode = 1 + 3 + 3 * max_domain_fanout
+    expected_poll_timeout_s = math.ceil(
+        per_call_timeout_s * model_calls_per_episode * 3 * corpus_size / worker_concurrency + 60
+    )
+    assert f"poll_timeout_s={expected_poll_timeout_s}" in output
     assert "metrics_path=docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next.json" in output
     assert "measurement-secret-must-not-appear" not in output
     # The printed command contains an environment reference, never its value.
