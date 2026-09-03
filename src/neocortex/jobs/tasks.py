@@ -46,9 +46,9 @@ async def extract_episode(
         "extract_episode_started",
         agent_id=agent_id,
         episode_ids=episode_ids,
-        target_schema=target_schema,
-        source_schema=source_schema,
-        domain_slug=domain_slug,
+        target_schema_present=target_schema is not None,
+        source_schema_present=source_schema is not None,
+        routed_extraction=domain_slug is not None,
         correlation_id=correlation_id,
     )
     from neocortex.extraction.agents import AgentInferenceConfig
@@ -104,7 +104,8 @@ async def extract_episode(
         "extract_episode_completed",
         agent_id=agent_id,
         episode_ids=episode_ids,
-        target_schema=target_schema,
+        target_schema_present=target_schema is not None,
+        routed_extraction=domain_slug is not None,
         correlation_id=correlation_id,
     )
 
@@ -146,6 +147,6 @@ async def route_episode(
         agent_id=agent_id,
         episode_id=episode_id,
         correlation_id=correlation_id,
-        routed_to=[r.schema_name for r in results],
+        routed_count=len(results),
         domain_count=len(results),
     )

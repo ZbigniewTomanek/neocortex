@@ -64,9 +64,11 @@ class SeedGenerator:
         seed = await self._generate_seed(slug, parent_seed=parent_seed)
         self._cache[slug] = seed
 
+        domain = await self._domain_service.get_domain(slug)
         logger.bind(action_log=True).info(
             "seed_generated",
-            slug=slug,
+            domain_id=domain.id if domain is not None else None,
+            static_domain=slug in DOMAIN_SEEDS,
             node_types=len(seed.node_types),
             edge_types=len(seed.edge_types),
             has_parent_context=parent_seed is not None,

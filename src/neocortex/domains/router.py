@@ -147,6 +147,16 @@ class DomainRouter:
         # Keep action-log fields to counts and bounded, post-validation
         # identifiers.  Never copy model-provided slugs or reasoning into the
         # audit trail: unknown values can contain source text or credentials.
+        resolved_domains: dict[str, SemanticDomain] = {}
+        for match in matches:
+            domain = await self._domain_service.get_domain(match.domain_slug)
+            if domain is not None:
+                resolved_domains[match.domain_slug] = domain
+        accepted_domain_ids = [
+            domain.id
+            for match in matches
+            if (domain := resolved_domains.get(match.domain_slug)) is not None and domain.id is not None
+        ]
         logger.bind(action_log=True).info(
             "domain_classification_result",
             agent_id=agent_id,
@@ -154,7 +164,7 @@ class DomainRouter:
             correlation_id=correlation_id,
             matched_count=len(classification.matched_domains),
             accepted_match_count=len(matches),
-            accepted_domain_slugs=[match.domain_slug for match in matches],
+            accepted_domain_ids=accepted_domain_ids,
             method=(
                 "llm"
                 if classification.matched_domains and classification.matched_domains[0].reasoning != "keyword_fallback"
@@ -163,8 +173,9 @@ class DomainRouter:
         )
 
         results: list[RoutingResult] = []
+        routed_domain_ids: list[int] = []
         for match in matches:
-            domain = await self._domain_service.get_domain(match.domain_slug)
+            domain = resolved_domains.get(match.domain_slug)
             if domain is None:
                 continue
 
@@ -198,6 +209,8 @@ class DomainRouter:
                     extraction_job_id=job_id,
                 )
             )
+            if domain.id is not None:
+                routed_domain_ids.append(domain.id)
 
         if results:
             logger.bind(action_log=True).info(
@@ -205,7 +218,7 @@ class DomainRouter:
                 agent_id=agent_id,
                 episode_id=episode_id,
                 correlation_id=correlation_id,
-                routed_to=[r.schema_name for r in results],
+                routed_domain_ids=routed_domain_ids,
                 domain_count=len(results),
             )
         else:
@@ -249,7 +262,7 @@ class DomainRouter:
             else:
                 logger.bind(action_log=True).warning(
                     "domain_provision_parent_not_found",
-                    proposed_domain_slug=slug,
+                    parent_provided=True,
                     reason="parent_not_found_treating_as_root",
                 )
 
@@ -281,9 +294,9 @@ class DomainRouter:
 
         logger.bind(action_log=True).info(
             "domain_provisioned",
-            slug=slug,
-            schema_name=schema_name,
+            domain_id=domain.id,
             agent_id=agent_id,
+            schema_provisioned=True,
         )
         return domain.model_copy(update={"schema_name": schema_name})
 

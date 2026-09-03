@@ -79,7 +79,10 @@ async def test_action_log_excludes_unknown_classifier_slug() -> None:
     classification_record = next(
         record for record in action_records if record["message"] == "domain_classification_result"
     )
-    assert classification_record["extra"]["accepted_domain_slugs"] == ["technical_knowledge"]
+    technical_domain = await domain_service.get_domain("technical_knowledge")
+    assert technical_domain is not None
+    assert classification_record["extra"]["accepted_domain_ids"] == [technical_domain.id]
+    assert "accepted_domain_slugs" not in classification_record["extra"]
 
 
 @pytest.mark.asyncio
@@ -224,7 +227,10 @@ async def test_action_log_excludes_untrusted_missing_or_dynamic_parent_slug(pare
         for record in records
     )
     provisioned_record = next(record for record in action_records if record["message"] == "domain_provisioned")
-    assert provisioned_record["extra"]["slug"] == "safe_child"
+    safe_child = await domain_service.get_domain("safe_child")
+    assert safe_child is not None
+    assert provisioned_record["extra"]["domain_id"] == safe_child.id
+    assert "proposed_domain_slug" not in provisioned_record["extra"]
     if not parent_exists:
         parent_record = next(
             record for record in action_records if record["message"] == "domain_provision_parent_not_found"

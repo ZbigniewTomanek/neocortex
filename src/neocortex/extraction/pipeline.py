@@ -492,7 +492,8 @@ async def run_extraction(
             logger.bind(action_log=True).info(
                 "extraction_complete",
                 **_audit_fields("extraction", lib_cfg, agent_id, correlation_id, episode_id),
-                target_schema=target_schema,
+                target_schema_present=target_schema is not None,
+                routed_extraction=domain_slug is not None,
                 entities=len(payload.entities),
                 relations=len(payload.relations),
             )
