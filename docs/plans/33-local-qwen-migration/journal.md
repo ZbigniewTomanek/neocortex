@@ -242,3 +242,28 @@ it is retained as context and is not a baseline threshold.
   not block the local Stage 6 run; backlog item 6 remains **OPEN**.
 **Problems**: No hosted variance, tolerance, or quality comparison can be claimed. The local run remains
   eligible and must produce its own terminal, run-scoped evidence.
+
+## 2026-09-03 -- Stage 6: local Flash Next arm interrupted -- CERTIFICATION INVALID / NOT MEASURED
+**Did**: Started run `20260903T133626Z-60064` with the fixed 28-episode corpus, low effort, worker
+concurrency 2, and the process-only `GOOGLE_API_KEY` alias from `GEMINI_API_KEY` for embeddings. The
+local model used the configured `LITELLM_API_KEY` environment. The run was intentionally terminated
+after about 3 hours 34 minutes when audit-privacy and librarian request-budget defects were proven.
+**Verification**:
+- REPORT terminal summary near termination: 14 succeeded, 1 failed, 2 doing, and 53 todo, 70 jobs
+  total. This was not a terminal run and is not a quality result.
+- REPORT Spark service health: the vLLM service remained healthy at concurrency 2. This is an
+  operational observation only and does not certify NeoCortex output quality.
+- REPORT one librarian attempt: PydanticAI applied its default `request_limit=50` even though the
+  configured tool-call limit was 150. Episode 5 ended with a librarian `UsageLimitExceeded` after
+  extractor retries. Successful extractor outputs ranged from 4,433 to 13,147 tokens. Output
+  termination source is **NOT MEASURED**; no NeoCortex or vLLM fixed output cap was configured.
+- GATE action-audit privacy: **RED**. Action records exposed source/model-derived strings. The run
+  therefore cannot support a metrics, integrity, quality, or cutover claim.
+**Provenance**: The pre-run database snapshot is
+`backups/qwen-flash-next-pre-20260903T133626Z-60064-20260903-153627.tar.gz`. The pre-run database was
+restored after termination. No metrics JSON, named graph snapshot, or per-episode Qwen parsing report
+from this attempt is accepted. Raw run logs remain diagnostic only and must not be copied into reports.
+Commit `6a2c0b3` records extraction-side request-budget and audit-privacy corrections; it does not yet
+establish repository-wide privacy acceptance.
+**Problems**: Stage 6 remains **PENDING**. Stage 4 is reopened as **IN_PROGRESS** pending repository-
+wide audit-privacy acceptance. No Stage 6 gate passed, and no local quality outcome was measured.

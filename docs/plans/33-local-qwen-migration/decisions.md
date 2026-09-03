@@ -200,3 +200,17 @@ and exclude prompts, outputs, tool arguments, and secrets.
 **Replacement**: The timeout is an operational acceptance budget based on the registered route/extract retry policies, initial domain count 4, routed-domain cap 5, route/extract attempts 3, corpus size 28, and worker concurrency 2. The explicit run uses 5,460 operational stage invocations and a 101,070-second budget at a 37-second per-call timeout; the default 600-second timeout gives 1,638,060 seconds.
 **Exclusions**: Parent-seed recursion, internal PydanticAI retries, and non-model work are outside this budget. An overrun is `NOT_MEASURED` and a stability failure; the budget is not a theoretical upper bound.
 **Evidence**: Stage 4 dry-run provenance and the independent acceptance record in `resources/stage4-harness-evidence.json`.
+
+### D32: Invalidate the interrupted local arm
+**Date**: 2026-09-03 - **Stage**: 4/6
+**Options**: A) treat the partial run as local quality evidence B) invalidate it and rerun after repository-wide audit-privacy acceptance.
+**Chosen**: B.
+**Rationale**: The run was non-terminal and exposed source/model-derived strings in action records. A librarian request-budget defect also prevented a truthful completion result.
+**Evidence**: Journal entry for run `20260903T133626Z-60064`; recovery archive `backups/qwen-flash-next-pre-20260903T133626Z-60064-20260903-153627.tar.gz`; corrective implementation `6a2c0b3`.
+
+### D33: Keep the repository-wide privacy gate open
+**Date**: 2026-09-03 - **Stage**: 4
+**Options**: A) accept extraction-side redaction as complete B) audit every repository `action_log=True` path before closing Stage 4.
+**Chosen**: B.
+**Rationale**: The run proved that extraction-side correction did not cover all action-audit paths. The gate must cover repository adapters, mocks, routing, ingestion, and extraction.
+**Evidence**: Journal entry for run `20260903T133626Z-60064` and commit `6a2c0b3`; backlog item 13 tracks the remaining acceptance.
