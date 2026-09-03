@@ -13,11 +13,14 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import time
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from corpus_loader import load_probe_corpus  # ty: ignore[unresolved-import]
+from corpus_loader import PROBE_CORPUS, load_probe_corpus  # ty: ignore[unresolved-import]
 from pydantic_ai.messages import RetryPromptPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.settings import ThinkingLevel
 
@@ -39,6 +42,88 @@ from neocortex.model_factory import LocalEndpoint
 
 AGENT_NAMES = ("ontology", "extractor", "librarian", "domain_classifier")
 REFUSAL_MARKERS = ("i can't verify", "i have no record", "i don't have access")
+PROBE_SCHEMA_VERSION = 2
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _git_output(*args: str) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return "NOT_MEASURED"
+    return result.stdout.strip()
+
+
+def _repo_relative(path: Path) -> str:
+    """Return a stable repository-relative path for provenance records."""
+    try:
+        return path.resolve().relative_to(REPOSITORY_ROOT).as_posix()
+    except ValueError:
+        return Path(os.path.relpath(path.resolve(), REPOSITORY_ROOT)).as_posix()
+
+
+def _file_set_sha256(paths: tuple[Path, ...]) -> str:
+    digest = hashlib.sha256()
+    for path in paths:
+        digest.update(_repo_relative(path).encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _run_metadata(
+    *,
+    args: argparse.Namespace,
+    endpoint: LocalEndpoint,
+    corpus_path: Path,
+    corpus: list[tuple[str, str]],
+) -> dict[str, Any]:
+    corpus_bytes = corpus_path.read_bytes()
+    source_status = _git_output("status", "--short", "--", "src", "scripts", "tests")
+    working_status = _git_output("status", "--short")
+    probe_files = (Path(__file__), REPOSITORY_ROOT / "scripts/corpus_loader.py")
+    diff = subprocess.run(
+        ["git", "diff", "--binary", "HEAD", "--", "src", "scripts", "tests"],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        check=False,
+    )
+    return {
+        "schema_version": PROBE_SCHEMA_VERSION,
+        "run_id": uuid.uuid4().hex,
+        "started_at_utc": datetime.now(UTC).isoformat(),
+        "source_revision": _git_output("rev-parse", "HEAD"),
+        "source_commit": _git_output("rev-parse", "HEAD"),
+        "working_tree_clean": not bool(working_status and working_status != "NOT_MEASURED"),
+        "source_worktree_clean": not bool(source_status and source_status != "NOT_MEASURED"),
+        "source_status": source_status or "CLEAN",
+        "source_diff_sha256": hashlib.sha256(diff.stdout).hexdigest() if diff.stdout else "NONE",
+        "probe_script_sha256": _file_set_sha256(probe_files),
+        "corpus_id": "plan33-local-qwen-probe-v1",
+        "corpus_path": _repo_relative(corpus_path),
+        "corpus_sha256": hashlib.sha256(corpus_bytes).hexdigest(),
+        "episode_set": [episode_id for episode_id, _text in corpus],
+        "episode_count": len(corpus),
+        "endpoint_url": endpoint.base_url,
+        "model": args.model,
+        "model_id": args.model.removeprefix("local:"),
+        "direct_call_mode": "pydanticai_agent_direct",
+        "job_ids": [],
+        "job_submission": "NOT_SUBMITTED: probes call agent builders directly; no ingestion jobs are enqueued",
+        "concurrency": args.concurrency,
+        "timeout_s": args.timeout,
+        "repeats": args.repeats,
+        "attempts_per_agent_effort": args.repeats * len(corpus),
+        "expected_records": args.repeats * len(corpus) * len(AGENT_NAMES),
+        "agent_set": list(AGENT_NAMES),
+        "effort": args.effort,
+    }
 
 
 def _usage(result: Any) -> dict[str, Any]:
@@ -46,6 +131,7 @@ def _usage(result: Any) -> dict[str, Any]:
     data = usage.model_dump() if hasattr(usage, "model_dump") else vars(usage)
     details = data.get("details") or {}
     return {
+        "availability": "MEASURED",
         "requests": data.get("requests"),
         "tool_calls": data.get("tool_calls"),
         "prompt_tokens": data.get("input_tokens", data.get("request_tokens")),
@@ -140,11 +226,16 @@ def _record_base(
         "status": "failure",
         "outcome": "failure",
         "tool_calls": [],
-        "retries": None,
-        "normalization_rejections": [],
+        "tool_calls_available": False,
+        "retries": "NOT_MEASURED",
+        "retries_available": False,
+        "normalization_rejections": "NOT_MEASURED",
+        "normalization_rejections_available": False,
         "raw_output": "",
-        "raw_validation_output": None,
-        "usage": None,
+        "raw_validation_output": "NOT_MEASURED",
+        "raw_validation_output_available": False,
+        "usage": {"availability": "NOT_MEASURED", "reason": "no model result was returned"},
+        "usage_available": False,
     }
 
 
@@ -219,11 +310,16 @@ async def _probe_one(
             status="success",
             outcome="success",
             tool_calls=tool_calls,
+            tool_calls_available=True,
             retries=retries,
+            retries_available=True,
             normalization_rejections=rejections,
+            normalization_rejections_available=True,
             raw_output=raw_output,
             raw_validation_output=_output_dump(result),
+            raw_validation_output_available=True,
             usage=_usage(result),
+            usage_available=True,
         )
         record["refusal_mode"] = not tool_calls and any(marker in raw_output.lower() for marker in REFUSAL_MARKERS)
     except TimeoutError:
@@ -263,16 +359,22 @@ async def _probe_classifier(
         output = await _run_with_timeout(classifier.classify(text, SEED_DOMAINS), timeout_s)
         result = classifier._last_run_result
         usage = _usage(result) if result is not None else None
-        tool_calls, raw_output, retries, rejections = _messages(result) if result is not None else ([], "", None, [])
+        result_available = result is not None
+        tool_calls, raw_output, retries, rejections = _messages(result) if result_available else ([], "", 0, [])
         record.update(
             status="success",
             outcome="success",
             output=output.model_dump(mode="json"),
-            raw_validation_output=_output_dump(result) if result is not None else None,
-            usage=usage,
+            raw_validation_output=_output_dump(result) if result_available else "NOT_MEASURED",
+            usage=usage if usage is not None else {"availability": "NOT_MEASURED", "reason": "no model result"},
+            usage_available=result_available,
             tool_calls=tool_calls,
-            retries=retries,
-            normalization_rejections=rejections,
+            tool_calls_available=result_available,
+            retries=retries if result_available else "NOT_MEASURED",
+            retries_available=result_available,
+            normalization_rejections=rejections if result_available else "NOT_MEASURED",
+            normalization_rejections_available=result_available,
+            raw_validation_output_available=result_available,
             raw_output=raw_output,
         )
     except TimeoutError:
@@ -302,10 +404,10 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     settings = MCPSettings(_env_file=None)  # ty: ignore[unknown-argument]
     endpoint = LocalEndpoint.from_settings(settings)
     config = AgentInferenceConfig(model_name=args.model, thinking_effort=args.effort, local_endpoint=endpoint)
-    corpus = load_probe_corpus(args.corpus)
-    source_path = str(
-        args.corpus or Path(__file__).parents[1] / "docs/plans/33-local-qwen-migration/resources/probe-corpus.md"
-    )
+    corpus_path = args.corpus or PROBE_CORPUS
+    corpus = load_probe_corpus(corpus_path)
+    source_path = _repo_relative(corpus_path)
+    run_metadata = _run_metadata(args=args, endpoint=endpoint, corpus_path=corpus_path, corpus=corpus)
     jobs = [
         (attempt, episode_id, text, kind)
         for attempt in range(1, args.repeats + 1)
@@ -328,10 +430,13 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
 
     records = await asyncio.gather(*(run_job(job) for job in jobs))
     return {
+        "schema_version": PROBE_SCHEMA_VERSION,
+        "run_metadata": run_metadata,
         "model": args.model,
         "effort": args.effort,
         "repeats": args.repeats,
         "concurrency": args.concurrency,
+        "timeout_s": args.timeout,
         "records": records,
     }
 
