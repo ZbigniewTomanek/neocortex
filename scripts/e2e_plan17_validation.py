@@ -33,6 +33,11 @@ from fastmcp import Client
 
 from neocortex.config import PostgresConfig
 
+try:
+    from scripts.e2e_result import write_configured_result  # ty: ignore[unresolved-import]
+except ModuleNotFoundError:  # Direct ``python scripts/e2e_plan17_validation.py`` execution.
+    from e2e_result import write_configured_result  # ty: ignore[unresolved-import]
+
 BASE_URL = os.environ.get("NEOCORTEX_BASE_URL", "http://127.0.0.1:8000")
 INGESTION_URL = os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001")
 MCP_URL = os.environ.get("NEOCORTEX_MCP_URL", f"{BASE_URL}/mcp")
@@ -140,9 +145,7 @@ async def _assert_health() -> None:
 async def _get_max_job_id() -> int:
     conn = await asyncpg.connect(dsn=PostgresConfig().dsn)
     try:
-        val = await conn.fetchval(
-            "SELECT coalesce(max(id), 0) FROM procrastinate_jobs " "WHERE queue_name = 'extraction'"
-        )
+        val = await conn.fetchval("SELECT coalesce(max(id), 0) FROM procrastinate_jobs WHERE queue_name = 'extraction'")
         return int(val)
     finally:
         await conn.close()
@@ -857,12 +860,12 @@ async def scenario_14_importance_vs_activation() -> ScenarioResult:
 # ── Main Test Flow ──
 
 
-async def main() -> None:
+async def main() -> int:
     print("=" * 70)
     print("Plan 17: Entity Normalization Validation")
     print(f"MCP:       {MCP_URL}")
     print(f"Ingestion: {INGESTION_URL}")
-    print(f"Token:     {TOKEN[:8]}...")
+    print("Token:     configured")
     print(f"Schema:    {AGENT_SCHEMA}")
     print("=" * 70)
 
@@ -1068,17 +1071,41 @@ async def main() -> None:
     else:
         print("\nNo regressions from Plan 16.5 baseline")
 
-    if acceptable_count >= 13 and fail_count == 0:
+    gate_passed = acceptable_count >= 13 and fail_count == 0
+    if gate_passed:
         print("\n[TARGET MET] >= 13/14 Acceptable, 0 Fails")
     elif fail_count == 0:
         print(f"\n[TARGET NOT MET] {acceptable_count}/14 Acceptable (need 13), but 0 Fails")
     else:
         print(f"\n[HARD FAILURE] {fail_count} Fails detected")
 
+    write_configured_result(
+        {
+            "schema_version": 1,
+            "kind": "neocortex-e2e-scenario-result",
+            "script": "e2e_plan17_validation.py",
+            "child_run_id": os.environ.get("NEOCORTEX_E2E_RUN_ID", "NOT_MEASURED"),
+            "status": "PASS" if gate_passed else "FAIL",
+            "exit_code": 0 if gate_passed else 1,
+            "counts": {
+                "total": len(results),
+                "pass": 0,
+                "partial": partial_count,
+                "acceptable": acceptable_count,
+                "fail": fail_count,
+            },
+            "gate": {"basis": "ACCEPTABLE", "threshold": 13, "passed": gate_passed},
+            "scenarios": [
+                {"index": index, "verdict": result.verdict.value.upper()} for index, result in enumerate(results, 1)
+            ],
+        }
+    )
+
     print("\n" + "=" * 70)
     print("PLAN 17 VALIDATION COMPLETED")
     print("=" * 70)
+    return 0 if gate_passed else 1
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    raise SystemExit(asyncio.run(main()))

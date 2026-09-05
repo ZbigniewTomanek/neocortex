@@ -3,7 +3,7 @@
 Validates Plan 16 Stage 3.5: the tool-driven extraction pipeline produces correct
 graph state for the real-world scenarios that exposed quality issues in Plan 15.
 
-Pass criteria: >= 11/14 scenarios acceptable (79%).
+Pass criteria: >= 11/14 scenarios PASS (79%); PARTIAL is informational only.
 
 Each scenario:
   1. Ingests 1-2 episodes with known content
@@ -35,12 +35,18 @@ import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import cast
 
 import asyncpg
 import httpx
 from fastmcp import Client
 
 from neocortex.config import PostgresConfig
+
+try:
+    from scripts.e2e_result import write_configured_result  # ty: ignore[unresolved-import]
+except ModuleNotFoundError:  # Direct ``python scripts/e2e_plan15_scenarios_test.py`` execution.
+    from e2e_result import write_configured_result  # ty: ignore[unresolved-import]
 
 BASE_URL = os.environ.get("NEOCORTEX_BASE_URL", "http://127.0.0.1:8000")
 INGESTION_URL = os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001")
@@ -66,6 +72,32 @@ class ScenarioResult:
     name: str
     verdict: Verdict = Verdict.FAIL
     notes: list[str] = field(default_factory=list)
+
+
+def build_result_payload(results: list[ScenarioResult], child_run_id: str) -> dict[str, object]:
+    """Build the safe result while keeping PARTIAL informational only."""
+    pass_count = sum(1 for result in results if result.verdict == Verdict.PASS)
+    partial_count = sum(1 for result in results if result.verdict == Verdict.PARTIAL)
+    fail_count = sum(1 for result in results if result.verdict == Verdict.FAIL)
+    acceptable = pass_count + partial_count
+    gate_passed = pass_count >= 11
+    return {
+        "schema_version": 1,
+        "kind": "neocortex-e2e-scenario-result",
+        "script": "e2e_plan15_scenarios_test.py",
+        "child_run_id": child_run_id,
+        "status": "PASS" if gate_passed else "FAIL",
+        "exit_code": 0 if gate_passed else 1,
+        "counts": {
+            "total": len(results),
+            "pass": pass_count,
+            "partial": partial_count,
+            "acceptable": acceptable,
+            "fail": fail_count,
+        },
+        "gate": {"basis": "PASS", "threshold": 11, "passed": gate_passed},
+        "scenarios": [{"index": index, "verdict": result.verdict.value} for index, result in enumerate(results, 1)],
+    }
 
 
 # ── Seed texts ──
@@ -106,7 +138,7 @@ S3_EPISODE_B = (
 # Uses S2_INITIAL + S2_UPDATE; verification checks edge state.
 
 # S5: Deadline contradiction
-S5_INITIAL = "The Project Zenith deadline is April 15, 2026. " "The team is targeting a beta release by that date."
+S5_INITIAL = "The Project Zenith deadline is April 15, 2026. The team is targeting a beta release by that date."
 S5_UPDATE = (
     "The Project Zenith deadline has been pushed back from "
     "April 15 to May 1, 2026 due to the merge freeze. "
@@ -114,9 +146,7 @@ S5_UPDATE = (
 )
 
 # S6: Explicit correction
-S6_INITIAL = (
-    "Marcus Chen is a backend developer who primarily uses " "Java for microservices development at the company."
-)
+S6_INITIAL = "Marcus Chen is a backend developer who primarily uses Java for microservices development at the company."
 S6_CORRECTION = (
     "CORRECTION: Marcus Chen actually uses Rust, not Java. "
     "He switched to Rust six months ago for memory safety "
@@ -124,7 +154,7 @@ S6_CORRECTION = (
 )
 
 # S7: Preference reversal
-S7_INITIAL = "The infrastructure team decided to use Redis as the " "primary cache layer for the API gateway."
+S7_INITIAL = "The infrastructure team decided to use Redis as the primary cache layer for the API gateway."
 S7_REVERSAL = (
     "The infrastructure team reversed the Redis decision and "
     "will use Memcached instead, because of simpler operational "
@@ -132,15 +162,13 @@ S7_REVERSAL = (
 )
 
 # S8: Property accumulation
-S8_EPISODE_A = (
-    "The BERT NLP model achieved 92.4 percent accuracy on the " "entity matching task in the Plan 42 benchmark."
-)
+S8_EPISODE_A = "The BERT NLP model achieved 92.4 percent accuracy on the entity matching task in the Plan 42 benchmark."
 S8_EPISODE_B = (
-    "The BERT NLP model has 15ms average inference latency on " "a V100 GPU, making it suitable for real-time scoring."
+    "The BERT NLP model has 15ms average inference latency on a V100 GPU, making it suitable for real-time scoring."
 )
 
 # S9: Property conflict
-S9_INITIAL = "The data ingestion pipeline has 4 stages: extraction, " "cleaning, validation, and loading."
+S9_INITIAL = "The data ingestion pipeline has 4 stages: extraction, cleaning, validation, and loading."
 S9_UPDATE = (
     "The data ingestion pipeline has been extended to 6 stages: "
     "extraction, cleaning, normalization, dedup, validation, "
@@ -159,7 +187,7 @@ S10_TEXT = (
 )
 
 # S11: Fact supersession
-S11_INITIAL = "The Plan 42 benchmark showed a scaling exponent of b=0.57, " "fitted from 1M and 5M data points."
+S11_INITIAL = "The Plan 42 benchmark showed a scaling exponent of b=0.57, fitted from 1M and 5M data points."
 S11_UPDATE = (
     "UPDATE: After running the 10M benchmark, the Plan 42 "
     "scaling exponent was refined to b=0.62. The previous "
@@ -206,9 +234,7 @@ async def _assert_health() -> None:
 async def _get_max_job_id() -> int:
     conn = await asyncpg.connect(dsn=PostgresConfig().dsn)
     try:
-        val = await conn.fetchval(
-            "SELECT coalesce(max(id), 0) FROM procrastinate_jobs " "WHERE queue_name = 'extraction'"
-        )
+        val = await conn.fetchval("SELECT coalesce(max(id), 0) FROM procrastinate_jobs WHERE queue_name = 'extraction'")
         return int(val)
     finally:
         await conn.close()
@@ -813,12 +839,12 @@ async def scenario_14_activation() -> ScenarioResult:
 # ── Main Test Flow ──
 
 
-async def main() -> None:
+async def main() -> int:
     print("=" * 70)
     print("Plan 15 Scenario Replay (Plan 16 Stage 3.5)")
     print(f"MCP:       {MCP_URL}")
     print(f"Ingestion: {INGESTION_URL}")
-    print(f"Token:     {TOKEN[:8]}...")
+    print("Token:     configured")
     print(f"Schema:    {AGENT_SCHEMA}")
     print("=" * 70)
 
@@ -938,11 +964,15 @@ async def main() -> None:
     print("SCENARIO RESULTS SUMMARY")
     print("=" * 70)
 
-    pass_count = sum(1 for r in results if r.verdict == Verdict.PASS)
-    partial_count = sum(1 for r in results if r.verdict == Verdict.PARTIAL)
-    fail_count = sum(1 for r in results if r.verdict == Verdict.FAIL)
-    # Count PASS as acceptable (PARTIAL is debatable but not counted for the gate)
-    acceptable = pass_count
+    result_payload = build_result_payload(results, os.environ.get("NEOCORTEX_E2E_RUN_ID", "NOT_MEASURED"))
+    result_counts = cast(dict[str, int], result_payload["counts"])
+    result_gate = cast(dict[str, object], result_payload["gate"])
+    pass_count = int(result_counts["pass"])
+    partial_count = int(result_counts["partial"])
+    fail_count = int(result_counts["fail"])
+    # Keep the broad PASS + PARTIAL total as informational only.  The Plan 15
+    # gate is deliberately strict: PARTIAL never contributes to gate passage.
+    acceptable = int(result_counts["acceptable"])
 
     print(f"\n{'#':<4} {'Scenario':<35} {'Verdict':<10}")
     print("-" * 52)
@@ -951,16 +981,17 @@ async def main() -> None:
         print(f"[{marker}] {i:<2}  {r.name:<35} {r.verdict.value}")
 
     print(f"\nPASS: {pass_count}  PARTIAL: {partial_count}  FAIL: {fail_count}")
-    print(f"Acceptable (PASS only): {acceptable}/14")
-    print(f"Acceptable (PASS + PARTIAL): {pass_count + partial_count}/14")
+    print(f"Acceptable (PASS only): {pass_count}/14")
+    print(f"Acceptable (PASS + PARTIAL): {acceptable}/14")
 
     gate = 11  # >= 79%
-    if acceptable >= gate:
-        print(f"\n[GATE PASSED] {acceptable}/14 >= {gate}/14 (strict)")
-    elif pass_count + partial_count >= gate:
-        print(f"\n[GATE PASSED] {pass_count + partial_count}/14 >= {gate}/14 (with partial)")
+    gate_passed = bool(result_gate["passed"])
+    if gate_passed:
+        print(f"\n[GATE PASSED] {pass_count}/14 >= {gate}/14 (strict)")
     else:
-        print(f"\n[GATE FAILED] {pass_count + partial_count}/14 < {gate}/14")
+        print(f"\n[GATE FAILED] {pass_count}/14 < {gate}/14 (strict PASS only)")
+
+    write_configured_result(result_payload)
 
     # ── Duplicate node report ──
     print("\n--- Duplicate Node Report ---")
@@ -974,7 +1005,8 @@ async def main() -> None:
     print("\n" + "=" * 70)
     print("PLAN 15 SCENARIO REPLAY COMPLETED")
     print("=" * 70)
+    return 0 if gate_passed else 1
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    raise SystemExit(asyncio.run(main()))

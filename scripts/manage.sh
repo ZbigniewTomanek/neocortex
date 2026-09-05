@@ -308,13 +308,20 @@ METAEOF
 
     # Create archive
     mkdir -p "$BACKUPDIR"
-    tar -czf "$BACKUPDIR/${filename}.tar.gz" -C "$tmpdir" .
+    local archive_path="$BACKUPDIR/${filename}.tar.gz"
+    tar -czf "$archive_path" -C "$tmpdir" .
+
+    if [[ -n "${NEOCORTEX_SNAPSHOT_PATH_FILE:-}" ]]; then
+        local receipt_tmp="${NEOCORTEX_SNAPSHOT_PATH_FILE}.tmp"
+        printf '%s\n' "$archive_path" >"$receipt_tmp"
+        mv "$receipt_tmp" "$NEOCORTEX_SNAPSHOT_PATH_FILE"
+    fi
 
     # Cleanup temp dir
     rm -rf "$tmpdir"
 
     local size
-    size=$(ls -lh "$BACKUPDIR/${filename}.tar.gz" | awk '{print $5}')
+    size=$(ls -lh "$archive_path" | awk '{print $5}')
     ok "Snapshot saved: $BACKUPDIR/${filename}.tar.gz ($size)"
 }
 

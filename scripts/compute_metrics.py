@@ -14,8 +14,10 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 import asyncpg
 import httpx
@@ -27,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLAN_RESOURCES = ROOT / "docs/plans/33-local-qwen-migration/resources"
 CORPUS = ROOT / "docs/plans/18.5-e2e-revalidation/resources/episodes.md"
 _IDENTIFIER = re.compile(r"^[A-Z][a-zA-Z0-9]*$")
+_SCREAMING_SNAKE = re.compile(r"^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$")
 _SEGMENTS = re.compile(r"[A-Z][a-z]+|[A-Z]+(?=[A-Z]|$)|[0-9]+")
 
 
@@ -36,6 +39,15 @@ class NonTerminalJobsError(RuntimeError):
     def __init__(self, summary: dict[str, object]):
         self.summary = summary
         super().__init__(f"jobs are not terminal: {summary}")
+
+
+class InvalidJobSummaryError(RuntimeError):
+    """Raised when the admin job counts cannot support a truthful metric."""
+
+    def __init__(self, summary: object, reason: str):
+        self.summary = summary
+        self.reason = reason
+        super().__init__(f"invalid job summary ({reason})")
 
 
 # A run-scoped audit record must prove that the model pipeline actually ran.
@@ -52,16 +64,34 @@ EXPECTED_RUN_SCOPED_EVENTS = frozenset(
 )
 
 
-def ensure_terminal_jobs(summary: dict[str, object]) -> None:
-    """Refuse a quality artifact while any queued or running job remains."""
+def validate_job_summary(summary: object) -> dict[str, int]:
+    """Validate terminal status counts and the ten-percent failure ceiling."""
+    if not isinstance(summary, dict):
+        raise InvalidJobSummaryError(summary, "not_an_object")
+    summary_dict = cast(dict[str, object], summary)
+    required = ("todo", "doing", "succeeded", "failed", "cancelled", "total")
+    if any(key not in summary for key in required):
+        raise InvalidJobSummaryError(summary, "missing_count")
+    counts: dict[str, int] = {}
+    for key in required:
+        value = summary_dict[key]
+        if type(value) is not int or value < 0:
+            raise InvalidJobSummaryError(summary, "invalid_count")
+        counts[key] = value
+    if counts["total"] == 0:
+        raise InvalidJobSummaryError(summary, "zero_total")
+    if sum(counts[key] for key in ("todo", "doing", "succeeded", "failed", "cancelled")) != counts["total"]:
+        raise InvalidJobSummaryError(summary, "inconsistent_total")
+    if counts["todo"] or counts["doing"]:
+        raise NonTerminalJobsError(summary_dict)
+    if (counts["failed"] + counts["cancelled"]) / counts["total"] > 0.10:
+        raise InvalidJobSummaryError(summary, "failure_rate_exceeded")
+    return counts
 
-    def count(value: object) -> int:
-        return int(value) if isinstance(value, (int, float, str)) else 0
 
-    todo = count(summary.get("todo", 0))
-    doing = count(summary.get("doing", 0))
-    if todo + doing:
-        raise NonTerminalJobsError(summary)
+def ensure_terminal_jobs(summary: object) -> None:
+    """Refuse a quality artifact without terminal, internally consistent jobs."""
+    validate_job_summary(summary)
 
 
 def resolve_run_id(run_id: str | None = None) -> str:
@@ -152,6 +182,33 @@ def _relative_path(path: Path) -> str:
         return str(path)
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def invalid_type_names(node_names: Iterable[str], edge_names: Iterable[str]) -> dict[str, list[str]]:
+    """Validate node and edge naming conventions independently."""
+    invalid_nodes = [
+        name
+        for name in node_names
+        if len(name) > 60 or len(_SEGMENTS.findall(name)) > 5 or _IDENTIFIER.fullmatch(name) is None
+    ]
+    invalid_edges = [
+        name
+        for name in edge_names
+        if len(name) > 60 or len(_SEGMENTS.findall(name)) > 5 or _SCREAMING_SNAKE.fullmatch(name) is None
+    ]
+    return {
+        "invalid_node_type_names": invalid_nodes,
+        "invalid_edge_type_names": invalid_edges,
+        "invalid_type_names": invalid_nodes + invalid_edges,
+    }
+
+
 def _git_metadata() -> dict[str, object]:
     """Capture source revision without including environment credentials."""
     try:
@@ -230,6 +287,7 @@ async def collect(
     ingestion_url: str | None = None,
     admin_token: str | None = None,
     run_id: str | None = None,
+    snapshot_sha256: str | None = None,
 ) -> dict:
     config = PostgresConfig()
     if snapshot_path is not None and not snapshot_path.exists():
@@ -242,6 +300,11 @@ async def collect(
         corpus_sha256 = hashlib.sha256(CORPUS.read_bytes()).hexdigest()
         schemas = await conn.fetch("SELECT schema_name FROM graph_registry ORDER BY schema_name")
         per_schema = {}
+        snapshot_digest = None
+        if snapshot_path is not None:
+            snapshot_digest = _sha256_file(snapshot_path)
+            if snapshot_sha256 is not None and snapshot_sha256 != snapshot_digest:
+                raise ValueError("graph snapshot digest does not match the supplied value")
         for record in schemas:
             schema = str(record["schema_name"])
             s = quote(schema)
@@ -272,7 +335,9 @@ async def collect(
                 metric_sql,
                 _TOOL_CALL_ARTIFACT.pattern,
             )
-            names = await conn.fetch(f"SELECT name FROM {s}.node_type UNION ALL SELECT name FROM {s}.edge_type")
+            node_names = await conn.fetch(f"SELECT name FROM {s}.node_type")
+            edge_names = await conn.fetch(f"SELECT name FROM {s}.edge_type")
+            names = [*node_names, *edge_names]
             name_set = {str(x["name"]) for x in names}
             candidates = [
                 name
@@ -280,20 +345,17 @@ async def collect(
                 if len(_SEGMENTS.findall(name)) > 1
                 and any(name.startswith(prefix) and prefix in name_set for prefix in _SEGMENTS.findall(name)[:-1])
             ]
-            invalid = [
-                str(x["name"])
-                for x in names
-                if len(str(x["name"])) > 60
-                or len(_SEGMENTS.findall(str(x["name"]))) > 5
-                or _IDENTIFIER.fullmatch(str(x["name"])) is None
-            ]
+            type_validation = invalid_type_names(
+                (str(x["name"]) for x in node_names),
+                (str(x["name"]) for x in edge_names),
+            )
             leaks = await conn.fetch(
                 f"SELECT name FROM {s}.node WHERE name ~* $1 OR content::text ~* $1", _TOOL_CALL_ARTIFACT.pattern
             )
             per_schema[schema] = {
                 **dict(row),
                 "instance_type_candidates": candidates,
-                "invalid_type_names": invalid,
+                **type_validation,
                 "stored_leaks": [str(x["name"]) for x in leaks],
             }
         ingestion_url = ingestion_url or os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001")
@@ -307,6 +369,7 @@ async def collect(
             "metrics_script": _relative_path(Path(__file__)),
             "graph_source": "live PostgreSQL graph",
             "graph_snapshot": _relative_path(snapshot_path) if snapshot_path else "NOT_MEASURED",
+            "graph_snapshot_sha256": snapshot_digest or "NOT_MEASURED",
             "audit_log": _relative_path(ROOT / "log/agent_actions.log"),
             "admin_jobs_api": _endpoint_identity(ingestion_url) + "/admin/jobs/summary",
             "corpus": _relative_path(CORPUS),
@@ -346,6 +409,7 @@ async def collect(
             "per_call_timeout_s": os.environ.get("NEOCORTEX_LOCAL_MODEL_TIMEOUT_S", "NOT_MEASURED"),
             "corpus_size": len(corpus),
             "corpus_sha256": corpus_sha256,
+            "snapshot_sha256": snapshot_digest or "NOT_MEASURED",
             **_git_metadata(),
         }
         return {
@@ -452,9 +516,13 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
     }
     if not audit_paths:
         return {**result, "status": "NOT_MEASURED", "reason": "missing_audit_log"}
+    if read_error:
+        # A rotated member is part of the run's evidence set.  Partial reads
+        # cannot prove complete event counts, even when another member has a
+        # matching event, so never publish a measured artifact in this case.
+        return {**result, "status": "NOT_MEASURED", "reason": "unreadable_audit_log"}
     if not lines or not any(line.strip() for line in lines):
-        reason = "malformed_audit_log" if read_error else "empty_audit_log"
-        return {**result, "status": "NOT_MEASURED", "reason": reason}
+        return {**result, "status": "NOT_MEASURED", "reason": "empty_audit_log"}
     if valid_records == 0:
         return {**result, "status": "NOT_MEASURED", "reason": "malformed_audit_log"}
     if matched_records == 0:
@@ -470,6 +538,7 @@ async def main() -> int:
     parser.add_argument("--phase", default="corpus", choices=("corpus", "e2e"))
     parser.add_argument("--merge", action="store_true")
     parser.add_argument("--snapshot-path", type=Path)
+    parser.add_argument("--snapshot-sha256")
     parser.add_argument(
         "--ingestion-url", default=os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001")
     )
@@ -484,16 +553,19 @@ async def main() -> int:
             snapshot_path=args.snapshot_path,
             ingestion_url=args.ingestion_url,
             run_id=effective_run_id,
+            snapshot_sha256=args.snapshot_sha256,
         )
-    except NonTerminalJobsError as exc:
+    except (NonTerminalJobsError, InvalidJobSummaryError) as exc:
+        reason = "non_terminal_jobs" if isinstance(exc, NonTerminalJobsError) else exc.reason
+        summary = cast(dict[str, object], exc.summary) if isinstance(exc.summary, dict) else None
         destination = _write_not_measured(
             destination,
-            reason="non_terminal_jobs",
+            reason=reason,
             run_id=effective_run_id,
             ingestion_url=args.ingestion_url,
-            job_summary=exc.summary,
+            job_summary=summary,
         )
-        print(f"jobs are non-terminal; quality metrics not written ({destination})", file=sys.stderr)
+        print(f"job evidence is not measured ({reason}); quality metrics not written ({destination})", file=sys.stderr)
         return 2
     audit = audit_metrics(run_id=effective_run_id)
     if audit.get("status") != "MEASURED":

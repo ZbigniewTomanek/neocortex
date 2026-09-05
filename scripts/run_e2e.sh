@@ -59,7 +59,11 @@ cleanup() {
         docker compose -f "$PROJECT_DIR/docker-compose.yml" down --timeout 5 2>/dev/null || true
         log "Stopped docker compose services."
     else
-        "$SCRIPT_DIR/manage.sh" stop --all
+        if [[ "${KEEP_POSTGRES_RUNNING:-}" == "1" ]]; then
+            "$SCRIPT_DIR/manage.sh" stop
+        else
+            "$SCRIPT_DIR/manage.sh" stop --all
+        fi
     fi
 
     exit "$exit_code"

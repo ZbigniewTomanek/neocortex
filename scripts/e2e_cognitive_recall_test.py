@@ -199,11 +199,10 @@ async def step_activation_increases() -> list[float]:
                 )
         # Overall trend: last should be >= first
         if activation_history[-1] >= activation_history[0] - 0.01:
-            print(f"  [PASS] Activation trend: " f"{' -> '.join(f'{a:.3f}' for a in activation_history)}")
+            print(f"  [PASS] Activation trend: {' -> '.join(f'{a:.3f}' for a in activation_history)}")
         else:
             print(
-                f"  [WARN] Activation did not increase overall: "
-                f"{' -> '.join(f'{a:.3f}' for a in activation_history)}"
+                f"  [WARN] Activation did not increase overall: {' -> '.join(f'{a:.3f}' for a in activation_history)}"
             )
     else:
         print("  [WARN] Not enough activation data points to verify trend")
@@ -447,7 +446,7 @@ async def main() -> None:
     print("E2E Cognitive Recall Test")
     print(f"MCP:       {MCP_URL}")
     print(f"Ingestion: {INGESTION_URL}")
-    print(f"Token:     {TOKEN[:8]}...")
+    print("Token:     configured")
     print("=" * 60)
 
     await _assert_health()

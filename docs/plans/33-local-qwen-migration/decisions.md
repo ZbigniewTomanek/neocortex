@@ -214,3 +214,9 @@ and exclude prompts, outputs, tool arguments, and secrets.
 **Chosen**: B.
 **Rationale**: The run proved that extraction-side correction did not cover all action-audit paths. The gate must cover repository adapters, mocks, routing, ingestion, and extraction.
 **Evidence**: Journal entry for run `20260903T133626Z-60064` and commit `6a2c0b3`; backlog item 13 tracks the remaining acceptance.
+
+### D34: Require a fresh, separated evidence run after non-convergence
+**Date**: 2026-09-05 - **Stage**: 6 - **Type**: IMPLEMENTATION / PROVENANCE
+**Options**: A) resume the non-converged attempt B) start a fresh run with separated, run-scoped evidence.
+**Chosen**: B.
+**Rationale**: Run `20260903T174929Z-31844` completed 110/110 corpus jobs, but recall returned 401, the pre-snapshot label was incorrect, and no E2E children ran. The accepted redesign binds corpus graph metrics to the live corpus and an exact post-snapshot/hash, attaches a separate offline five-child E2E manifest, requires strict Plan 15 PASS-only evidence, enforces terminal `(failed+cancelled)/total <= 0.10`, and records safe aggregate recall. The old attempt is diagnostic only. This is an implementation/provenance decision and does not amend thresholds.

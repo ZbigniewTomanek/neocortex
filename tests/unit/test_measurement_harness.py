@@ -10,7 +10,11 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from scripts.compute_metrics import NonTerminalJobsError, ensure_terminal_jobs  # ty: ignore[unresolved-import]
+from scripts.compute_metrics import (  # ty: ignore[unresolved-import]
+    InvalidJobSummaryError,
+    NonTerminalJobsError,
+    ensure_terminal_jobs,
+)
 from scripts.corpus_loader import CORPUS, load_corpus  # ty: ignore[unresolved-import]
 
 
@@ -34,7 +38,35 @@ def test_non_terminal_jobs_are_not_a_quality_result() -> None:
 
 
 def test_terminal_job_summary_is_accepted() -> None:
-    ensure_terminal_jobs({"todo": 0, "doing": 0, "succeeded": 25, "failed": 3, "cancelled": 0})
+    ensure_terminal_jobs({"todo": 0, "doing": 0, "succeeded": 26, "failed": 2, "cancelled": 0, "total": 28})
+
+
+@pytest.mark.parametrize(
+    "summary",
+    [
+        {"todo": 0, "doing": 0, "succeeded": 9, "failed": 1, "cancelled": 0, "total": 10},
+        {"todo": 0, "doing": 0, "succeeded": 8, "failed": 1, "cancelled": 1, "total": 10},
+    ],
+)
+def test_terminal_failure_rate_ceiling_accepts_one_of_ten_and_rejects_two(summary: dict[str, int]) -> None:
+    if summary["failed"] + summary["cancelled"] == 1:
+        ensure_terminal_jobs(summary)
+    else:
+        with pytest.raises(InvalidJobSummaryError) as exc_info:
+            ensure_terminal_jobs(summary)
+        assert exc_info.value.reason == "failure_rate_exceeded"
+
+
+@pytest.mark.parametrize(
+    "summary",
+    [
+        {"todo": 0, "doing": 0, "succeeded": 0, "failed": 0, "cancelled": 0},
+        {"todo": 0, "doing": 0, "succeeded": 9, "failed": 0, "cancelled": 0, "total": 10},
+    ],
+)
+def test_missing_or_inconsistent_job_totals_are_not_measured(summary: dict[str, int]) -> None:
+    with pytest.raises(InvalidJobSummaryError):
+        ensure_terminal_jobs(summary)
 
 
 def test_audit_metrics_reads_rotated_action_logs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -69,6 +101,47 @@ def test_audit_metrics_reads_rotated_action_logs(monkeypatch: pytest.MonkeyPatch
         "log/agent_actions.log",
         "log/agent_actions.2026-09-03_00-00-00_000000.log",
     ]
+
+
+def test_audit_metrics_rejects_any_unreadable_rotated_member(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """A matching active event cannot mask an unreadable rotated member."""
+    import scripts.compute_metrics as metrics  # ty: ignore[unresolved-import]
+
+    log_dir = tmp_path / "log"
+    log_dir.mkdir()
+    event = {
+        "record": {
+            "message": "model_request_completed",
+            "extra": {
+                "run_id": "unreadable-run",
+                "correlation_id": "corr-1",
+                "model": "qwen3.8-flash-next",
+                "endpoint": "http://127.0.0.1:24000/v1",
+                "agent": "ontology",
+                "effort": "low",
+            },
+        }
+    }
+    active = log_dir / "agent_actions.log"
+    rotated = log_dir / "agent_actions.2026-09-03_00-00-00_000000.log"
+    active.write_text(json.dumps(event) + "\n")
+    rotated.write_text(json.dumps(event) + "\n")
+    original_read_text = Path.read_text
+
+    def fail_rotated_read(
+        path: Path, encoding: str | None = None, errors: str | None = None, newline: str | None = None
+    ) -> str:
+        if path == rotated:
+            raise OSError("synthetic unreadable audit member")
+        return original_read_text(path, encoding, errors, newline)
+
+    monkeypatch.setattr(Path, "read_text", fail_rotated_read)
+    monkeypatch.setattr(metrics, "ROOT", tmp_path)
+
+    result = metrics.audit_metrics(run_id="unreadable-run")
+
+    assert result["status"] == "NOT_MEASURED"
+    assert result["reason"] == "unreadable_audit_log"
 
 
 def test_non_terminal_cli_writes_only_not_measured_sidecar(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -108,6 +181,34 @@ def test_non_terminal_cli_writes_only_not_measured_sidecar(monkeypatch: pytest.M
     assert marker["recoverable_stale_artifact"] == str(tmp_path / "metrics-self-test.json.stale")
     assert not canonical.exists()
     assert json.loads((tmp_path / "metrics-self-test.json.stale").read_text()) == {"old": "quality"}
+
+
+def test_failure_rate_cli_writes_only_not_measured_sidecar(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """An over-rate terminal summary cannot produce a quality artifact."""
+    import asyncio
+    import sys
+
+    import scripts.compute_metrics as metrics  # ty: ignore[unresolved-import]
+
+    summary = {"todo": 0, "doing": 0, "succeeded": 8, "failed": 1, "cancelled": 1, "total": 10}
+
+    async def fake_collect(*args: object, **kwargs: object) -> dict[str, object]:
+        raise metrics.InvalidJobSummaryError(summary, "failure_rate_exceeded")
+
+    monkeypatch.setattr(metrics, "collect", fake_collect)
+    monkeypatch.setattr(metrics, "PLAN_RESOURCES", tmp_path)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["compute_metrics.py", "--arm", "over-rate", "--ingestion-url", "http://127.0.0.1:8001"],
+    )
+
+    assert asyncio.run(metrics.main()) == 2
+    marker = json.loads((tmp_path / "metrics-over-rate.not-measured.json").read_text())
+    assert marker["status"] == "NOT_MEASURED"
+    assert marker["reason"] == "failure_rate_exceeded"
+    assert marker["job_summary"] == summary
+    assert not (tmp_path / "metrics-over-rate.json").exists()
 
 
 @pytest.mark.parametrize(
@@ -156,7 +257,7 @@ def test_zero_signal_audit_never_publishes_canonical_metrics(
         assert kwargs["run_id"] == run_id
         return {
             "schema_version": 3,
-            "job_summary": {"todo": 0, "doing": 0, "succeeded": 1},
+            "job_summary": {"todo": 0, "doing": 0, "succeeded": 1, "failed": 0, "cancelled": 0, "total": 1},
             "schemas": {"quality": "must-not-be-published"},
         }
 
@@ -204,7 +305,7 @@ def test_main_passes_one_effective_run_id_to_collect_and_audit(monkeypatch: pyte
 
     async def fake_collect(*args: object, **kwargs: object) -> dict[str, object]:
         seen["collect"] = str(kwargs["run_id"])
-        return {"job_summary": {"todo": 0, "doing": 0}}
+        return {"job_summary": {"todo": 0, "doing": 0, "succeeded": 1, "failed": 0, "cancelled": 0, "total": 1}}
 
     def fake_audit(*, run_id: str | None = None, correlation_id: str | None = None) -> dict[str, object]:
         del correlation_id
@@ -253,7 +354,7 @@ def test_stage_timing_only_audit_is_not_model_execution_evidence(
 
     async def fake_collect(*args: object, **kwargs: object) -> dict[str, object]:
         assert kwargs["run_id"] == run_id
-        return {"job_summary": {"todo": 0, "doing": 0}}
+        return {"job_summary": {"todo": 0, "doing": 0, "succeeded": 1, "failed": 0, "cancelled": 0, "total": 1}}
 
     monkeypatch.setattr(metrics, "ROOT", tmp_path)
     monkeypatch.setattr(metrics, "PLAN_RESOURCES", tmp_path / "resources")
@@ -303,7 +404,7 @@ def test_model_request_error_is_valid_execution_evidence(monkeypatch: pytest.Mon
 
     async def fake_collect(*args: object, **kwargs: object) -> dict[str, object]:
         assert kwargs["run_id"] == run_id
-        return {"job_summary": {"todo": 0, "doing": 0}}
+        return {"job_summary": {"todo": 0, "doing": 0, "succeeded": 1, "failed": 0, "cancelled": 0, "total": 1}}
 
     monkeypatch.setattr(metrics, "ROOT", tmp_path)
     monkeypatch.setattr(metrics, "PLAN_RESOURCES", tmp_path / "resources")
@@ -375,8 +476,10 @@ def test_bakeoff_dry_run_reports_bounds_without_secret() -> None:
     assert "excludes parent-seed recursion" in output
     assert "metrics_path=docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next.json" in output
     assert "measurement-secret-must-not-appear" not in output
-    # The printed command contains an environment reference, never its value.
-    assert "Authorization: Bearer ${NEOCORTEX_ADMIN_TOKEN}" in output
+    # The command preview names the aggregate polling function, never the
+    # authorization header or its value.
+    assert "+ poll_jobs" in output
+    assert "Authorization: Bearer" not in output
 
 
 def test_bakeoff_dry_run_output_is_not_json_or_evidence() -> None:

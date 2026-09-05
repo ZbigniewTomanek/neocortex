@@ -282,3 +282,13 @@ sites and found zero raw source/model field violations.
 action-log call-site audit, focused extraction/privacy tests, the full safe suite, and the clean
 worktree check. Stage 6 remains **PENDING** and requires a new valid run with its own metrics, snapshot,
 and per-episode Qwen parsing report.
+
+## 2026-09-05 -- Stage 6: post-non-convergence redesign checkpoint -- RECORDED / NOT MEASURED
+**Did**: Reviewed failed run `20260903T174929Z-31844`: all 110/110 corpus jobs reached terminal success, recall exited 401, the pre-snapshot label was incorrect, and no E2E child ran. Two independent non-convergence investigations reached the same finding; the evidence harness redesign was implemented and the final fresh review was **ACCEPT**. The old metrics artifact was moved to a recoverable diagnostic archive; no canonical metrics artifact remains.
+**Verification**:
+- CHECK focused redesign suite: `uv run pytest tests/unit/test_e2e_manifest.py tests/unit/test_recall_scorer.py tests/unit/test_measurement_harness.py tests/unit/test_model_bakeoff.py -q` — **PASS**, 101 passed.
+- CHECK privacy/identifier subset: `uv run pytest tests/unit/test_model_bakeoff.py tests/unit/test_recall_scorer.py tests/unit/test_e2e_manifest.py -k 'token or credential or private or redact or privacy or missing_top_ids or identifier or producer' -q` — **PASS**, 45 passed, 36 deselected.
+- CHECK full safe repository suite with explicit hosted-model overrides — **PASS**, 1055 passed, 7 skipped.
+- CHECK static validation: shell syntax, Ruff, Ruff format, compileall, Ty, credential-pattern scan, and `git diff --check` — **PASS**.
+**Disposition**: A fresh Stage 6 run is required. Corpus graph metrics remain separate from the offline five-child E2E manifest; strict Plan 15 PASS-only scoring, terminal `(failed+cancelled)/total <= 0.10`, safe aggregate recall, exact snapshot/path/digest binding, and run-scoped evidence are enforced. Stage 6 remains **PENDING / NOT MEASURED**; Stage 4 remains **DONE**. No real corpus or E2E was rerun.
+**Provenance**: The failed attempt remains diagnostic only. No raw contents, prompts, outputs, identifiers, credentials, or audit content were copied into this entry.

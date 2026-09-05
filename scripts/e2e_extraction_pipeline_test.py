@@ -235,7 +235,7 @@ async def step_wait_for_extraction(baseline_job_id: int) -> None:
                 int(row["failed"]),
             )
             elapsed = int(time.monotonic() - start)
-            print(f"  [{elapsed:3d}s] pending={pending} running={running} " f"completed={completed} failed={failed}")
+            print(f"  [{elapsed:3d}s] pending={pending} running={running} completed={completed} failed={failed}")
             if pending == 0 and running == 0:
                 if failed > 0:
                     err_rows = await conn.fetch(
@@ -249,10 +249,10 @@ async def step_wait_for_extraction(baseline_job_id: int) -> None:
                     details = [(int(r["id"]), r["status"]) for r in err_rows]
                     print(f"  [WARN] {failed} job(s) failed: {details}")
                 if completed > 0:
-                    print(f"  [PASS] All extraction jobs finished " f"({completed} completed, {failed} failed)")
+                    print(f"  [PASS] All extraction jobs finished ({completed} completed, {failed} failed)")
                     return
                 if completed == 0 and failed == 0:
-                    print("  [WARN] No extraction jobs found — " "checking if extraction is wired...")
+                    print("  [WARN] No extraction jobs found — checking if extraction is wired...")
                     await asyncio.sleep(JOB_POLL_INTERVAL)
                     continue
             await asyncio.sleep(JOB_POLL_INTERVAL)
@@ -351,7 +351,7 @@ async def step_verify_routing_jobs(baseline_job_id: int) -> None:
                 print("  [INFO] No domain extraction jobs found (routing may not have matched)")
                 break
             if d_pending == 0 and d_running == 0:
-                print(f"  [PASS] Domain extraction jobs done: " f"{d_completed} completed, {d_failed} failed")
+                print(f"  [PASS] Domain extraction jobs done: {d_completed} completed, {d_failed} failed")
                 break
             if time.monotonic() - start2 > JOB_WAIT_TIMEOUT:
                 raise AssertionError("Domain extraction jobs did not complete in time")
@@ -394,7 +394,7 @@ async def step_verify_domain_schemas() -> None:
             episode_count = int(episode_count)
 
             status = "HAS DATA" if node_count > 0 else "empty"
-            print(f"  {schema_name}: nodes={node_count} edges={edge_count} " f"episodes={episode_count} [{status}]")
+            print(f"  {schema_name}: nodes={node_count} edges={edge_count} episodes={episode_count} [{status}]")
 
             if node_count > 0:
                 schemas_with_data.append(schema_name)
@@ -408,11 +408,9 @@ async def step_verify_domain_schemas() -> None:
                     print(f"    {r['name']} [{r['type_name']}]")
 
         if schemas_with_data:
-            print(f"  [PASS] {len(schemas_with_data)} domain schema(s) populated: " f"{', '.join(schemas_with_data)}")
+            print(f"  [PASS] {len(schemas_with_data)} domain schema(s) populated: {', '.join(schemas_with_data)}")
         else:
-            print(
-                "  [WARN] No domain schemas populated — " "routing may not have matched or extraction may have failed"
-            )
+            print("  [WARN] No domain schemas populated — routing may not have matched or extraction may have failed")
 
         # Personal graph should ALSO still have data (backward compat)
         schema = _quote(AGENT_SCHEMA)
@@ -459,7 +457,7 @@ async def step_verify_ontology() -> None:
 
     assert len(node_types) > 0, f"No node types created. discover_ontology returned: {result}"
     assert len(edge_types) > 0, f"No edge types created. discover_ontology returned: {result}"
-    print(f"  [PASS] Ontology populated: " f"{len(node_types)} node types, {len(edge_types)} edge types")
+    print(f"  [PASS] Ontology populated: {len(node_types)} node types, {len(edge_types)} edge types")
 
     # Drill into a specific type using discover_details
     first_nt = node_types[0]["name"]
@@ -470,8 +468,7 @@ async def step_verify_ontology() -> None:
     )
     detail = detail_result.get("type_detail", {})
     print(
-        f"  discover_details for '{first_nt}': count={detail.get('count', 0)}, "
-        f"samples={detail.get('sample_names', [])}"
+        f"  discover_details for '{first_nt}': count={detail.get('count', 0)}, samples={detail.get('sample_names', [])}"
     )
     assert detail.get("name") == first_nt, f"Unexpected detail name: {detail}"
     print(f"  [PASS] discover_details returned detail for '{first_nt}'")
@@ -570,7 +567,7 @@ async def step_recall_with_graph_context() -> None:
             if node_results:
                 print("    [WARN] Node results found but no graph_context attached")
             else:
-                print("    [INFO] No node results (only episodes) " "— graph may still be building")
+                print("    [INFO] No node results (only episodes) — graph may still be building")
 
         # At minimum, episodes should match
         contents = " ".join(str(r.get("content", "")) for r in results).lower()
@@ -631,9 +628,9 @@ async def step_verify_consolidation() -> None:
             print(f"    Episode {r['id']}: {status}, importance={r['importance']:.2f}")
 
         # All seed episodes should be consolidated after extraction
-        assert consolidated_count >= len(SEED_TEXTS), (
-            f"Expected at least {len(SEED_TEXTS)} consolidated episodes, " f"got {consolidated_count}/{total}"
-        )
+        assert consolidated_count >= len(
+            SEED_TEXTS
+        ), f"Expected at least {len(SEED_TEXTS)} consolidated episodes, got {consolidated_count}/{total}"
         print(f"  [PASS] {consolidated_count}/{total} episodes consolidated")
     finally:
         await conn.close()
@@ -748,7 +745,7 @@ async def main() -> None:
     print("E2E Extraction Pipeline Test")
     print(f"MCP:       {MCP_URL}")
     print(f"Ingestion: {INGESTION_URL}")
-    print(f"Token:     {ALICE_TOKEN[:8]}...")
+    print("Token:     configured")
     print("=" * 60)
 
     await _assert_health()
