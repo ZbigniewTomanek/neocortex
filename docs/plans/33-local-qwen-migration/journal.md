@@ -296,3 +296,8 @@ and per-episode Qwen parsing report.
 ## 2026-09-05 -- Stage 6: harness checkpoint bookkeeping -- RECORDED / NOT MEASURED
 **Did**: Recorded accepted evidence-harness corrections in commit `a2ac2174728c9a7a11a7a0c0dd6739829c307f61`. The prior run remains diagnostic only; no Stage 6 measurement was accepted, and a fresh full run is required.
 **Disposition**: Stage 4 remains **DONE** at its existing stage commit `dc5fd15`. Stage 6 remains **PENDING / NOT MEASURED**; state bookkeeping does not certify corpus, recall, E2E, quality, or cutover results.
+
+## 2026-09-05 -- Stage 6: fresh arm parser failure and repair -- RECORDED / NOT MEASURED
+**Did**: Run `20260905T010813Z-stage6fresh` passed preflight, embeddings, and authentication checks and submitted 28/28 corpus episodes. Terminal job counts are **NOT MEASURED** because the embedded job-summary parser failed with a syntax error; no recall, post-snapshot, metrics, or E2E child ran. The pre-run snapshot was restored successfully. A separate vLLM check observed 3/3 HTTP 200 responses with no OOM or error evidence.
+**Verification**: The parser repair was accepted in `6e33a6c0e3b8a33c30cbbeeff9198e3e0df36205`; its focused bake-off suite passed 25 tests and the hosted-override full repository suite passed 1056 tests with 7 skipped. No job count or quality result is inferred from this failed arm.
+**Disposition**: Both the earlier attempt and this fresh arm remain diagnostic only. Stage 6 remains **PENDING / NOT MEASURED** and requires a fresh full run after the accepted parser repair.
