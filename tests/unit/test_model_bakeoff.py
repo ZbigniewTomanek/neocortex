@@ -160,8 +160,9 @@ x=json.load(sys.stdin)
 keys=("todo","doing","succeeded","failed","cancelled","total")
 assert (isinstance(x,dict) and all(type(x.get(k)) is int and x[k] >= 0 for k in keys)
         and x["total"] > 0 and sum(x[k] for k in keys[:-1]) == x["total"])
+failure_rate_ok=(x["failed"] + x["cancelled"]) / x["total"] <= 0.10
 print(" ".join(f"{k}={x[k]}" for k in keys)
-      + f" failure_rate_ok={(x[\"failed\"] + x[\"cancelled\"]) / x[\"total\"] <= 0.10}")'
+      + f" failure_rate_ok={failure_rate_ok}")'
   exit 0
 fi
 if [[ "$*" == *corpus_loader.py* && "$*" == *--dry-run* ]]; then
@@ -485,6 +486,34 @@ def test_harness_rejects_inconsistent_or_over_rate_job_summary(
     assert completed.returncode == 2
     assert "job summary exceeds failure-rate gate" in completed.stderr
     assert not any(line.startswith("e2e ") for line in log_path.read_text().splitlines())
+
+
+def test_embedded_job_summary_parser_executes_and_emits_parseable_nonterminal_counts() -> None:
+    poll_jobs = SCRIPT.read_text().split("poll_jobs() {", 1)[1].split("result_matches_child()", 1)[0]
+    match = re.search(r"uv run python -c\s*\\\s*'([^']+)'", poll_jobs)
+    assert match is not None
+
+    summary = {"todo": 1, "doing": 0, "succeeded": 9, "failed": 0, "cancelled": 0, "total": 10}
+    completed = subprocess.run(
+        ["uv", "run", "python", "-c", match.group(1)],
+        cwd=ROOT,
+        input=json.dumps(summary),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    fields = dict(item.split("=", 1) for item in completed.stdout.split())
+    assert fields == {
+        "todo": "1",
+        "doing": "0",
+        "succeeded": "9",
+        "failed": "0",
+        "cancelled": "0",
+        "total": "10",
+        "failure_rate_ok": "True",
+    }
 
 
 def test_missing_pre_snapshot_archive_refuses_fresh_start(

@@ -200,7 +200,7 @@ poll_jobs() {
     state=$(curl --fail --silent http://127.0.0.1:8001/admin/jobs/summary -H @- \
       <<<"Authorization: Bearer ${NEOCORTEX_ADMIN_TOKEN}")
     if ! counts=$(printf '%s' "$state" | uv run python -c \
-      'import json,sys; x=json.load(sys.stdin); keys=("todo","doing","succeeded","failed","cancelled","total"); assert isinstance(x,dict) and all(type(x.get(k)) is int and x[k] >= 0 for k in keys) and x["total"] > 0 and sum(x[k] for k in keys[:-1]) == x["total"]; print(" ".join(f"{k}={x[k]}" for k in keys) + f" failure_rate_ok={(x[\"failed\"] + x[\"cancelled\"]) / x[\"total\"] <= 0.10}")' \
+      'import json,sys; x=json.load(sys.stdin); keys=("todo","doing","succeeded","failed","cancelled","total"); assert isinstance(x,dict) and all(type(x.get(k)) is int and x[k] >= 0 for k in keys) and x["total"] > 0 and sum(x[k] for k in keys[:-1]) == x["total"]; failure_rate_ok=(x["failed"] + x["cancelled"]) / x["total"] <= 0.10; print(" ".join(f"{k}={x[k]}" for k in keys) + f" failure_rate_ok={failure_rate_ok}")' \
       2>/dev/null); then
       echo 'job summary malformed or exceeds failure-rate gate; metrics NOT_MEASURED' >&2
       return 2
