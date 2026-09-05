@@ -292,3 +292,7 @@ and per-episode Qwen parsing report.
 - CHECK static validation: shell syntax, Ruff, Ruff format, compileall, Ty, credential-pattern scan, and `git diff --check` — **PASS**.
 **Disposition**: A fresh Stage 6 run is required. Corpus graph metrics remain separate from the offline five-child E2E manifest; strict Plan 15 PASS-only scoring, terminal `(failed+cancelled)/total <= 0.10`, safe aggregate recall, exact snapshot/path/digest binding, and run-scoped evidence are enforced. Stage 6 remains **PENDING / NOT MEASURED**; Stage 4 remains **DONE**. No real corpus or E2E was rerun.
 **Provenance**: The failed attempt remains diagnostic only. No raw contents, prompts, outputs, identifiers, credentials, or audit content were copied into this entry.
+
+## 2026-09-05 -- Stage 6: harness checkpoint bookkeeping -- RECORDED / NOT MEASURED
+**Did**: Recorded accepted evidence-harness corrections in commit `a2ac2174728c9a7a11a7a0c0dd6739829c307f61`. The prior run remains diagnostic only; no Stage 6 measurement was accepted, and a fresh full run is required.
+**Disposition**: Stage 4 remains **DONE** at its existing stage commit `dc5fd15`. Stage 6 remains **PENDING / NOT MEASURED**; state bookkeeping does not certify corpus, recall, E2E, quality, or cutover results.
