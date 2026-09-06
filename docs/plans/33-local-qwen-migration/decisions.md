@@ -220,3 +220,11 @@ and exclude prompts, outputs, tool arguments, and secrets.
 **Options**: A) resume the non-converged attempt B) start a fresh run with separated, run-scoped evidence.
 **Chosen**: B.
 **Rationale**: Run `20260903T174929Z-31844` completed 110/110 corpus jobs, but recall returned 401, the pre-snapshot label was incorrect, and no E2E children ran. The accepted redesign binds corpus graph metrics to the live corpus and an exact post-snapshot/hash, attaches a separate offline five-child E2E manifest, requires strict Plan 15 PASS-only evidence, enforces terminal `(failed+cancelled)/total <= 0.10`, and records safe aggregate recall. The old attempt is diagnostic only. This is an implementation/provenance decision and does not amend thresholds.
+
+### D35: Invalidate the non-terminal local arm and run ordered Stage 6b diagnosis
+**Date**: 2026-09-06 - **Stage**: 6/6b - **Type**: INVALIDATION / PROVENANCE
+**Options**: A) accept partial successes and continue to quality scoring B) invalidate run `20260905T014401Z-stage6fresh2`, block Stage 6, and diagnose through Stage 6b.
+**Chosen**: B.
+**Rationale**: The last summary was non-terminal (`todo=45`, `doing=2`, `succeeded=67`, `failed=0`, `cancelled=0`, `total=114`), so the completion gate is red and failure rate is `NOT MEASURED`. Independent read-only audits also found repeated librarian batch-limit overflow with possible pre-consolidation mutations and a routed-job correlation collision. The clean restoration removes this run's queue and restores the pre-run database. No canonical quality evidence exists.
+**Evidence**: Journal entry for run `20260905T014401Z-stage6fresh2`; snapshot SHA-256 `0000c3ebf75511a6afdf81fdbc32ae0d710137eb74f7e70c116d8cd36c13f642`; raw diagnostics retained at the paths named there.
+**Disposition**: Stage 6 is `BLOCKED`; Stage 6b remains `PENDING` and is eligible by its independent `[3,4]` dependencies and ordered placement. Thresholds and corpus assumptions are unchanged. No Stage 6 commit is accepted.

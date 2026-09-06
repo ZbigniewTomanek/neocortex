@@ -301,3 +301,49 @@ and per-episode Qwen parsing report.
 **Did**: Run `20260905T010813Z-stage6fresh` passed preflight, embeddings, and authentication checks and submitted 28/28 corpus episodes. Terminal job counts are **NOT MEASURED** because the embedded job-summary parser failed with a syntax error; no recall, post-snapshot, metrics, or E2E child ran. The pre-run snapshot was restored successfully. A separate vLLM check observed 3/3 HTTP 200 responses with no OOM or error evidence.
 **Verification**: The parser repair was accepted in `6e33a6c0e3b8a33c30cbbeeff9198e3e0df36205`; its focused bake-off suite passed 25 tests and the hosted-override full repository suite passed 1056 tests with 7 skipped. No job count or quality result is inferred from this failed arm.
 **Disposition**: Both the earlier attempt and this fresh arm remain diagnostic only. Stage 6 remains **PENDING / NOT MEASURED** and requires a fresh full run after the accepted parser repair.
+
+## 2026-09-06 -- Stage 6: fresh arm batch-overflow and provenance failure -- CERTIFICATION INVALID / BLOCKED / NOT MEASURED
+**Did**: Recorded run `20260905T014401Z-stage6fresh2` from a clean start/worktree at source HEAD
+`f635d1f835c4f4d876b04dc6dccd7cf5fd9e38cc`. The run used `local:qwen3.8-flash-next` at the
+redacted local endpoint `http://127.0.0.1:24000/v1`, low effort for ontology, extractor, librarian,
+and domain-classifier roles, worker concurrency 2, and a 600-second timeout. All `E01`-`E28`
+episodes were submitted. The 28 route jobs succeeded, all 28 primary extraction jobs succeeded,
+and routed jobs 57-114 comprised 58 jobs covering all 28 episodes.
+**Verification**:
+- Last harness summary before cleanup: `todo=45`, `doing=2`, `succeeded=67`, `failed=0`,
+  `cancelled=0`, `total=114`. This is non-terminal, so extraction successes are 39/86 (28 primary
+  plus 11 routed), the completion gate is **RED**, and failure rate is **NOT MEASURED**. It must
+  not be reported as 0%.
+- No canonical metrics, recall result, post-run snapshot, E2E child results, parsing report, or
+  quality decision was produced. These values are **NOT MEASURED**.
+- Two independent read-only audits agree that the run cannot certify: repeated first-attempt
+  librarian `UsageLimitExceeded` is attributable to PydanticAI checking a complete next tool-call
+  batch against limit 150 (job66/E04 reached 149 tool completions), and failed attempts can
+  mutate the graph before consolidation without rollback. Job66/E04 recorded 149 tool completions,
+  83 model completions, 65 mutation-audit calls, and 5 validation rejections. Job67/E05 had the
+  same error, but exact post-collision counts are **NOT MEASURED**. Job68/E05 succeeded on its
+  first attempt with librarian elapsed 1538.6633 seconds and 41 observed actions; job67/E05 later
+  succeeded on retry during graceful cleanup with librarian elapsed 589.4272 seconds and 24
+  observed actions. Job66/E04 remained incomplete. The later
+  retry therefore cannot certify graph cleanliness. The E04 retry extractor elapsed 1113.1499
+  seconds; an outer OpenAI timeout retry can amplify a 600-second inactivity timeout.
+- Correlation `job:{agent}:{episode}` collided for routed jobs. E05 per-job audit counts after
+  `2026-09-06 14:51:10.699+02` are **NOT MEASURED**. This is a provenance defect, not a quality
+  pass or a threshold amendment. vLLM remained healthy at concurrency 2; this is an operational
+  report only.
+**Restoration**: Graceful SIGINT invoked EXIT restoration. Snapshot
+`backups/qwen-flash-next-pre-20260905T014401Z-stage6fresh2-20260905-034422.tar.gz` was preserved
+with SHA-256 `0000c3ebf75511a6afdf81fdbc32ae0d710137eb74f7e70c116d8cd36c13f642`. The run queue of
+114 disappeared; the database was restored to 14 jobs (maximum id 14); MCP and ingestion stopped;
+PostgreSQL was healthy; the snapshot hash was unchanged; no canonical metrics file existed; and the
+worktree was clean after restoration.
+**Provenance**: Raw diagnostic logs remain at
+`/tmp/neocortex-stage6-qwen-flash-next-20260905T014401Z-stage6fresh2.log` and
+`log/agent_actions.log`. Raw/private fields are excluded from this record. The run is invalidated
+under D35 and Stage 6b is the ordered next diagnosis. Backlog 12 is `IN_PROGRESS`; the separate
+correlation/provenance defect is tracked in backlog 14. No accepted commit hash exists for Stage 6.
+No Stage 6 threshold, corpus assumption, or quality criterion was weakened.
+**Problems**: Stage 6 is **BLOCKED** by the non-terminal completion gate, the librarian batch
+overflow with possible partial mutations, and the correlation collision. Stage 6b remains
+**PENDING** and eligible because Stages 3 and 4 are `DONE`; it must diagnose the defects before
+Stage 7 can issue any quality decision.
