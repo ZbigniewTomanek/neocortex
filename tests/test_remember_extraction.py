@@ -103,11 +103,12 @@ async def test_remember_enqueues_extraction_job(repo: InMemoryRepository):
 
     # Verify configure_task was called correctly
     mock_job_app.configure_task.assert_called_once_with("extract_episode")
-    mock_job_app.configure_task.return_value.defer_async.assert_called_once_with(
-        agent_id="test-agent",
-        episode_ids=[result.episode_id],
-        target_schema=None,
-    )
+    extraction_call = mock_job_app.configure_task.return_value.defer_async.call_args
+    assert extraction_call is not None
+    assert extraction_call.kwargs["agent_id"] == "test-agent"
+    assert extraction_call.kwargs["episode_ids"] == [result.episode_id]
+    assert extraction_call.kwargs["target_schema"] is None
+    assert extraction_call.kwargs["correlation_id"].startswith("extract-")
 
 
 # ── EpisodeProcessor tests ──

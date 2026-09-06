@@ -56,9 +56,15 @@ async def test_enqueue_extraction_passes_target_schema() -> None:
     await processor._enqueue_extraction("alice", episode_id, target_schema=SHARED_SCHEMA)
 
     mock_job_app.configure_task.assert_called_once_with("extract_episode")
-    mock_task.defer_async.assert_called_once_with(
-        agent_id="alice", episode_ids=[episode_id], target_schema=SHARED_SCHEMA
-    )
+    call = mock_task.defer_async.call_args
+    assert call is not None
+    assert call.kwargs == {
+        "agent_id": "alice",
+        "episode_ids": [episode_id],
+        "target_schema": SHARED_SCHEMA,
+        "correlation_id": call.kwargs["correlation_id"],
+    }
+    assert call.kwargs["correlation_id"].startswith("extract-")
 
 
 @pytest.mark.asyncio
@@ -75,7 +81,12 @@ async def test_enqueue_extraction_none_target_schema() -> None:
     episode_id = await repo.store_episode("alice", "Personal content")
     await processor._enqueue_extraction("alice", episode_id, target_schema=None)
 
-    mock_task.defer_async.assert_called_once_with(agent_id="alice", episode_ids=[episode_id], target_schema=None)
+    call = mock_task.defer_async.call_args
+    assert call is not None
+    assert call.kwargs["agent_id"] == "alice"
+    assert call.kwargs["episode_ids"] == [episode_id]
+    assert call.kwargs["target_schema"] is None
+    assert call.kwargs["correlation_id"].startswith("extract-")
 
 
 @pytest.mark.asyncio

@@ -358,6 +358,71 @@ async def test_retry_failed_job(app, client: AsyncClient, mock_pool) -> None:
 
 
 @pytest.mark.asyncio
+async def test_retry_extract_job_preserves_existing_correlation_id(app, client: AsyncClient, mock_pool) -> None:
+    original_args = {
+        "agent_id": "alice",
+        "episode_ids": [1],
+        "correlation_id": "extract-0123456789abcdef0123456789abcdef",
+    }
+    mock_pool.fetchrow.return_value = _record(
+        {"task_name": "extract_episode", "args": original_args, "status": "failed"}
+    )
+    mock_job_app = MagicMock()
+    mock_task = MagicMock()
+    mock_task.defer_async = AsyncMock(return_value=99)
+    mock_job_app.configure_task.return_value = mock_task
+    app.state.services_ctx["job_app"] = mock_job_app
+
+    resp = await client.post("/admin/jobs/5/retry", headers=ALICE_HEADERS)
+
+    assert resp.status_code == 200
+    assert mock_task.defer_async.call_args.kwargs == original_args
+
+
+@pytest.mark.asyncio
+async def test_retry_legacy_extract_job_gets_opaque_correlation_id(app, client: AsyncClient, mock_pool) -> None:
+    original_args = {"agent_id": "alice", "episode_ids": [1]}
+    mock_pool.fetchrow.return_value = _record(
+        {"task_name": "extract_episode", "args": original_args, "status": "failed"}
+    )
+    mock_job_app = MagicMock()
+    mock_task = MagicMock()
+    mock_task.defer_async = AsyncMock(return_value=99)
+    mock_job_app.configure_task.return_value = mock_task
+    app.state.services_ctx["job_app"] = mock_job_app
+
+    resp = await client.post("/admin/jobs/5/retry", headers=ALICE_HEADERS)
+
+    assert resp.status_code == 200
+    retry_args = mock_task.defer_async.call_args.kwargs
+    assert retry_args["agent_id"] == "alice"
+    assert retry_args["episode_ids"] == [1]
+    assert retry_args["correlation_id"].startswith("extract-")
+    assert original_args == {"agent_id": "alice", "episode_ids": [1]}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("legacy_id", ["job:alice:1", "extract-original-id", 42, {"legacy": True}])
+async def test_retry_non_opaque_extract_id_is_replaced(app, client: AsyncClient, mock_pool, legacy_id: object) -> None:
+    original_args = {"agent_id": "alice", "episode_ids": [1], "correlation_id": legacy_id}
+    mock_pool.fetchrow.return_value = _record(
+        {"task_name": "extract_episode", "args": original_args, "status": "failed"}
+    )
+    mock_job_app = MagicMock()
+    mock_task = MagicMock()
+    mock_task.defer_async = AsyncMock(return_value=99)
+    mock_job_app.configure_task.return_value = mock_task
+    app.state.services_ctx["job_app"] = mock_job_app
+
+    resp = await client.post("/admin/jobs/5/retry", headers=ALICE_HEADERS)
+
+    assert resp.status_code == 200
+    retry_args = mock_task.defer_async.call_args.kwargs
+    assert retry_args["correlation_id"].startswith("extract-")
+    assert retry_args["correlation_id"] != legacy_id
+
+
+@pytest.mark.asyncio
 async def test_retry_non_failed_job_returns_409(client: AsyncClient, mock_pool) -> None:
     mock_pool.fetchrow.return_value = _record(
         {

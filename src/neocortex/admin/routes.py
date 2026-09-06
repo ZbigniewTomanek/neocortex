@@ -10,6 +10,7 @@ from pydantic import BaseModel, field_validator
 
 from neocortex.admin.auth import require_admin
 from neocortex.ingestion.auth import get_agent_id
+from neocortex.jobs.correlation import normalize_extraction_correlation_id
 from neocortex.schemas.permissions import PermissionGrant, PermissionInfo
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -502,6 +503,24 @@ async def retry_job(
     job_app = request.app.state.services_ctx.get("job_app")
     if not job_app:
         raise HTTPException(501, "Job retry requires extraction to be enabled")
+    # A legacy extract job may predate opaque correlation ids.  Normalize only
+    # this copied retry payload; an existing code-owned id remains byte-for-
+    # byte unchanged so a manual retry preserves the original audit lineage.
+    retry_correlation_id = None
+    if row["task_name"] == "extract_episode":
+        original_correlation_id = original_args.get("correlation_id")
+        normalized_correlation_id = normalize_extraction_correlation_id(original_correlation_id)
+        retry_correlation_id = (
+            normalized_correlation_id if normalized_correlation_id != original_correlation_id else None
+        )
+        original_args["correlation_id"] = normalized_correlation_id
     new_job_id = await job_app.configure_task(row["task_name"]).defer_async(**original_args)
-    logger.bind(action_log=True).info("job_retry", job_id=job_id, new_job_id=new_job_id, agent_id=agent_id)
+    logger.bind(action_log=True).info(
+        "job_retry",
+        job_id=job_id,
+        new_job_id=new_job_id,
+        agent_id=agent_id,
+        correlation_id=original_args.get("correlation_id") if row["task_name"] == "extract_episode" else None,
+        correlation_generated=retry_correlation_id is not None,
+    )
     return {"status": "retried", "original_job_id": job_id, "new_job_id": new_job_id}

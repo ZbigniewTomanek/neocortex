@@ -444,6 +444,10 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
     malformed_lines = 0
     valid_records = 0
     matched_records = 0
+    # Tool-driven librarian failures can leave successful mutations behind
+    # before PydanticAI rejects a later call batch.  Unless a separate
+    # rollback/cleanliness proof exists, any such run is not certifiable.
+    unproven_librarian_failures = 0
     for line in lines:
         try:
             record = json.loads(line)
@@ -492,6 +496,8 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
                 usage.append(extra)
             if event == "stage_timing":
                 stage_timings.append(extra)
+            if event == "librarian_failed" or (event == "agent_run_failed" and extra.get("agent") == "librarian"):
+                unproven_librarian_failures += 1
         except (ValueError, TypeError, AttributeError):
             malformed_lines += 1
     attempts = counts.get("entity_attempt", 0) + counts.get("extraction_entity_attempt", 0)
@@ -513,6 +519,7 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
         "valid_records": valid_records,
         "matched_records": matched_records,
         "malformed_lines": malformed_lines,
+        "unproven_librarian_failures": unproven_librarian_failures,
     }
     if not audit_paths:
         return {**result, "status": "NOT_MEASURED", "reason": "missing_audit_log"}
@@ -578,6 +585,17 @@ async def main() -> int:
             audit=audit,
         )
         print(f"audit evidence is not measured; quality metrics not written ({destination})", file=sys.stderr)
+        return 2
+    if audit.get("unproven_librarian_failures", 0):
+        destination = _write_not_measured(
+            destination,
+            reason="unproven_librarian_failure_mutation_risk",
+            run_id=effective_run_id,
+            ingestion_url=args.ingestion_url,
+            job_summary=output.get("job_summary") if isinstance(output.get("job_summary"), dict) else None,
+            audit=audit,
+        )
+        print("librarian failure may have mutated the graph; quality metrics not written", file=sys.stderr)
         return 2
     output["audit"] = audit
     if args.merge and destination.exists():

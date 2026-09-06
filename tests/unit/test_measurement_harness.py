@@ -144,6 +144,49 @@ def test_audit_metrics_rejects_any_unreadable_rotated_member(monkeypatch: pytest
     assert result["reason"] == "unreadable_audit_log"
 
 
+def test_audit_metrics_counts_unproven_librarian_failures(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """A failed librarian run blocks certification until cleanliness is proven."""
+    import scripts.compute_metrics as metrics  # ty: ignore[unresolved-import]
+
+    log_dir = tmp_path / "log"
+    log_dir.mkdir()
+    event = {
+        "record": {
+            "message": "librarian_failed",
+            "extra": {
+                "run_id": "failed-librarian-run",
+                "correlation_id": "extract-0123456789abcdef0123456789abcdef",
+                "model": "qwen3.8-flash-next",
+                "endpoint": "http://127.0.0.1:24000/v1",
+                "agent": "librarian",
+                "effort": "low",
+                "error_type": "UsageLimitExceeded",
+                "graph_cleanliness": "NOT_MEASURED",
+            },
+        }
+    }
+    expected_event = {
+        "record": {
+            "message": "model_request_started",
+            "extra": {
+                "run_id": "failed-librarian-run",
+                "correlation_id": "extract-0123456789abcdef0123456789abcdef",
+                "model": "qwen3.8-flash-next",
+                "endpoint": "http://127.0.0.1:24000/v1",
+                "agent": "librarian",
+                "effort": "low",
+            },
+        }
+    }
+    (log_dir / "agent_actions.log").write_text(json.dumps(event) + "\n" + json.dumps(expected_event) + "\n")
+    monkeypatch.setattr(metrics, "ROOT", tmp_path)
+
+    result = metrics.audit_metrics(run_id="failed-librarian-run")
+
+    assert result["status"] == "MEASURED"
+    assert result["unproven_librarian_failures"] == 1
+
+
 def test_non_terminal_cli_writes_only_not_measured_sidecar(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Exercise the CLI guard, including its no-quality-file contract."""
     import asyncio
@@ -209,6 +252,84 @@ def test_failure_rate_cli_writes_only_not_measured_sidecar(monkeypatch: pytest.M
     assert marker["reason"] == "failure_rate_exceeded"
     assert marker["job_summary"] == summary
     assert not (tmp_path / "metrics-over-rate.json").exists()
+
+
+def test_librarian_failure_cli_invalidates_canonical_metrics(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """A selected run's librarian failure blocks and invalidates quality output."""
+    import asyncio
+    import sys
+
+    import scripts.compute_metrics as metrics  # ty: ignore[unresolved-import]
+
+    run_id = "selected-librarian-failure"
+    log_dir = tmp_path / "log"
+    log_dir.mkdir()
+    base_extra = {
+        "run_id": run_id,
+        "correlation_id": "extract-0123456789abcdef0123456789abcdef",
+        "model": "qwen3.8-flash-next",
+        "endpoint": "http://127.0.0.1:24000/v1",
+        "agent": "librarian",
+        "effort": "low",
+    }
+    selected_failure = {
+        "record": {
+            "message": "librarian_failed",
+            "extra": {**base_extra, "error_type": "UsageLimitExceeded", "graph_cleanliness": "NOT_MEASURED"},
+        }
+    }
+    selected_expected = {"record": {"message": "model_request_started", "extra": base_extra}}
+    other_run_failure = {
+        "record": {
+            "message": "librarian_failed",
+            "extra": {**base_extra, "run_id": "different-run"},
+        }
+    }
+    (log_dir / "agent_actions.log").write_text(
+        "\n".join(json.dumps(event) for event in (selected_failure, selected_expected, other_run_failure)) + "\n"
+    )
+
+    async def fake_collect(*args: object, **kwargs: object) -> dict[str, object]:
+        assert kwargs["run_id"] == run_id
+        return {
+            "schema_version": 3,
+            "job_summary": {"todo": 0, "doing": 0, "succeeded": 1, "failed": 0, "cancelled": 0, "total": 1},
+            "schemas": {"quality": "must-not-be-published"},
+        }
+
+    monkeypatch.setattr(metrics, "ROOT", tmp_path)
+    resources = tmp_path / "resources"
+    monkeypatch.setattr(metrics, "PLAN_RESOURCES", resources)
+    monkeypatch.setattr(metrics, "collect", fake_collect)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "compute_metrics.py",
+            "--arm",
+            "terminal-failure",
+            "--run-id",
+            run_id,
+            "--ingestion-url",
+            "http://127.0.0.1:8001",
+        ],
+    )
+
+    canonical = resources / "metrics-terminal-failure.json"
+    canonical.parent.mkdir(parents=True)
+    canonical.write_text('{"old": "quality"}')
+
+    assert asyncio.run(metrics.main()) == 2
+
+    sidecar = resources / "metrics-terminal-failure.not-measured.json"
+    marker = json.loads(sidecar.read_text())
+    assert marker["status"] == "NOT_MEASURED"
+    assert marker["reason"] == "unproven_librarian_failure_mutation_risk"
+    assert marker["run_id"] == run_id
+    assert marker["audit"]["unproven_librarian_failures"] == 1
+    assert not canonical.exists()
+    stale = resources / "metrics-terminal-failure.json.stale"
+    assert json.loads(stale.read_text()) == {"old": "quality"}
 
 
 @pytest.mark.parametrize(

@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "record_type": "stage6b_isolation",
+  "run_id": "stage6b-isolation-20260906",
+  "source_revision": "53b20bab4517426d4b813048a6b881c278284db8",
+  "source_worktree_clean": false,
+  "model": "local:qwen3.8-flash-next",
+  "endpoint": "http://127.0.0.1:24000/v1",
+  "effort": "low",
+  "repository": "fresh InMemoryRepository per episode",
+  "historical_stage6_diagnostic_agent_mix": ["ontology", "extractor", "librarian", "domain_classifier"],
+  "isolation_probe_agent_mix": ["ontology", "extractor", "librarian"],
+  "corpus": {
+    "path": "docs/plans/18.5-e2e-revalidation/resources/episodes.md",
+    "episodes": ["E04", "E05"]
+  },
+  "batch_limit_regression": {
+    "pydantic_ai_version": "1.72.0",
+    "tool_calls_limit": 1,
+    "request_limit": 10,
+    "returned_tool_calls": 2,
+    "model_requests": 1,
+    "tools_executed": 0,
+    "outcome": "UsageLimitExceeded before tool execution",
+    "request_limit_cause": false
+  },
+  "local_probe": [
+    {
+      "episode": "E04",
+      "status": "success",
+      "node_count": 16,
+      "edge_count": 13,
+      "episode_consolidated": true,
+      "pipeline_tool_call_starts": 52,
+      "pipeline_tool_call_completions": 52,
+      "librarian_tool_call_starts": 39,
+      "librarian_tool_call_completions": 39,
+      "librarian_max_tool_starts_between_model_requests": 1,
+      "failure_events": 0
+    },
+    {
+      "episode": "E05",
+      "status": "success",
+      "node_count": 26,
+      "edge_count": 28,
+      "episode_consolidated": true,
+      "pipeline_tool_call_starts": 74,
+      "pipeline_tool_call_completions": 74,
+      "librarian_tool_call_starts": 63,
+      "librarian_tool_call_completions": 63,
+      "librarian_max_tool_starts_between_model_requests": 1,
+      "failure_events": 0
+    }
+  ],
+  "hosted_comparison": "NOT MEASURED: no complete same-input hosted pair",
+  "postgresql_isolation": "NOT MEASURED: local probes used fresh in-memory repositories",
+  "queue_retry_isolation": "NOT MEASURED: no live queue arm was run",
+  "safe_inputs": [
+    "docs/plans/18.5-e2e-revalidation/resources/episodes.md",
+    "tests/test_librarian_mutation_tools.py",
+    "src/neocortex/extraction/pipeline.py",
+    "src/neocortex/jobs/correlation.py",
+    "src/neocortex/jobs/tasks.py",
+    "docs/plans/33-local-qwen-migration/resources/stage6-diagnostic-20260905T014401Z-stage6fresh2.json"
+  ],
+  "temporary_probe_outputs": [
+    "/tmp/neocortex-stage6b-e04.stdout",
+    "/tmp/neocortex-stage6b-e04.stderr",
+    "/tmp/neocortex-stage6b-e05.stdout",
+    "/tmp/neocortex-stage6b-e05.stderr"
+  ],
+  "temporary_probe_output_sha256": {
+    "/tmp/neocortex-stage6b-e04.stdout": "b6c028b5dfde62c4688caa09ea0a0b170ca7a63fb097b2b29e37825161e9235a",
+    "/tmp/neocortex-stage6b-e04.stderr": "2ce129968ddf6d8064b21ae706b3fbd2b770ab4e51942309165d80b26863acac",
+    "/tmp/neocortex-stage6b-e05.stdout": "8d259500ba77426501bcea387a692b9f1eb358c91a51f2a7b387d4d1c291f7f4",
+    "/tmp/neocortex-stage6b-e05.stderr": "54d76a60341e4954cdd04576b0be489c22958a13c594c175668fdcbb55eab31b"
+  }
+}

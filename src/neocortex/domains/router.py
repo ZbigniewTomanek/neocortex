@@ -21,6 +21,7 @@ from neocortex.domains.models import (
 )
 from neocortex.domains.protocol import DomainService
 from neocortex.domains.seed_generator import SeedGenerator
+from neocortex.jobs.correlation import new_extraction_correlation_id
 from neocortex.permissions.protocol import PermissionChecker
 from neocortex.schema_manager import SchemaManager
 
@@ -358,6 +359,7 @@ class DomainRouter:
         if self._job_app is None:
             return None
 
+        correlation_id = new_extraction_correlation_id()
         job_id = await self._job_app.configure_task("extract_episode").defer_async(
             agent_id=agent_id,
             episode_ids=[episode_id],
@@ -365,6 +367,7 @@ class DomainRouter:
             source_schema="__personal__",  # sentinel: read from agent's personal graph
             domain_hint=domain_hint,
             domain_slug=domain_slug,
+            correlation_id=correlation_id,
         )
         logger.debug(
             "domain_extraction_enqueued",

@@ -2,6 +2,7 @@ from fastmcp import Context
 from loguru import logger
 
 from neocortex.auth.dependencies import ensure_provisioned, get_agent_id_from_context
+from neocortex.jobs.correlation import new_extraction_correlation_id
 from neocortex.schemas.memory import RememberResult
 
 
@@ -67,14 +68,19 @@ async def remember(
     settings = ctx.lifespan_context["settings"]
     job_app = ctx.lifespan_context.get("job_app")
     if job_app and settings.extraction_enabled:
+        correlation_id = new_extraction_correlation_id()
         extraction_job_id = await job_app.configure_task("extract_episode").defer_async(
-            agent_id=agent_id, episode_ids=[episode_id], target_schema=target_graph
+            agent_id=agent_id,
+            episode_ids=[episode_id],
+            target_schema=target_graph,
+            correlation_id=correlation_id,
         )
         logger.bind(action_log=True).info(
             "extraction_enqueued",
             job_id=extraction_job_id,
             episode_id=episode_id,
             agent_id=agent_id,
+            correlation_id=correlation_id,
             target_graph_present=target_graph is not None,
         )
 

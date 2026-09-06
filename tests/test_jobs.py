@@ -115,7 +115,14 @@ async def test_defer_extract_episode():
 
 
 @pytest.mark.asyncio
-async def test_extract_episode_calls_run_extraction():
+@pytest.mark.parametrize(
+    ("provided_correlation_id", "expected_correlation_id"),
+    [
+        ("job:test-agent:10", None),
+        ("extract-0123456789abcdef0123456789abcdef", "extract-0123456789abcdef0123456789abcdef"),
+    ],
+)
+async def test_extract_episode_calls_run_extraction(provided_correlation_id: str, expected_correlation_id: str | None):
     """When the task executes, it calls run_extraction with correct args."""
     import sys
     import types
@@ -161,6 +168,10 @@ async def test_extract_episode_calls_run_extraction():
         AgentInferenceConfig
     )
 
+    original_modules = {
+        name: sys.modules.get(name)
+        for name in ("neocortex.extraction", "neocortex.extraction.pipeline", "neocortex.extraction.agents")
+    }
     sys.modules["neocortex.extraction"] = fake_extraction
     sys.modules["neocortex.extraction.pipeline"] = fake_pipeline
     sys.modules["neocortex.extraction.agents"] = fake_agents  # type: ignore[assignment]
@@ -171,7 +182,12 @@ async def test_extract_episode_calls_run_extraction():
         from neocortex.jobs.tasks import extract_episode
 
         # Call the task function directly (bypassing Procrastinate machinery)
-        await extract_episode(agent_id="test-agent", episode_ids=[10, 20], domain_hint="PRIVATE_DOMAIN_HINT")
+        await extract_episode(
+            agent_id="test-agent",
+            episode_ids=[10, 20],
+            domain_hint="PRIVATE_DOMAIN_HINT",
+            correlation_id=provided_correlation_id,
+        )
 
         mock_run.assert_called_once_with(
             repo=mock_repo,
@@ -198,18 +214,27 @@ async def test_extract_episode_calls_run_extraction():
             domain_hint="PRIVATE_DOMAIN_HINT",
             domain_slug=None,
             seed_generator=mock_seed_generator,
-            correlation_id="job:test-agent:10",
+            correlation_id=mock_run.call_args.kwargs["correlation_id"],
         )
         action_records = [record for record in audit_records if record["extra"].get("action_log")]
         assert action_records
+        correlation_id = mock_run.call_args.kwargs["correlation_id"]
+        assert correlation_id.startswith("extract-")
+        assert len(correlation_id) == len("extract-") + 32
+        if expected_correlation_id is not None:
+            assert correlation_id == expected_correlation_id
+        else:
+            assert correlation_id != provided_correlation_id
         assert all("domain_hint" not in record["extra"] for record in action_records)
         assert all("PRIVATE_DOMAIN_HINT" not in str(record["extra"]) for record in action_records)
     finally:
         logger.remove(sink_id)
         ctx_mod._services = None
-        sys.modules.pop("neocortex.extraction.pipeline", None)
-        sys.modules.pop("neocortex.extraction.agents", None)
-        sys.modules.pop("neocortex.extraction", None)
+        for name, original in original_modules.items():
+            if original is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
 
 
 # ── Worker lifecycle ──

@@ -6,6 +6,8 @@ import procrastinate
 from loguru import logger
 from procrastinate.testing import InMemoryConnector
 
+from neocortex.jobs.correlation import normalize_extraction_correlation_id
+
 # Placeholder app for task registration — replaced at runtime with real conninfo.
 app = procrastinate.App(
     connector=InMemoryConnector(),
@@ -41,7 +43,10 @@ async def extract_episode(
         domain_slug: Optional domain slug used to look up domain-specific seed
                      ontology recommendations.
     """
-    correlation_id = correlation_id or f"job:{agent_id}:{episode_ids[0] if episode_ids else 'empty'}"
+    # Jobs created by the application carry this value in their serialized
+    # args.  Preserve only code-owned ids for direct/manual invocation and
+    # legacy jobs rather than deriving an id from agent or episode data.
+    correlation_id = normalize_extraction_correlation_id(correlation_id)
     logger.bind(action_log=True).info(
         "extract_episode_started",
         agent_id=agent_id,

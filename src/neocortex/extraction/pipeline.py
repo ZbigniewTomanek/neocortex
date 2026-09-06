@@ -10,11 +10,11 @@ import asyncio
 import inspect
 import os
 import time
-import uuid
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from pydantic_ai.messages import ToolCallPart
+from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import UsageLimits
 
 from neocortex.domains.ontology_seeds import DOMAIN_SEEDS
@@ -31,6 +31,8 @@ from neocortex.extraction.agents import (
 )
 from neocortex.extraction.schemas import CurationSummary, LibrarianPayload
 from neocortex.extraction.type_consolidation import archive_unused_types
+from neocortex.jobs.correlation import normalize_extraction_correlation_id
+from neocortex.model_factory import is_local_model
 from neocortex.schemas.memory import TypeInfo
 
 if TYPE_CHECKING:
@@ -71,6 +73,22 @@ def _librarian_request_limit(tool_calls_limit: int, retry_limit: int) -> int:
     budgeting on the same named value prevents the two settings from drifting.
     """
     return tool_calls_limit + 1 + retry_limit
+
+
+def _librarian_model_settings(config: AgentInferenceConfig) -> ModelSettings | None:
+    """Build librarian settings with a local-only serial tool-call guard.
+
+    PydanticAI checks an entire returned tool-call batch against
+    ``tool_calls_limit`` before executing any member.  Some local
+    OpenAI-compatible servers still return large parallel batches even when
+    the remaining budget is small.  Asking the local provider for serial tool
+    calls keeps that bounded budget meaningful.  Hosted model settings are
+    returned unchanged.
+    """
+    settings = config.model_settings
+    if not is_local_model(config.model_name):
+        return settings
+    return {**(settings or {}), "parallel_tool_calls": False}
 
 
 def _audit_usage(
@@ -187,7 +205,7 @@ async def run_extraction(
     ext_cfg = extractor_config or AgentInferenceConfig()
     lib_cfg = librarian_config or AgentInferenceConfig()
 
-    correlation_id = correlation_id or f"extract:{agent_id}:{uuid.uuid4().hex}"
+    correlation_id = normalize_extraction_correlation_id(correlation_id)
 
     read_schema: str | None = target_schema if source_schema is _UNSET else source_schema
 
@@ -384,6 +402,12 @@ async def run_extraction(
         )
         _audit_usage("extractor_agent", extraction_result, ext_cfg, agent_id, correlation_id, episode_id)
         logger.bind(action_log=True).info(
+            "extractor_cardinality",
+            **_audit_fields("extractor_agent", ext_cfg, agent_id, correlation_id, episode_id),
+            entity_count=len(extraction_result.output.entities),
+            relation_count=len(extraction_result.output.relations),
+        )
+        logger.bind(action_log=True).info(
             "stage_timing",
             **_audit_fields("extractor_agent", ext_cfg, agent_id, correlation_id, episode_id),
             elapsed_s=round(time.monotonic() - t0, 2),
@@ -413,29 +437,75 @@ async def run_extraction(
 
             t0 = time.monotonic()
             action_tracker = CurationActionTracker()
-            librarian_result = await librarian_agent.run(
-                "Integrate the extracted entities and relations into the knowledge graph.",
-                deps=LibrarianAgentDeps(
-                    episode_text=text,
-                    node_types=[t.name for t in node_types],
-                    edge_types=[t.name for t in edge_types],
-                    extracted_entities=extraction_result.output.entities,
-                    extracted_relations=extraction_result.output.relations,
-                    repo=repo,
-                    embeddings=embeddings,
-                    agent_id=agent_id,
-                    target_schema=target_schema,
-                    episode_id=episode_id,
-                    correlation_id=correlation_id,
-                    precomputed_embeddings=precomputed_embeddings,
-                    action_tracker=action_tracker,
-                ),
-                model_settings=lib_cfg.model_settings,
-                usage_limits=UsageLimits(
-                    request_limit=librarian_request_limit,
-                    tool_calls_limit=tool_calls_limit,
+            librarian_settings = _librarian_model_settings(lib_cfg)
+            logger.bind(action_log=True).info(
+                "librarian_progress",
+                **_audit_fields("librarian_agent", lib_cfg, agent_id, correlation_id, episode_id),
+                phase="started",
+                entity_count=len(extraction_result.output.entities),
+                relation_count=len(extraction_result.output.relations),
+                mutation_count=0,
+                tool_calls_limit=tool_calls_limit,
+                request_limit=librarian_request_limit,
+                parallel_tool_calls=(
+                    librarian_settings.get("parallel_tool_calls") if librarian_settings is not None else None
                 ),
             )
+            try:
+                librarian_result = await librarian_agent.run(
+                    "Integrate the extracted entities and relations into the knowledge graph.",
+                    deps=LibrarianAgentDeps(
+                        episode_text=text,
+                        node_types=[t.name for t in node_types],
+                        edge_types=[t.name for t in edge_types],
+                        extracted_entities=extraction_result.output.entities,
+                        extracted_relations=extraction_result.output.relations,
+                        repo=repo,
+                        embeddings=embeddings,
+                        agent_id=agent_id,
+                        target_schema=target_schema,
+                        episode_id=episode_id,
+                        correlation_id=correlation_id,
+                        precomputed_embeddings=precomputed_embeddings,
+                        action_tracker=action_tracker,
+                    ),
+                    model_settings=librarian_settings,
+                    usage_limits=UsageLimits(
+                        request_limit=librarian_request_limit,
+                        tool_calls_limit=tool_calls_limit,
+                    ),
+                )
+            except Exception as exc:
+                # A failed tool-driven attempt may have mutated the graph
+                # before PydanticAI rejected a later batch.  Keep the job
+                # failed and report conservative counts; the metrics harness
+                # treats this as uncertified unless rollback/cleanliness is
+                # proven separately.
+                mutation_count = sum(
+                    (
+                        action_tracker.entities_created,
+                        action_tracker.entities_updated,
+                        action_tracker.entities_archived,
+                        action_tracker.edges_created,
+                        action_tracker.edges_removed,
+                    )
+                )
+                logger.bind(action_log=True).warning(
+                    "librarian_failed",
+                    **_audit_fields("librarian_agent", lib_cfg, agent_id, correlation_id, episode_id),
+                    phase="failed",
+                    entity_count=len(extraction_result.output.entities),
+                    relation_count=len(extraction_result.output.relations),
+                    mutation_count=mutation_count,
+                    tool_calls_limit=tool_calls_limit,
+                    request_limit=librarian_request_limit,
+                    parallel_tool_calls=(
+                        librarian_settings.get("parallel_tool_calls") if librarian_settings is not None else None
+                    ),
+                    error_type=type(exc).__name__,
+                    graph_cleanliness="NOT_MEASURED",
+                )
+                raise
 
             _audit_usage("librarian_agent", librarian_result, lib_cfg, agent_id, correlation_id, episode_id)
             logger.bind(action_log=True).info(
@@ -509,7 +579,7 @@ async def run_extraction(
                     correlation_id=correlation_id,
                     known_node_names=known_names,
                 ),
-                model_settings=lib_cfg.model_settings,
+                model_settings=_librarian_model_settings(lib_cfg),
                 usage_limits=UsageLimits(
                     request_limit=librarian_request_limit,
                     tool_calls_limit=tool_calls_limit,

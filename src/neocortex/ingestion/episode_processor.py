@@ -14,6 +14,7 @@ from loguru import logger
 from neocortex.db.protocol import MemoryRepository
 from neocortex.ingestion.media_models import MediaIngestionResult, MediaRef
 from neocortex.ingestion.models import IngestionResult
+from neocortex.jobs.correlation import new_extraction_correlation_id
 
 if TYPE_CHECKING:
     from neocortex.embedding_service import EmbeddingService
@@ -64,14 +65,19 @@ class EpisodeProcessor:
     async def _enqueue_extraction(self, agent_id: str, episode_id: int, target_schema: str | None = None) -> int | None:
         if not self._job_app or not self._extraction_enabled:
             return None
+        correlation_id = new_extraction_correlation_id()
         job_id = await self._job_app.configure_task("extract_episode").defer_async(
-            agent_id=agent_id, episode_ids=[episode_id], target_schema=target_schema
+            agent_id=agent_id,
+            episode_ids=[episode_id],
+            target_schema=target_schema,
+            correlation_id=correlation_id,
         )
         logger.bind(action_log=True).info(
             "extraction_enqueued",
             job_id=job_id,
             episode_id=episode_id,
             agent_id=agent_id,
+            correlation_id=correlation_id,
             target_schema_present=target_schema is not None,
             source="ingestion",
         )

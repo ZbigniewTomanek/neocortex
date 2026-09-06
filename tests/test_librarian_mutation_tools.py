@@ -14,10 +14,11 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from loguru import logger
+from pydantic_ai.exceptions import UsageLimitExceeded
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.test import TestModel
@@ -39,9 +40,36 @@ from neocortex.extraction.schemas import (
     ExtractedRelation,
     LibrarianPayload,
 )
+from neocortex.model_factory import LocalEndpoint
 
 AGENT = "test-agent"
 _TEST_CONFIG = AgentInferenceConfig(use_test_model=True)
+
+
+def test_local_librarian_settings_disable_parallel_calls_without_changing_hosted() -> None:
+    """Only a local librarian receives the serial tool-call mitigation."""
+    from neocortex.extraction.pipeline import _librarian_model_settings
+
+    endpoint = LocalEndpoint(
+        base_url="http://127.0.0.1:24000/v1",
+        api_key_env="LITELLM_API_KEY",
+        temperature=0.6,
+        top_p=0.95,
+        temperature_nothink=0.3,
+        top_p_nothink=0.9,
+        timeout_s=600.0,
+    )
+    local = AgentInferenceConfig(
+        model_name="local:qwen3.8-flash-next",
+        thinking_effort="low",
+        local_endpoint=endpoint,
+    )
+    hosted = AgentInferenceConfig(model_name="openai-responses:gpt-5.4-mini", thinking_effort="low")
+
+    local_settings = _librarian_model_settings(local)
+    assert local_settings is not None
+    assert local_settings["parallel_tool_calls"] is False
+    assert _librarian_model_settings(hosted) == hosted.model_settings
 
 
 @pytest.fixture
@@ -93,6 +121,33 @@ class _ToolBudgetThenValidationRetryModel(TestModel):
                 )
             ],
             model_name="scripted-retry-model",
+        )
+
+
+class _TwoCallBatchModel(TestModel):
+    """Return two retrieval calls in one response to test pre-execution limits."""
+
+    def __init__(self) -> None:
+        super().__init__(call_tools=[])
+        self.requests = 0
+
+    def _request(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+    ) -> ModelResponse:
+        del messages, model_settings
+        self.requests += 1
+        search_tool = next(
+            tool for tool in model_request_parameters.function_tools if tool.name == "search_existing_nodes"
+        )
+        return ModelResponse(
+            parts=[
+                ToolCallPart(search_tool.name, {"query": "one", "limit": 1}, tool_call_id="search-one"),
+                ToolCallPart(search_tool.name, {"query": "two", "limit": 1}, tool_call_id="search-two"),
+            ],
+            model_name="scripted-two-call-model",
         )
 
 
@@ -465,6 +520,99 @@ async def test_librarian_request_budget_allows_full_tool_budget_and_retry(
 
 
 @pytest.mark.asyncio
+async def test_pydantic_ai_checks_a_whole_tool_batch_before_execution(repo: InMemoryRepository) -> None:
+    """A two-call response is rejected before either tool runs at limit one.
+
+    The request limit is deliberately much larger than the one request made by
+    this fixture.  This isolates the installed PydanticAI tool-batch check from
+    request-limit accounting.
+    """
+    agent = build_librarian_agent(_TEST_CONFIG, use_tools=True)
+    model = _TwoCallBatchModel()
+    search_nodes = AsyncMock(return_value=[])
+    deps = _make_deps(repo)
+
+    with (
+        patch.object(repo, "search_nodes", search_nodes),
+        agent.override(model=model),
+        pytest.raises(UsageLimitExceeded, match="tool_calls_limit"),
+    ):
+        await agent.run(
+            "Integrate the extracted entities and relations into the knowledge graph.",
+            deps=deps,
+            usage_limits=UsageLimits(request_limit=10, tool_calls_limit=1),
+        )
+
+    assert model.requests == 1
+    search_nodes.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("provided_correlation_id", "expected_correlation_id"),
+    [
+        ("job:test-agent:1", None),
+        ("extract-0123456789abcdef0123456789abcdef", "extract-0123456789abcdef0123456789abcdef"),
+    ],
+)
+async def test_librarian_failure_audit_reports_unproven_mutation_risk(
+    repo: InMemoryRepository,
+    provided_correlation_id: str,
+    expected_correlation_id: str | None,
+) -> None:
+    """A failed tool attempt is observable without exposing source material."""
+    from neocortex.extraction.pipeline import run_extraction
+
+    eid = await repo.store_episode(AGENT, "safe source")
+    records: list[dict] = []
+
+    def fake_build(_config=None, *, use_tools=True, retries=DEFAULT_LIBRARIAN_RETRIES):
+        del use_tools, retries
+        agent = SimpleNamespace()
+
+        async def run(*_args, **_kwargs):
+            raise UsageLimitExceeded("tool budget exhausted")
+
+        agent.run = run
+        return agent
+
+    sink_id = logger.add(lambda message: records.append(message.record), level="INFO")
+    try:
+        with (
+            patch("neocortex.extraction.pipeline.build_librarian_agent", side_effect=fake_build),
+            pytest.raises(UsageLimitExceeded),
+        ):
+            await run_extraction(
+                repo=repo,
+                embeddings=None,
+                agent_id=AGENT,
+                episode_ids=[eid],
+                ontology_config=_TEST_CONFIG,
+                extractor_config=_TEST_CONFIG,
+                librarian_config=_TEST_CONFIG,
+                librarian_use_tools=True,
+                archive_interval=0,
+                correlation_id=provided_correlation_id,
+            )
+    finally:
+        logger.remove(sink_id)
+
+    failure = next(record for record in records if record["message"] == "librarian_failed")
+    assert failure["extra"]["error_type"] == "UsageLimitExceeded"
+    assert failure["extra"]["graph_cleanliness"] == "NOT_MEASURED"
+    assert failure["extra"]["mutation_count"] == 0
+    assert failure["extra"]["entity_count"] >= 0
+    assert failure["extra"]["relation_count"] >= 0
+    assert failure["extra"]["correlation_id"].startswith("extract-")
+    assert len(failure["extra"]["correlation_id"]) == len("extract-") + 32
+    if expected_correlation_id is not None:
+        assert failure["extra"]["correlation_id"] == expected_correlation_id
+    else:
+        assert failure["extra"]["correlation_id"] != provided_correlation_id
+        assert all(provided_correlation_id not in str(record["extra"]) for record in records)
+
+
+@pytest.mark.asyncio
 async def test_curation_complete_uses_observed_actions_not_model_summary(
     repo: InMemoryRepository,
 ) -> None:
@@ -522,6 +670,13 @@ async def test_curation_complete_uses_observed_actions_not_model_summary(
     assert extra["model_summary_actions"] == 0
     assert "summary" not in extra
     assert summary_sentinel not in str(extra)
+    cardinality = next(record for record in records if record["message"] == "extractor_cardinality")
+    assert isinstance(cardinality["extra"]["entity_count"], int)
+    assert isinstance(cardinality["extra"]["relation_count"], int)
+    progress = next(record for record in records if record["message"] == "librarian_progress")
+    assert progress["extra"]["phase"] == "started"
+    assert progress["extra"]["mutation_count"] == 0
+    assert progress["extra"]["tool_calls_limit"] == 150
 
 
 # ── Pipeline integration tests ──
