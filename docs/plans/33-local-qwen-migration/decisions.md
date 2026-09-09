@@ -242,3 +242,14 @@ and exclude prompts, outputs, tool arguments, and secrets.
 **Rationale**: The selected run `20260906T155218Z-stage6-after6b` had clean committed source, no harness PID, and no submitted jobs. MCP and ingestion remained down. Local Docker forwarders listened and accepted local TCP, but authenticated `/v1/models` repeatedly returned HTTP 000 with 0 bytes after local connection. Tailscale ping received no reply, SSH port 2023 timed out before a banner, and forwarder logs showed outbound timeouts/SYN-SENT to the same remote peer. Independent read-only diagnosis attributed more than 95% of the failure to Tailscale/remote-peer reachability, not NeoCortex and not a proven vLLM failure.
 **Disposition**: The selected run remains unstarted and is not invalidated by model behavior. All thresholds and corpus assumptions remain unchanged. No Stage 6 gate or quality result was measured. Stage 6b remains `DONE`; Stages 7-9 remain `PENDING`.
 **Next trigger**: An external owner restores the remote Tailscale/host/firewall path, then a bounded Tailscale ping, SSH banner check, and authenticated exact-model `/v1/models` check must pass before resuming.
+
+### D38: Use an explicit compact corpus for migration validation
+**Date**: 2026-09-09 - **Stage**: 6–9 - **Type**: AMENDMENT
+**Original**: "Use the fixed 28-episode corpus"; reports contain "one row for each E01–E28".
+**Replacement**: Select eight unchanged original episodes E02,E04,E05,E10,E18,E20,E26,E27, profile `compact` revision 1; report exactly these keys.
+**Evidence**: User reports the earlier run exceeded 16 hours and requests a smaller corpus; source inspection preserves both historical dense failures and complete correction/update chains.
+**Rationale**: Reduce repeated ingestion work while retaining difficult cases. This validates compact migration behavior, not 28-episode endurance; runtime improvement is NOT MEASURED.
+**Controls**: Full profile remains available and unchanged by default. Use a fresh compact arm/run ID, actual corpus hash/IDs, and the compact report schema. Preserve all correctness, privacy, failure-rate, actual-sample and five independent E2E gates.
+**Recall**: Select Q2,Q3,Q6,Q7,Q8,Q9; exclude unsupported Q1,Q4,Q5 explicitly. M3 denominator is 1; M4 is 3; M2 spans six queries. Do not compare raw full-profile metrics.
+**Disposition**: Stage 6 is PENDING for a fresh compact arm and preflight. Stages 7–9 consume compact evidence; no gate or quality verdict is claimed by this amendment.
+**Details**: `resources/compact-corpus-design.md` and the 2026-09-09 journal entry.

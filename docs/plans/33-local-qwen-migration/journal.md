@@ -367,3 +367,50 @@ Stage 7 can issue any quality decision.
 **Did**: Preflighted selected run `20260906T155218Z-stage6-after6b` from clean committed source at the preserved plan HEAD. No harness PID was present, no jobs were submitted, and MCP/ingestion remained down. Local Docker forwarders listened and accepted local TCP, but authenticated `/v1/models` repeatedly returned HTTP 000 with 0 bytes after connecting locally.
 **Verification**: Tailscale ping got no reply; SSH port 2023 timed out before a banner; forwarder logs showed outbound timeouts/SYN-SENT to the same remote peer. Independent read-only diagnosis attributed more than 95% of the blocker to Tailscale/remote-peer reachability, not NeoCortex or a proven vLLM failure.
 **Disposition**: Backlog item 15 is the sole Stage 6 blocker. The selected run remains unstarted and is not invalidated by model behavior. Thresholds and corpus assumptions are unchanged. No Stage 6 gate or quality result was measured. Stage 6b stays `DONE`; Stages 7-9 remain `PENDING`. Resume only after the external owner restores the remote Tailscale/host/firewall path and bounded Tailscale ping, SSH banner, and authenticated exact-model `/v1/models` checks pass. No credentials, tokens, IP addresses, or raw logs were recorded.
+
+## 2026-09-09 -- Compact corpus amendment -- IMPLEMENTED / LIVE RESULTS NOT MEASURED
+**Request**: The user reports that the endpoint is reachable and that the previous corpus run took
+over 16 hours. They request a smaller corpus. Backlog 15 is resolved on the user report; no fresh
+endpoint or authentication measurement is claimed. Every actual arm still requires preflight.
+**Did**: D38 selects eight unchanged original episodes E02,E04,E05,E10,E18,E20,E26,E27.
+Both historical dense failure cases remain, together with the complete Metaphone decision/correction
+chain and the team-role update chain. The full 28-episode corpus and its default loader behavior remain.
+The explicit compact profile propagates through ingestion, metrics, and recall. Metrics name the
+actual corpus path/hash/profile/IDs. Compact recall runs Q2,Q3,Q6,Q7,Q8,Q9, records omitted Q1,Q4,Q5,
+and reports M3 out of 1 and M4 out of 3. Manifest validation rejects mixing full and compact recall.
+The compact parsing schema requires the eight selected keys exactly once; the original schema is retained.
+**Scope**: The five independent E2E children, their thresholds, all integrity/privacy/provenance gates,
+and the actual 20-node/20-edge quality sample remain unchanged. Compact evidence cannot establish
+28-episode endurance or be compared directly with prior full-profile metrics. Runtime benefit is
+NOT MEASURED; episode count falls by 71%, but dense cases, routing, retries, and independent E2Es remain.
+**Verification**: Focused corpus/harness/metrics/recall/manifest/probe regression suite: 129 passed.
+Tests reject missing/duplicate/reordered inputs, compare compact contents against the original source,
+check exact report-key coverage, and reject false recall denominators and mismatched profiles.
+Ruff, Ty, shell syntax, and diff checks passed. Plan lint found no errors; existing long stage-note
+warnings remain. An initial Ruff invocation incorrectly included the shell file; it was rerun against
+Python files only, with `bash -n` for the shell. Independent review verified unchanged episode contents
+and found one stale metrics filename in the report template; that reference is corrected.
+**Disposition**: Stage 6 is PENDING with a fresh compact run ID required. The old unstarted full-profile
+run is not resumed or relabelled. Stages 7–9 use compact evidence per D38. No services, ingestion, live
+model calls, performance measurements, quality verdicts, or cutover were performed by this amendment.
+**Resources**: `resources/compact-corpus-design.md`, `resources/compact-corpus.md`,
+`resources/qwen-parsing-report-compact.schema.json`, and updated `resources/commands.md`.
+
+**Additional validation**: The source loader measured 742 whitespace-separated words in the compact
+corpus versus 2,759 in the original (73% less source text). This is not a runtime measurement.
+The initial full-suite attempt failed on a pre-existing `extraction_enabled` boolean parsing error
+from local settings; its result was 1021 passed, 7 skipped, 30 failed, and 49 errors. A safe diagnostic
+reported only the invalid field name/type, without its value. The rerun sets
+`NEOCORTEX_EXTRACTION_ENABLED=true` and explicit hosted reasoning-model overrides for tests only.
+**Full-suite rerun**: PASS — 1100 passed, 7 skipped in 38.80 seconds with the explicit test overrides above. No test assertion was removed or weakened.
+
+## 2026-09-09 -- Compact plan execution alignment and commit
+**Did**: Aligned active Stage 4–9 instructions, Stage 6 naming, backlog next actions, and execution
+commands with compact revision 1. Commands now set all four low efforts, extraction and domain routing,
+concurrency 2, timeout 600, compact profile, and a fresh run ID explicitly. The preflight remains
+bounded and reads the credential through stdin. Stage 8's dependency text now agrees with its required
+DONE/no-op path. Recorded the existing accepted Stage 6b source commit `b6b0950` without claiming any
+new live result. Historical full-profile evidence and the full loader default remain intact.
+**Validation**: Implementation validation remains the preceding 1100-pass, 7-skip full suite; this
+follow-up changes plan documentation/state only. Plan lint, diff checks, and commit hooks are run
+before delivery. No model or ingestion run is started.

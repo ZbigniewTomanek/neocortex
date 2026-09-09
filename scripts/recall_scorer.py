@@ -79,7 +79,12 @@ def _item_identifier(item: object) -> int | str | None:
     return _valid_identifier(item_data.get("id"))
 
 
-def _safe_recall_evidence(rows: list[dict[str, Any]], *, run_id: str) -> dict[str, Any]:
+def _safe_recall_evidence(rows: list[dict[str, Any]], *, run_id: str, corpus_profile: str = "full") -> dict[str, Any]:
+    if corpus_profile not in {"full", "compact"}:
+        raise ValueError("unknown recall corpus profile")
+    compact_ids = ["Q2", "Q3", "Q6", "Q7", "Q8", "Q9"]
+    if corpus_profile == "compact" and [row.get("query") for row in rows] != compact_ids:
+        raise ValueError("compact recall query set is incomplete or out of order")
     query_results: list[dict[str, Any]] = []
     all_item_hashes: set[str] = set()
     known_top1_ids = 0
@@ -115,10 +120,27 @@ def _safe_recall_evidence(rows: list[dict[str, Any]], *, run_id: str) -> dict[st
         item_id = _item_identifier(row["results"][0]) if row["results"] else None
         if item_id is not None:
             top_ids.append(_opaque_hash(item_id))
-    specific = [rows[i] for i in (2, 3, 4)]
-    temporal = [rows[i] for i in (6, 7, 8)]
+    if corpus_profile == "compact":
+        specific = [row for row in rows if row["query"] == "Q3"]
+        temporal = [row for row in rows if row["query"] in {"Q7", "Q8", "Q9"}]
+    else:
+        specific = [rows[i] for i in (2, 3, 4)]
+        temporal = [rows[i] for i in (6, 7, 8)]
     return {
-        "schema_version": 1,
+        "schema_version": 2 if corpus_profile == "compact" else 1,
+        **(
+            {
+                "query_set": {
+                    "corpus_profile": "compact",
+                    "query_ids": compact_ids,
+                    "excluded_query_ids": ["Q1", "Q4", "Q5"],
+                    "specific_event_total": len(specific),
+                    "temporal_total": len(temporal),
+                }
+            }
+            if corpus_profile == "compact"
+            else {}
+        ),
         "kind": "neocortex-recall-evidence",
         "status": "MEASURED",
         "run_id": run_id,
@@ -143,6 +165,7 @@ def contains(row: dict[str, Any], item: object) -> bool:
 
 async def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--corpus-profile", choices=("full", "compact"), default="full")
     parser.add_argument(
         "--output", type=str, default="docs/plans/33-local-qwen-migration/resources/recall-results.json"
     )
@@ -153,16 +176,24 @@ async def main() -> int:
     rows = []
     async with Client(url, auth=token) as client:
         for name, query, keywords in QUERIES:
+            if args.corpus_profile == "compact" and name in {"Q1", "Q4", "Q5"}:
+                continue
             result = await client.call_tool("recall", {"query": query, "limit": 10})
             data = result.structured_content or {}
             items = data.get("results", data.get("items", [])) if isinstance(data, dict) else []
             rows.append({"query": name, "text": query, "results": items, "keywords": keywords})
-    output = _safe_recall_evidence(rows, run_id=bakeoff_run_id or "standalone")
+    output = _safe_recall_evidence(rows, run_id=bakeoff_run_id or "standalone", corpus_profile=args.corpus_profile)
     destination = Path(os.path.abspath(args.output))
     atomic_write_json(destination, output)
     print(
         json.dumps(
-            {"status": output["status"], "query_count": output["query_count"], "metrics": output["metrics"]}, indent=2
+            {
+                "status": output["status"],
+                "query_count": output["query_count"],
+                "metrics": output["metrics"],
+                **({"query_set": output["query_set"]} if "query_set" in output else {}),
+            },
+            indent=2,
         )
     )
     return 0

@@ -3,6 +3,9 @@
 **Goal**: Measure a same-prompt hosted reference when it is available, without making it a prerequisite for the local stability decision.
 **Dependencies**: Stage 4 DONE.
 
+If this optional stage is revisited after D38, use `--corpus-profile compact` for both
+hosted runs. Historical full-profile inputs cannot define compact variance or deltas.
+
 ## Steps
 
 1. Check whether an isolated environment and `OPENAI_API_KEY` can run the current hosted defaults.
@@ -21,7 +24,7 @@
 ## Verification
 
 - [ ] GATE baseline disposition — `resources/baseline-comparison.md` states either two complete runs with raw artefacts or `NOT MEASURED` with the exact external blocker; a single partial run makes this red.
-- [ ] GATE same-input check — both arms, when present, use the Stage 3 prompt/schema/corpus and equal concurrency; a changed input or target copied into results makes this red.
+- [ ] GATE same-input check — both arms, when present, use the Stage 3 prompts/schema and the Stage 6 selected compact corpus and equal concurrency; a changed input or target copied into results makes this red.
 - [ ] REPORT hosted latency, token, quality, and variance distributions — record values with run identifiers and caveats in `journal.md`; continue regardless of latency.
 
 ## Commit

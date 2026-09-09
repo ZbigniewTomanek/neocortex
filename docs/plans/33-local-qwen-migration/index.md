@@ -25,7 +25,7 @@ seed generator follows classification). Embeddings (`gemini-embedding-001`) and 
 NeoCortex deployment. Long indexing time is acceptable. Quality and operational correctness matter more
 than latency, which is recorded but never blocks a decision.
 
-The full local corpus run also produces a per-episode parsing report. The report uses one row for each
+The complete selected local corpus run also produces a per-episode parsing report. The report uses one row for each
 fixed corpus episode and links each value to machine-readable evidence.
 
 The supervisor's initial audit found that basic structured output and domain classification reach the
@@ -43,8 +43,12 @@ Phase A (Stages 1–3) validates authenticated model identity, probes every real
 repairs prompt/API compatibility. Each fix is delegated by the supervisor to a dedicated GPT-5.6-Luna
 xhigh subagent where available, with a fresh provenance audit after the fix.
 
+The active corpus is now [compact revision 1](resources/compact-corpus-design.md): eight unchanged
+original episodes, including both historical dense failure cases and correction chains. Full-profile
+historical evidence is not comparable to compact metrics. D38 records the amendment.
+
 Phase B (Stages 4–6b) makes instrumentation and authentication reliable, optionally measures a hosted
-comparison when it is useful, and runs the full local corpus. Baseline comparison is advisory: it may not
+comparison when it is useful, and runs the complete compact corpus. Baseline comparison is advisory: it may not
 deadlock the local stability run. Isolation and root-cause work is required for failures that cannot be
 attributed from joint output.
 
@@ -70,8 +74,8 @@ for a REPORT. Every measured GATE names its input and the defect that would turn
 | Every GATE value is derived from a measurement of this run's own inputs | n/a | no literal/default/midpoint/generated row | GATE | block stage | REPORT `NOT MEASURED` and block |
 | Authenticated model preflight | endpoint response | `/v1/models` contains exactly `qwen3.8-flash-next`; authenticated chat and PydanticAI calls succeed | GATE | block Stage 1 and diagnose auth/compatibility | REPORT `NOT MEASURED` and block |
 | Unit and harness regression suite | current repository tests | all relevant tests pass; no assertion is weakened or deleted | GATE | block owning stage | n/a |
-| Full local corpus completion | not yet measured | every submitted episode reaches a terminal job state within the configured timeout; failure/stall rate ≤10% from `/admin/jobs/summary` | GATE | block local stability and diagnose root cause | REPORT `NOT MEASURED` and block |
-| Per-episode Qwen parsing report | not yet measured | `resources/qwen-parsing-report.md` and `.json` contain one row for each `E01`–`E28`, actual provenance, safe values, quality checks, and explicit `NOT MEASURED` values | GATE | block Stage 7 and Stage 9 | report `NOT MEASURED` and block |
+| Complete selected local corpus | not yet measured | every submitted episode reaches a terminal job state within the configured timeout; failure/stall rate ≤10% from `/admin/jobs/summary` | GATE | block local stability and diagnose root cause | REPORT `NOT MEASURED` and block |
+| Per-episode Qwen parsing report | not yet measured | `resources/qwen-parsing-report.md` and `.json` contain ~~one row for each `E01`–`E28`~~ → one row for each of `E02,E04,E05,E10,E18,E20,E26,E27` (compact revision 1, D38), actual provenance, safe values, quality checks, and explicit `NOT MEASURED` values | GATE | block Stage 7 and Stage 9 | report `NOT MEASURED` and block |
 | Critical integrity defects | not yet measured | zero stored artifact types, leaked reasoning markers, invalid type names, or unhandled auth/structured-output failures in the measured run | GATE | block affected agent and diagnose | REPORT `NOT MEASURED` and block |
 | Absolute quality rubric when baseline is unavailable | not yet measured | `MIGRATE` only when all five real quality inputs are measured and pass: extraction smoke exits 0; episodic-memory and cognitive-recall checks exit 0; Plan 15 score is ≥11/14; Plan 17 score is ≥13/14; and a fixed 20-node/20-edge sample from the named local snapshot passes the mechanical schema/reference checks in Stage 7. Any `NOT MEASURED` quality input means `HOLD`. | REPORT | publish `HOLD` and continue to report | publish `NOT MEASURED`; never `MIGRATE` |
 | Quality versus hosted baseline | prior baseline incomplete | per-agent quality verdict supported by current local evidence; baseline is used only when two complete same-prompt runs exist | REPORT | publish and continue | publish `NOT MEASURED`, continue local decision |
@@ -96,7 +100,7 @@ Routing table only. Status, notes, and commits live in `state.json` and nowhere 
 | 3 | [Iterative prompt and compatibility hardening](stages/03-prompt-hardening.md) |
 | 4 | [Harness, instrumentation, and auth stability](stages/04-measurement-harness.md) |
 | 5 | [Optional hosted baseline comparison](stages/05-baseline-arm.md) |
-| 6 | [Full local stability and quality run](stages/06-qwen-arm.md) |
+| 6 | [Compact local stability and quality run](stages/06-qwen-arm.md) |
 | 6b | [Isolation and root-cause diagnosis](stages/06b-isolation-arms.md) |
 | 7 | [Quality decision and evidence report](stages/07-quality-gate.md) |
 | 8 | [Thinking-effort tuning](stages/08-thinking-effort-tuning.md) |

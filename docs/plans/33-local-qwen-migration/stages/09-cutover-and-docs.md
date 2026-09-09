@@ -4,6 +4,10 @@
 **Dependencies**: Stage 8 DONE. Stage 8 is a control stage and records a no-op `DONE` outcome when no
 agent passes, so this stage always remains reachable for the ASD-STE100 report path.
 
+Identify the compact revision 1 validation scope in the final report (D38). Do not claim
+28-episode endurance. Validate the eight-row report against the compact schema; full-profile
+historical reports retain their original schema.
+
 ## Steps
 
 1. For each `MIGRATE` agent, set the named `*_model` default to `local:qwen3.8-flash-next` and its

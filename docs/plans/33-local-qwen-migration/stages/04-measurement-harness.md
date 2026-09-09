@@ -8,6 +8,7 @@
 1. Inspect `scripts/corpus_loader.py`, `scripts/compute_metrics.py`, `scripts/model_bakeoff.sh`, and
    `src/neocortex/extraction/pipeline.py`. Repair missing imports, stale model defaults, and parser
    assumptions found by a dry run. A loader must parse the fixed 28-episode corpus without changing it.
+   D38 adds an explicit compact profile; retain the original full default and validate both profiles.
 2. Ensure every metric contains its input path and run metadata. Graph metrics must read the live
    snapshot; token and timing metrics must read structured audit events; job metrics must read the
    admin API. Never generate rows to meet a count and never copy a target into output.
@@ -27,7 +28,7 @@
 
 - [x] GATE `uv run python scripts/corpus_loader.py --dry-run` and harness unit tests — the fixed corpus parses and generated metrics contain real input references; parser fabrication makes this red.
 - [x] GATE auth and timeout self-check — invalid admin/MCP credentials fail clearly and a deliberately non-terminal job cannot produce a PASS metrics file.
-- [x] REPORT `./scripts/model_bakeoff.sh --dry-run` — record resolved model, endpoint, effort, concurrency, timeout, and output paths without exposing keys.
+- [x] REPORT `./scripts/model_bakeoff.sh --arm qwen-flash-next-compact --corpus-profile compact --dry-run` — record resolved model, endpoint, effort, concurrency, timeout, and output paths without exposing keys.
 
 ## Commit
 

@@ -5,6 +5,10 @@
 passes its outcome even when Stage 6 is BLOCKED. This stage must not start before that diagnosis/no-op
 record exists.
 
+See [compact corpus design](../resources/compact-corpus-design.md). Report compact scope alongside
+every result. M3 has denominator 1; M4 has denominator 3; full-profile comparisons are unavailable.
+The five independent E2E gates and the actual 20-node/20-edge sample requirement are unchanged.
+
 ## Steps
 
 1. Read the local metrics, raw job/audit events, qualitative graph sample, and
@@ -23,17 +27,17 @@ record exists.
 4. Create `resources/quality-sample-qwen-flash-next.json` by selecting exactly 20 actual nodes and 20
    actual edges from the named local snapshot, with their source episode/job ids. Run a deterministic
    validator: every selected record has a non-empty name, a declared existing type, valid references,
-   no artifact/reasoning marker, and a source id in the fixed 28-episode corpus. An empty or fabricated
+   no artifact/reasoning marker, and a source id in the ~~fixed 28-episode corpus~~ → selected eight-episode compact corpus (D38). An empty or fabricated
    sample is `NOT MEASURED` and forces HOLD; do not replace this check with subjective visual approval.
 5. After the Stage 6 full run attempt, collect the machine-readable inputs in the report template.
 6. Write `resources/qwen-parsing-inputs.json` with each input path, SHA-256 value, and availability.
 7. Include the fixed corpus, metrics artifact, job responses, graph export, snapshot, and audit-log path.
 8. Generate `resources/qwen-parsing-report.json` from the input manifest and the source artifacts.
-9. Create one report row for each fixed episode key from `E01` through `E28`.
+9. Create one report row for ~~each fixed episode key from `E01` through `E28`~~ → each selected key `E02,E04,E05,E10,E18,E20,E26,E27` (D38).
 10. When a source value is absent, record `NOT MEASURED` and its reason.
 11. Render `resources/qwen-parsing-report.md` from the JSON report.
 12. Validate the schema with `Draft202012Validator.check_schema`.
-13. Validate the JSON report against [qwen-parsing-report.schema.json](../resources/qwen-parsing-report.schema.json).
+13. Validate the JSON report against [qwen-parsing-report-compact.schema.json](../resources/qwen-parsing-report-compact.schema.json) (D38; original full schema retained).
 14. Validate that the report contains each fixed episode key once and contains no invented row.
 15. Scan the report for prompts, hidden reasoning, raw model output, secrets, and sensitive audit content.
 16. Scan all domain fields and safe values for dynamic domain values and schema names. Permit only
@@ -41,8 +45,7 @@ record exists.
 17. Write `resources/bakeoff-comparison.md` with every metric, arm, delta, verdict, provenance, and
    caveat. Add a short D-entry and backlog item for every HOLD/BLOCKED result. Ask a fresh
    GPT-5.6-Luna xhigh subagent to audit provenance.
-18. When at least one agent is `MIGRATE`, leave Stage 8 eligible. If none passes, Stage 8 can be
-   `SKIPPED` and Stage 9 must publish the technical report rather than force a cutover.
+18. When at least one agent is `MIGRATE`, leave Stage 8 eligible. If none passes, ~~Stage 8 can be `SKIPPED`~~ → Stage 8 records `DONE` with a no-op (D20) and Stage 9 must publish the technical report rather than force a cutover.
 
 ## Per-episode report
 
@@ -73,7 +76,7 @@ fields.
 
 - [ ] GATE verdict completeness — all four reasoning agents have one explicit verdict and each verdict traces to current raw evidence; missing or inferred evidence makes this red.
 - [ ] GATE integrity disposition — every critical defect is assigned to an agent or interaction and appears in `resources/bakeoff-comparison.md` and `backlog.md`; silent drops make this red.
-- [ ] GATE per-episode report — the JSON and Markdown reports contain `E01` through `E28` once each, with source references and safe values. Dynamic domain values or schema names make this red.
+- [ ] GATE per-episode report — the JSON and Markdown reports contain ~~`E01` through `E28` once each~~ → `E02,E04,E05,E10,E18,E20,E26,E27` once each (D38), with source references and safe values. Dynamic domain values or schema names make this red.
 - [ ] GATE report privacy — `checks.domain_privacy` is `PASS` only after the domain and safe-value scans pass. A missing scan makes this red.
 - [ ] REPORT quality comparison and fixed sample — record all metrics, baseline availability, the 20-node/20-edge validator output, and `NOT MEASURED` values in `journal.md`.
 

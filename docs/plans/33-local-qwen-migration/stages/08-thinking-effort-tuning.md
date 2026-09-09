@@ -1,7 +1,12 @@
 # Stage 8: Thinking-Effort Tuning
 
 **Goal**: Select the best effort level for each agent that passed, while measuring aliases and reporting cost without using latency as a gate.
-**Dependencies**: Stage 7 DONE with at least one `MIGRATE` verdict.
+**Dependencies**: Stage 7 DONE. Tune only when at least one agent has a `MIGRATE` verdict;
+otherwise record the required DONE/no-op outcome (D20).
+
+Use the same compact revision 1 profile as Stage 6 (D38), with a fresh run ID and
+`--corpus-profile compact`. Record the tuned arm as `qwen-flash-next-compact-tuned`.
+The combined run remains mandatory for migration; original full-profile evidence cannot substitute.
 
 ## Steps
 
@@ -17,7 +22,7 @@
 4. Compare reasoning-token distributions for `high` with `medium` and `xhigh`. The available chat
    template may alias unsupported effort values; configure the actual observed level and document the
    alias rather than claiming a distinct setting.
-5. Run one combined full local arm with the selected efforts. Confirm integrity and quality do not
+5. Run one complete combined compact local arm with the selected efforts. Confirm integrity and quality do not
    regress the Stage 6 configuration. Choose on quality; use lower token cost only as a tie-break.
 6. Write `resources/effort-sweep.json` and record p50/p95 timing and token cost in `journal.md`. A
    dedicated GPT-5.6-Luna xhigh subagent audits that sweep values came from raw run inputs.
@@ -25,7 +30,7 @@
 ## Verification
 
 - [ ] GATE effort safety — every chosen level has raw records and no critical integrity defect; an unmeasured or fabricated winner makes this red.
-- [ ] GATE combined tuned arm — `resources/metrics-qwen-flash-next-tuned.json` comes from a fresh run and satisfies Stage 6 integrity checks; a copied metric or regression makes this red.
+- [ ] GATE combined tuned arm — `resources/metrics-qwen-flash-next-compact-tuned.json` comes from a fresh run and satisfies Stage 6 integrity checks; a copied metric or regression makes this red.
 - [ ] REPORT effort distributions and alias finding — record model id, effort, token counts, timings, tool/rejection counts, and `NOT MEASURED` signals in `journal.md`.
 
 ## Commit

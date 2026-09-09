@@ -1,7 +1,12 @@
-# Stage 6: Full Local Stability and Quality Run
+# Stage 6: Compact Local Stability and Quality Run
 
 **Goal**: Drive NeoCortex's complete ingestion/extraction flow with `qwen3.8-flash-next` and produce truthful stability and quality evidence.
 **Dependencies**: Stages 3 and 4 DONE. Stage 5 is optional and must not block this stage.
+
+See [compact corpus design](../resources/compact-corpus-design.md) for fixed episode IDs,
+retained coverage, narrower recall denominators, and unchanged E2E checks. A complete compact
+arm does not establish full-profile endurance. Use a fresh run ID. Apply all exports in [execution commands](../resources/commands.md)
+before preflight, including extraction enabled, domain routing enabled, low effort, and concurrency 2.
 
 ## Steps
 
@@ -13,12 +18,11 @@
    `NEOCORTEX_ADMIN_TOKEN=admin-token`. These names are verified in the repository root:
    `dev_tokens.json` maps `admin-token` to the bootstrap `admin` identity. Do not use the test token
    file or the obsolete `admin-token-neocortex` fallback for this arm.
-2. Use the fixed 28-episode corpus, identical Stage 3 prompts/schema, and a worker concurrency safe
+2. ~~Use the fixed 28-episode corpus~~ → Use the fixed eight-episode compact revision 1 corpus (D38), identical Stage 3 prompts/schema, and a worker concurrency safe
    for this local service. Configure explicit per-call and job-poll timeouts. Long processing is
    acceptable, but a non-terminal job after the derived deadline is a stability failure, not success.
 3. Run `NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json NEOCORTEX_ADMIN_TOKEN=admin-token
-   ./scripts/model_bakeoff.sh --arm qwen-flash-next` (update the harness if its arm name or model
-   defaults still refer to the superseded remote target). Save raw job events, metrics JSON, and a named graph
+   ./scripts/model_bakeoff.sh --arm qwen-flash-next-compact --corpus-profile compact`. Save raw job events, metrics JSON, and a named graph
    snapshot. Include model id, endpoint, effort, seed/schema version, and commit in metadata.
 4. Inspect Tier 1 integrity: stored type names, artifact markers in names/content, normalization
    rejection rate, structured-output failures, tool-order violations, auth failures, and dropped
@@ -32,10 +36,10 @@
 
 ## Verification
 
-- [ ] GATE full local job completion — read terminal states and failure/stall rate from this run's `/admin/jobs/summary` and event records; any non-terminal job or rate above 10% makes this red.
-- [ ] GATE integrity scan — read `resources/metrics-qwen-flash-next.json` and the named snapshot; any stored artifact, leaked marker, invalid type, unhandled auth/structured-output failure, or unexplained rejection makes this red.
+- [ ] GATE complete compact job completion — read terminal states and failure/stall rate from this run's `/admin/jobs/summary` and event records; any non-terminal job or rate above 10% makes this red.
+- [ ] GATE integrity scan — read `resources/metrics-qwen-flash-next-compact.json` and the named snapshot; any stored artifact, leaked marker, invalid type, unhandled auth/structured-output failure, or unexplained rejection makes this red.
 - [ ] REPORT quality, tool, token, and timing metrics — record raw file paths, counts, and `NOT MEASURED` signals in `journal.md`; latency never blocks.
 
 ## Commit
 
-`test(models): run full local Qwen Flash Next stability arm`
+`test(models): run compact local Qwen Flash Next stability arm`

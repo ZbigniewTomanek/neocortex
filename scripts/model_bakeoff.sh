@@ -7,8 +7,9 @@ DRY_RUN=0
 RUN_ID="${NEOCORTEX_BAKEOFF_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
 MODEL="${NEOCORTEX_ONTOLOGY_MODEL:-local:qwen3.8-flash-next}"
 ENDPOINT="${NEOCORTEX_LOCAL_MODEL_BASE_URL:-http://127.0.0.1:24000/v1}"
-CORPUS_PATH="docs/plans/18.5-e2e-revalidation/resources/episodes.md"
-CORPUS_SIZE="$(uv run python "$ROOT/scripts/corpus_loader.py" --dry-run | wc -l | tr -d ' ')"
+CORPUS_PROFILE="${NEOCORTEX_BAKEOFF_CORPUS_PROFILE:-full}"
+CORPUS_PATH=""
+CORPUS_SIZE=""
 WORKER_CONCURRENCY="${NEOCORTEX_WORKER_CONCURRENCY:-2}"
 PER_CALL_TIMEOUT="${NEOCORTEX_LOCAL_MODEL_TIMEOUT_S:-600}"
 DOMAIN_ROUTING_ENABLED="${NEOCORTEX_DOMAIN_ROUTING_ENABLED:-true}"
@@ -30,6 +31,7 @@ RECALL_EVIDENCE_PATH=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --arm) ARM="$2"; shift 2 ;;
+    --corpus-profile) CORPUS_PROFILE="$2"; shift 2 ;;
     --poll-timeout) POLL_TIMEOUT_ARG="$2"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
@@ -53,7 +55,14 @@ case "${DOMAIN_ROUTING_ENABLED,,}" in
   false|0|no) DOMAIN_ROUTING_ENABLED=false ;;
   *) die "NEOCORTEX_DOMAIN_ROUTING_ENABLED must be true or false" ;;
 esac
-[[ "$CORPUS_SIZE" == "28" ]] || die "fixed corpus parser returned $CORPUS_SIZE episodes, expected 28"
+case "$CORPUS_PROFILE" in
+  full) CORPUS_PATH="docs/plans/18.5-e2e-revalidation/resources/episodes.md"; EXPECTED_CORPUS_SIZE=28 ;;
+  compact) CORPUS_PATH="docs/plans/33-local-qwen-migration/resources/compact-corpus.md"; EXPECTED_CORPUS_SIZE=8 ;;
+  *) die "corpus profile must be full or compact" ;;
+esac
+CORPUS_SIZE="$(uv run python "$ROOT/scripts/corpus_loader.py" --corpus-profile "$CORPUS_PROFILE" --dry-run | wc -l | tr -d ' ')"
+[[ "$CORPUS_SIZE" == "$EXPECTED_CORPUS_SIZE" ]] || die "$CORPUS_PROFILE corpus parser returned $CORPUS_SIZE episodes, expected $EXPECTED_CORPUS_SIZE"
+export NEOCORTEX_BAKEOFF_CORPUS_PROFILE="$CORPUS_PROFILE"
 is_safe_run_id "$RUN_ID" || die "NEOCORTEX_BAKEOFF_RUN_ID has an invalid safe format"
 
 # The bake-off uses the admin dev-token identity for its MCP recall probe.
@@ -162,6 +171,7 @@ print_configuration() {
     "routed_seed_stage_invocations_max=$ROUTED_SEED_STAGE_INVOCATIONS" \
     "operational_acceptance_stage_invocations=$OPERATIONAL_ACCEPTANCE_STAGE_INVOCATIONS" \
     "per_call_timeout_s=$PER_CALL_TIMEOUT" \
+    "corpus_profile=$CORPUS_PROFILE" \
     "corpus_size=$CORPUS_SIZE" \
     "poll_timeout_s=$POLL_TIMEOUT" \
     "poll_timeout_source=$POLL_TIMEOUT_SOURCE" \
@@ -427,7 +437,7 @@ if (( ! DRY_RUN )); then
     | grep -q 'ncx_shared__' || { echo 'seed schemas missing' >&2; exit 1; }
   run uv run python "$ROOT/scripts/auth_self_check.py"
 fi
-run uv run python "$ROOT/scripts/corpus_loader.py"
+run uv run python "$ROOT/scripts/corpus_loader.py" --corpus-profile "$CORPUS_PROFILE"
 run poll_jobs
 POST_SNAPSHOT_NAME="${ARM}-${RUN_ID}"
 run "$ROOT/scripts/manage.sh" snapshot save "$POST_SNAPSHOT_NAME"
@@ -437,9 +447,9 @@ else
   POST_SNAPSHOT="$(resolve_saved_snapshot "$POST_SNAPSHOT_NAME")"
   POST_SNAPSHOT_SHA256="$(sha256_file "$POST_SNAPSHOT")"
 fi
-run uv run python "$ROOT/scripts/compute_metrics.py" --arm "$ARM" --phase corpus --snapshot-path "$POST_SNAPSHOT" --snapshot-sha256 "$POST_SNAPSHOT_SHA256" --run-id "$RUN_ID"
+run uv run python "$ROOT/scripts/compute_metrics.py" --corpus-profile "$CORPUS_PROFILE" --arm "$ARM" --phase corpus --snapshot-path "$POST_SNAPSHOT" --snapshot-sha256 "$POST_SNAPSHOT_SHA256" --run-id "$RUN_ID"
 if (( DRY_RUN )); then
-  run uv run python "$ROOT/scripts/recall_scorer.py" --output "docs/plans/33-local-qwen-migration/resources/recall-results-${ARM}-${RUN_ID}.json"
+  run uv run python "$ROOT/scripts/recall_scorer.py" --corpus-profile "$CORPUS_PROFILE" --output "docs/plans/33-local-qwen-migration/resources/recall-results-${ARM}-${RUN_ID}.json"
   index=0
   for test in e2e_extraction_pipeline_test.py e2e_plan15_scenarios_test.py e2e_plan17_validation.py e2e_episodic_memory_test.py e2e_cognitive_recall_test.py; do
     index=$((index + 1))
@@ -449,7 +459,7 @@ if (( DRY_RUN )); then
   run uv run python "$ROOT/scripts/e2e_manifest.py" merge --run-id "$RUN_ID"
 else
 RECALL_STATUS=0
-if uv run python "$ROOT/scripts/recall_scorer.py" --output "$RECALL_EVIDENCE_PATH" \
+if uv run python "$ROOT/scripts/recall_scorer.py" --corpus-profile "$CORPUS_PROFILE" --output "$RECALL_EVIDENCE_PATH" \
   >"$E2E_WORKDIR/recall.stdout" 2>"$E2E_WORKDIR/recall.stderr"; then
   RECALL_STATUS=0
 else

@@ -25,6 +25,11 @@ import httpx
 from neocortex.config import PostgresConfig
 from neocortex.normalization import _TOOL_CALL_ARTIFACT
 
+try:
+    from scripts.corpus_loader import CORPUS_EPISODE_IDS, corpus_path, load_corpus  # ty: ignore[unresolved-import]
+except ModuleNotFoundError:  # Direct script execution.
+    from corpus_loader import CORPUS_EPISODE_IDS, corpus_path, load_corpus  # ty: ignore[unresolved-import]
+
 ROOT = Path(__file__).resolve().parents[1]
 PLAN_RESOURCES = ROOT / "docs/plans/33-local-qwen-migration/resources"
 CORPUS = ROOT / "docs/plans/18.5-e2e-revalidation/resources/episodes.md"
@@ -288,16 +293,16 @@ async def collect(
     admin_token: str | None = None,
     run_id: str | None = None,
     snapshot_sha256: str | None = None,
+    corpus_profile: str = "full",
 ) -> dict:
     config = PostgresConfig()
     if snapshot_path is not None and not snapshot_path.exists():
         raise FileNotFoundError(f"graph snapshot input does not exist: {snapshot_path}")
+    selected_corpus_path = corpus_path(corpus_profile)
+    corpus = load_corpus(selected_corpus_path, profile=corpus_profile)
+    corpus_sha256 = hashlib.sha256(selected_corpus_path.read_bytes()).hexdigest()
     conn = await asyncpg.connect(config.dsn)
     try:
-        corpus = re.findall(r"^### Episode (\d+) -- ", CORPUS.read_text(encoding="utf-8"), re.MULTILINE)
-        if len(corpus) != 28 or [int(number) for number in corpus] != list(range(1, 29)):
-            raise ValueError(f"fixed corpus must contain episodes 1..28, parsed {len(corpus)}")
-        corpus_sha256 = hashlib.sha256(CORPUS.read_bytes()).hexdigest()
         schemas = await conn.fetch("SELECT schema_name FROM graph_registry ORDER BY schema_name")
         per_schema = {}
         snapshot_digest = None
@@ -372,7 +377,7 @@ async def collect(
             "graph_snapshot_sha256": snapshot_digest or "NOT_MEASURED",
             "audit_log": _relative_path(ROOT / "log/agent_actions.log"),
             "admin_jobs_api": _endpoint_identity(ingestion_url) + "/admin/jobs/summary",
-            "corpus": _relative_path(CORPUS),
+            "corpus": _relative_path(selected_corpus_path),
         }
         run_metadata = {
             "run_id": resolve_run_id(run_id),
@@ -407,6 +412,8 @@ async def collect(
             },
             "worker_concurrency": os.environ.get("NEOCORTEX_WORKER_CONCURRENCY", "NOT_MEASURED"),
             "per_call_timeout_s": os.environ.get("NEOCORTEX_LOCAL_MODEL_TIMEOUT_S", "NOT_MEASURED"),
+            "corpus_profile": corpus_profile,
+            "corpus_episode_ids": [episode["number"] for episode in corpus],
             "corpus_size": len(corpus),
             "corpus_sha256": corpus_sha256,
             "snapshot_sha256": snapshot_digest or "NOT_MEASURED",
@@ -544,6 +551,11 @@ async def main() -> int:
     parser.add_argument("--arm", required=True)
     parser.add_argument("--phase", default="corpus", choices=("corpus", "e2e"))
     parser.add_argument("--merge", action="store_true")
+    parser.add_argument(
+        "--corpus-profile",
+        choices=tuple(CORPUS_EPISODE_IDS),
+        default=os.environ.get("NEOCORTEX_BAKEOFF_CORPUS_PROFILE", "full"),
+    )
     parser.add_argument("--snapshot-path", type=Path)
     parser.add_argument("--snapshot-sha256")
     parser.add_argument(
@@ -561,6 +573,7 @@ async def main() -> int:
             ingestion_url=args.ingestion_url,
             run_id=effective_run_id,
             snapshot_sha256=args.snapshot_sha256,
+            corpus_profile=args.corpus_profile,
         )
     except (NonTerminalJobsError, InvalidJobSummaryError) as exc:
         reason = "non_terminal_jobs" if isinstance(exc, NonTerminalJobsError) else exc.reason

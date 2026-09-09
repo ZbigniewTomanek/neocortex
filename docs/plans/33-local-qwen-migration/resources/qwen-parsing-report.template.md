@@ -2,7 +2,7 @@
 
 Use this template after the Stage 6 full run attempt. Create the JSON report first. Render this Markdown report from that JSON report.
 
-Keep one report row for each fixed episode key, from `E01` through `E28`. Do not add a row for an episode that is not in the fixed corpus.
+~~Keep one report row for each fixed episode key, from `E01` through `E28`.~~ → Keep one row for each compact key `E02,E04,E05,E10,E18,E20,E26,E27` (D38). Do not add a row for an episode that is not in the fixed corpus.
 
 When a source does not contain a value, write `NOT MEASURED` and record the reason beside the value. Do not infer a value from a default, a target, or another episode.
 
@@ -30,8 +30,8 @@ The manifest lists these source artifacts:
 
 | Kind | Source | Required content |
 |---|---|---|
-| `corpus` | Fixed 28-episode corpus | Episode keys, source locators, and corpus hash |
-| `metrics` | `metrics-qwen-flash-next.json`, or its `NOT_MEASURED` sidecar | Run id, model, effort, snapshot path, and source revision |
+| `corpus` | Selected eight-episode compact corpus (D38) | Episode keys, source locators, and corpus hash |
+| `metrics` | `metrics-qwen-flash-next-compact.json`, or its `NOT_MEASURED` sidecar | Run id, model, effort, snapshot path, and source revision |
 | `snapshot` | PostgreSQL snapshot from the local run | Actual episode, node, edge, and job records |
 | `admin_jobs` | Saved admin API responses | Job ids, task names, statuses, and safe numeric arguments |
 | `graph_export` | Read-only export from the named snapshot | Stable ids, types, source episode ids, and counts |
@@ -60,7 +60,7 @@ Create one section with this field set for every episode key:
 | Events | Retry, timeout, and rejection values |
 | Quality and integrity | Check status and source reference for each check |
 
-Use the JSON field names from `qwen-parsing-report.schema.json`. Keep the Markdown field order from this template.
+Use the JSON field names from `qwen-parsing-report-compact.schema.json`. Keep the Markdown field order from this template.
 
 ## Safe values
 
@@ -103,8 +103,8 @@ The generator does not copy raw source content into either report file.
 ## Required report checks
 
 Validate the schema with `Draft202012Validator.check_schema`.
-Validate the JSON report against `qwen-parsing-report.schema.json`.
-Validate the fixed episode set for `E01` through `E28`.
+Validate the JSON report against `qwen-parsing-report-compact.schema.json`.
+~~Validate the fixed episode set for `E01` through `E28`.~~ → Validate `E02,E04,E05,E10,E18,E20,E26,E27` once each against `qwen-parsing-report-compact.schema.json` (D38).
 
 Validate source links for every measured field. Validate safe-value kinds and values.
 Validate that the complete episode set has no invented rows.

@@ -11,9 +11,9 @@ export NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json
 export NEOCORTEX_ADMIN_TOKEN=admin-token
 export NEOCORTEX_LOCAL_MODEL_API_KEY_ENV=LITELLM_API_KEY
 test -n "${LITELLM_API_KEY:-}" || { echo 'LITELLM_API_KEY is required' >&2; exit 1; }
-curl --fail --silent --show-error \
+curl --fail --silent --show-error --connect-timeout 5 --max-time 20 \
   "$NEOCORTEX_LOCAL_MODEL_BASE_URL/models" \
-  -H "Authorization: Bearer ${LITELLM_API_KEY}" \
+  -H @- <<<"Authorization: Bearer ${LITELLM_API_KEY}" \
   | jq -e '[.data[].id] | length == 1 and .[0] == "qwen3.8-flash-next"'
 ```
 
@@ -30,10 +30,19 @@ export NEOCORTEX_ONTOLOGY_MODEL=local:qwen3.8-flash-next
 export NEOCORTEX_EXTRACTOR_MODEL=local:qwen3.8-flash-next
 export NEOCORTEX_LIBRARIAN_MODEL=local:qwen3.8-flash-next
 export NEOCORTEX_DOMAIN_CLASSIFIER_MODEL=local:qwen3.8-flash-next
+export NEOCORTEX_EXTRACTION_ENABLED=true
+export NEOCORTEX_DOMAIN_ROUTING_ENABLED=true
+export NEOCORTEX_ONTOLOGY_THINKING_EFFORT=low
+export NEOCORTEX_EXTRACTOR_THINKING_EFFORT=low
+export NEOCORTEX_LIBRARIAN_THINKING_EFFORT=low
+export NEOCORTEX_DOMAIN_CLASSIFIER_THINKING_EFFORT=low
+export NEOCORTEX_WORKER_CONCURRENCY=2
+export NEOCORTEX_LOCAL_MODEL_TIMEOUT_S=600
+export NEOCORTEX_BAKEOFF_CORPUS_PROFILE=compact
 ```
 
-Set each `*_THINKING_EFFORT` from the measured probe or effort sweep. Keep worker concurrency
-conservative for the local service. `OPENAI_API_KEY` is needed only for an optional hosted baseline;
+The initial compact arm retains low effort for all four reasoning roles and concurrency 2.
+Later effort changes require the measured sweep. `OPENAI_API_KEY` is needed only for an optional hosted baseline;
 `GOOGLE_API_KEY` is needed for embeddings even when the reasoning model is local.
 
 ## Services and snapshots
@@ -53,13 +62,16 @@ run. The local arm must not merge into a populated output directory.
 ## Probe and bake-off
 
 ```bash
-uv run python scripts/corpus_loader.py --dry-run
-uv run python scripts/probe_local_model.py --model local:qwen3.8-flash-next --effort medium --timeout 300
-uv run python scripts/compute_metrics.py --arm qwen-flash-next
-NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json NEOCORTEX_ADMIN_TOKEN=admin-token \
-  ./scripts/model_bakeoff.sh --arm qwen-flash-next
-./scripts/model_bakeoff.sh --dry-run
+uv run python scripts/corpus_loader.py --corpus-profile compact --dry-run
+./scripts/model_bakeoff.sh --arm qwen-flash-next-compact --corpus-profile compact --dry-run
+export NEOCORTEX_BAKEOFF_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-compact"
+./scripts/model_bakeoff.sh --arm qwen-flash-next-compact --corpus-profile compact
 ```
+
+Generate a new run ID for every real arm. Do not reuse the old unstarted full-profile run ID.
+The active input is [compact revision 1](compact-corpus-design.md); the harness defaults to
+`full` outside these explicit commands. Quality reports use `metrics-qwen-flash-next-compact.json`
+and `qwen-parsing-report-compact.schema.json`.
 
 The harness must emit raw JSON with model id, effort, commit, input corpus, job ids, and source paths.
 Scenario scripts that always exit zero require score-line parsing. A non-terminal job is not a quality

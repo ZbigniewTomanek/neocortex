@@ -159,3 +159,57 @@ def test_e2e_scripts_do_not_print_credential_material(script_name: str) -> None:
 
     assert "TOKEN[:8]" not in source
     assert "ALICE_TOKEN[:8]" not in source
+
+
+def _compact_rows() -> list[dict]:
+    return [
+        {"query": query, "keywords": ("match",), "results": [{"id": index, "content": "match"}]}
+        for index, query in enumerate(("Q2", "Q3", "Q6", "Q7", "Q8", "Q9"), 1)
+    ]
+
+
+def test_compact_recall_keeps_query_identity_and_measured_denominators() -> None:
+    rows = _compact_rows()
+    rows[1]["results"] = []  # The only included specific-event query misses.
+    rows[4]["results"] = []  # One temporal query misses.
+    evidence = recall_scorer._safe_recall_evidence(rows, run_id="compact-run", corpus_profile="compact")
+    summary = validate_recall_evidence(evidence, run_id="compact-run")
+    assert summary["query_count"] == 6
+    assert summary["query_set"]["query_ids"] == ["Q2", "Q3", "Q6", "Q7", "Q8", "Q9"]
+    assert summary["query_set"]["excluded_query_ids"] == ["Q1", "Q4", "Q5"]
+    assert summary["query_set"]["specific_event_total"] == 1
+    assert summary["query_set"]["temporal_total"] == 3
+    assert summary["metrics"]["M3_specific_event_pass"] == 0
+    assert summary["metrics"]["M4_temporal_pass"] == 2
+
+
+@pytest.mark.parametrize("mutation", ["denominator", "metric", "query_id", "count"])
+def test_compact_recall_rejects_false_coverage_or_score(mutation: str) -> None:
+    evidence = recall_scorer._safe_recall_evidence(_compact_rows(), run_id="compact-run", corpus_profile="compact")
+    if mutation == "denominator":
+        evidence["query_set"]["specific_event_total"] = 3
+    elif mutation == "metric":
+        evidence["metrics"]["M3_specific_event_pass"] = 0
+    elif mutation == "query_id":
+        evidence["query_set"]["query_ids"][0] = "Q1"
+    else:
+        evidence["query_count"] = 9
+    with pytest.raises(EvidenceError):
+        validate_recall_evidence(evidence, run_id="compact-run")
+
+
+def test_compact_recall_rejects_missing_source_query() -> None:
+    with pytest.raises(ValueError, match="query set"):
+        recall_scorer._safe_recall_evidence(_compact_rows()[:-1], run_id="compact-run", corpus_profile="compact")
+
+
+def test_compact_recall_cannot_attach_to_full_corpus() -> None:
+    from scripts.e2e_manifest import _match_recall_profile  # ty: ignore[unresolved-import]
+
+    evidence = recall_scorer._safe_recall_evidence(_compact_rows(), run_id="compact-run", corpus_profile="compact")
+    summary = validate_recall_evidence(evidence, run_id="compact-run")
+    _match_recall_profile(summary, {"corpus_profile": "compact"})
+    with pytest.raises(EvidenceError, match="profile"):
+        _match_recall_profile(summary, {"corpus_profile": "full"})
+    with pytest.raises(EvidenceError, match="profile"):
+        _match_recall_profile({"status": "MEASURED"}, {"corpus_profile": "compact"})

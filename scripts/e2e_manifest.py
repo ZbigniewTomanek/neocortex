@@ -296,11 +296,24 @@ def _safe_recall_summary(value: object, *, run_id: str) -> dict[str, Any]:
         "opaque_item_hashes",
         "top1_id_availability",
     }
-    if set(data) != required or data["schema_version"] != 1 or data["kind"] != "neocortex-recall-evidence":
+    compact = data.get("schema_version") == 2
+    if compact:
+        required.add("query_set")
+    if set(data) != required or data["schema_version"] not in {1, 2} or data["kind"] != "neocortex-recall-evidence":
         raise EvidenceError("recall evidence schema is invalid")
+    if compact and data["query_set"] != {
+        "corpus_profile": "compact",
+        "query_ids": ["Q2", "Q3", "Q6", "Q7", "Q8", "Q9"],
+        "excluded_query_ids": ["Q1", "Q4", "Q5"],
+        "specific_event_total": 1,
+        "temporal_total": 3,
+    }:
+        raise EvidenceError("compact recall query set or denominators are invalid")
     if data["run_id"] != run_id or data["status"] != "MEASURED":
         raise EvidenceError("recall evidence run identity or status is invalid")
     query_count = _require_nonnegative_int(data["query_count"], "recall query count")
+    if compact and query_count != 6:
+        raise EvidenceError("compact recall must contain six selected queries")
     query_results = data["query_results"]
     if not isinstance(query_results, list) or len(query_results) != query_count or query_count == 0:
         raise EvidenceError("recall query result count is invalid")
@@ -328,6 +341,12 @@ def _safe_recall_summary(value: object, *, run_id: str) -> dict[str, Any]:
         raise EvidenceError("recall metrics are incomplete")
     if any(type(metrics[key]) not in {int, float} or not math.isfinite(metrics[key]) for key in metrics):
         raise EvidenceError("recall metrics contain non-numeric values")
+    if compact:
+        for metric, indices in (("M3_specific_event_pass", (1,)), ("M4_temporal_pass", (3, 4, 5))):
+            by_index = {row["index"]: row for row in query_results}
+            measured = sum(by_index[index + 1]["keyword_match_count"] > 0 for index in indices)
+            if type(metrics[metric]) is not int or metrics[metric] != measured:
+                raise EvidenceError("compact recall metric disagrees with measured query rows")
     hashes = data["opaque_item_hashes"]
     if (
         not isinstance(hashes, list)
@@ -347,6 +366,7 @@ def _safe_recall_summary(value: object, *, run_id: str) -> dict[str, Any]:
         raise EvidenceError("recall M2 or top-1 ID availability is inconsistent")
     return {
         "status": "MEASURED",
+        **({"query_set": data["query_set"]} if compact else {}),
         "query_count": query_count,
         "metrics": metrics,
         "opaque_item_hash_count": len(hashes),
@@ -357,6 +377,15 @@ def _safe_recall_summary(value: object, *, run_id: str) -> dict[str, Any]:
 def validate_recall_evidence(value: object, *, run_id: str) -> dict[str, Any]:
     """Validate the aggregate-only recall artifact."""
     return _safe_recall_summary(value, run_id=run_id)
+
+
+def _match_recall_profile(summary: dict[str, Any], metadata: dict[str, Any]) -> None:
+    if summary.get("status") == "NOT_MEASURED":
+        return
+    profile = metadata.get("corpus_profile", "full")
+    recall_profile = summary.get("query_set", {}).get("corpus_profile", "full")
+    if profile not in {"full", "compact"} or profile != recall_profile:
+        raise EvidenceError("recall profile does not match the measured corpus")
 
 
 def _validate_recall_reference(recall: dict[str, Any], *, run_id: str) -> dict[str, Any]:
@@ -462,6 +491,7 @@ def build_manifest(
         recall_summary = {"status": "NOT_MEASURED", "reason": _require_string(recall["reason"], "recall reason")}
     else:
         recall_summary = validate_recall_evidence(recall, run_id=run_id)
+    _match_recall_profile(recall_summary, metadata)
     children = []
     for script, child_run_id, exit_code, result_path in _parse_status_file(statuses_path, run_id):
         raw_result = _require_object(json.loads(result_path.read_text(encoding="utf-8")), "E2E result")
@@ -626,7 +656,8 @@ def merge_manifest(
         raise EvidenceError("offline merge snapshot digest is invalid")
     if manifest.get("post_snapshot") != {"path": relative_path(snapshot_path), "sha256": snapshot_sha256}:
         raise EvidenceError("offline merge snapshot path or digest is inconsistent")
-    _validate_recall_reference(_require_object(manifest["recall"], "recall reference"), run_id=run_id)
+    recall_summary = _validate_recall_reference(_require_object(manifest["recall"], "recall reference"), run_id=run_id)
+    _match_recall_profile(recall_summary, metadata)
     expected_metrics = {"path": relative_path(metrics_path), "sha256": sha256_file(metrics_path)}
     if manifest.get("corpus_metrics") != expected_metrics:
         raise EvidenceError("offline merge corpus metrics hash is inconsistent")
