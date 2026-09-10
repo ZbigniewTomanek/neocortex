@@ -237,26 +237,60 @@ def git_head() -> str:
     return completed.stdout.strip() or "NOT_MEASURED"
 
 
+def _write_classifier_capture(cache_dir: Path, episode: str, exc: BaseException, messages: list[Any]) -> Path:
+    """Write a private failure capture: model messages live in the cache, never in validation."""
+    from pydantic_ai.messages import ModelMessagesTypeAdapter
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    path = cache_dir / f"classifier-{episode}-{datetime.now(UTC):%Y%m%dT%H%M%SZ}.json"
+    try:
+        dumped = json.loads(ModelMessagesTypeAdapter.dump_json(messages))
+    except Exception as dump_error:  # a capture failure must not mask the original error
+        dumped = [{"capture_error": type(dump_error).__name__}]
+    path.write_text(
+        json.dumps({"error_type": type(exc).__name__, "error": str(exc), "messages": dumped}, indent=2),
+        encoding="utf-8",
+    )
+    return path
+
+
 async def _classify(
-    text: str, episode_id: int, config: AgentInferenceConfig, thinking: ThinkingLevel, timeout: float
-) -> tuple[float, str]:
-    """Run the domain classifier once and return (seconds, status)."""
+    text: str,
+    episode: str,
+    episode_id: int,
+    config: AgentInferenceConfig,
+    thinking: ThinkingLevel,
+    timeout: float,
+    cache_dir: Path,
+) -> tuple[float, str, int, int]:
+    """Run the domain classifier once.
+
+    Returns (seconds, status, matched domain count, proposal count).  Counts
+    only: no domain slug, text, or model output reaches the summary.
+    """
+    from pydantic_ai import capture_run_messages
+
     from neocortex.domains.classifier import AgentDomainClassifier
 
     classifier = AgentDomainClassifier(
         model_name=config.model_name, thinking_effort=thinking, local_endpoint=config.local_endpoint
     )
     status = "ok"
+    matched = proposed = 0
     started = time.monotonic()
-    try:
-        await asyncio.wait_for(
-            classifier.classify(text, list(SEED_DOMAINS), agent_id=AGENT_ID, episode_id=episode_id), timeout=timeout
-        )
-    except TimeoutError:
-        status = "timeout"
-    except Exception as exc:  # a classifier failure is a recorded measurement
-        status = f"error:{type(exc).__name__}"
-    return round(time.monotonic() - started, 2), status
+    with capture_run_messages() as messages:
+        try:
+            result = await asyncio.wait_for(
+                classifier.classify(text, list(SEED_DOMAINS), agent_id=AGENT_ID, episode_id=episode_id), timeout=timeout
+            )
+            matched = len(result.matched_domains)
+            proposed = int(result.proposed_domain is not None)
+        except TimeoutError:
+            status = "timeout"
+        except Exception as exc:  # a classifier failure is a recorded measurement
+            status = f"error:{type(exc).__name__}"
+            print(f"classifier capture: {_write_classifier_capture(cache_dir, episode, exc, messages)}")
+    return round(time.monotonic() - started, 2), status, matched, proposed
 
 
 async def run_episode(
@@ -305,9 +339,13 @@ async def run_episode(
 
     classifier_row: dict[str, Any] | None = None
     if args.classify:
-        seconds, status = await _classify(text, episode_id, config, THINKING[args.thinking], args.episode_timeout)
+        seconds, status, matched, proposed = await _classify(
+            text, episode, episode_id, config, THINKING[args.thinking], args.episode_timeout, args.cache_dir
+        )
         classifier_row = _blank_row(episode, "classifier", status)
         classifier_row["seconds"] = seconds
+        classifier_row["matched_domains"] = matched
+        classifier_row["proposed_domains"] = proposed
 
     started = time.monotonic()
     outcome = "ok"
@@ -342,6 +380,8 @@ async def run_episode(
         else:
             collected["seconds"] = classifier_row["seconds"]
             collected["status"] = classifier_row["status"]
+            collected["matched_domains"] = classifier_row["matched_domains"]
+            collected["proposed_domains"] = classifier_row["proposed_domains"]
 
     ontology_summary = await repo.get_ontology_summary(AGENT_ID)
     summary = {

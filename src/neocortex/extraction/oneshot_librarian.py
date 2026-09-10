@@ -514,8 +514,11 @@ async def _apply(
             updated += 1
             tracker.record_node("updated")
 
-    edges_created = 0
-    edges_unresolved = 0
+    # The host-mandated temporal edges are resolved here but written last.
+    # ``upsert_edge`` rewrites the type of a lone edge between an ordered pair
+    # ("type drift"), so an extractor relation over the same pair would silently
+    # overwrite SUPERSEDES/CORRECTS if the temporal edge were written first.
+    temporal_plans: list[tuple[int, int, int, dict[str, Any]]] = []
     for outcome in outcomes:
         entity = entities[outcome.index]
         if not entity.supersedes or outcome.predecessor is None or outcome.index not in bound:
@@ -526,26 +529,12 @@ async def _apply(
         temporal_properties: dict[str, Any] = {"synthetic_temporal": True}
         if episode_id is not None:
             temporal_properties["_source_episode"] = episode_id
-        edge = await repo.upsert_edge(
-            agent_id,
-            bound[outcome.index],
-            outcome.predecessor.id,
-            edge_type.id,
-            weight=1.0,
-            properties=temporal_properties,
-            target_schema=target_schema,
-        )
-        if edge is None:
-            edges_unresolved += 1
-            logger.bind(action_log=True, **audit).warning(
-                "edge_skipped_upsert_failed",
-                source_id=bound[outcome.index],
-                target_id=outcome.predecessor.id,
-                reason_code="upsert_failed",
-            )
-            continue
-        edges_created += 1
-        tracker.record_edge_upsert()
+        temporal_plans.append((bound[outcome.index], outcome.predecessor.id, edge_type.id, temporal_properties))
+    temporal_pairs = {(source_id, target_id) for source_id, target_id, _, _ in temporal_plans}
+
+    edges_created = 0
+    edges_unchanged = 0
+    edges_unresolved = 0
 
     for relation in relations:
         source_id = _endpoint_id(entities, outcomes, bound, relation, source=True)
@@ -559,6 +548,15 @@ async def _apply(
                 source_present=source_id is not None,
                 target_present=target_id is not None,
                 reason_code="missing_node",
+            )
+            continue
+        if (source_id, target_id) in temporal_pairs:
+            edges_unchanged += 1
+            logger.bind(action_log=True, **audit).warning(
+                "edge_skipped_temporal_pair",
+                source_id=source_id,
+                target_id=target_id,
+                reason_code="temporal_pair",
             )
             continue
         edge_type = await repo.get_or_create_edge_type(agent_id, relation.relation_type, target_schema=target_schema)
@@ -594,6 +592,28 @@ async def _apply(
         edges_created += 1
         tracker.record_edge_upsert()
 
+    for source_id, target_id, temporal_type_id, temporal_properties in temporal_plans:
+        edge = await repo.upsert_edge(
+            agent_id,
+            source_id,
+            target_id,
+            temporal_type_id,
+            weight=1.0,
+            properties=temporal_properties,
+            target_schema=target_schema,
+        )
+        if edge is None:
+            edges_unresolved += 1
+            logger.bind(action_log=True, **audit).warning(
+                "edge_skipped_upsert_failed",
+                source_id=source_id,
+                target_id=target_id,
+                reason_code="upsert_failed",
+            )
+            continue
+        edges_created += 1
+        tracker.record_edge_upsert()
+
     return CurationReport(
         status="completed_with_unresolved" if unresolved_entities or edges_unresolved else "completed",
         entities_created=created,
@@ -602,7 +622,7 @@ async def _apply(
         entities_unresolved=unresolved_entities,
         entities_archived=0,
         edges_created=edges_created,
-        edges_unchanged=0,
+        edges_unchanged=edges_unchanged,
         edges_unresolved=edges_unresolved,
         edges_removed=0,
         pending_entities=0,

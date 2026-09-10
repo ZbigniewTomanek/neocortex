@@ -261,3 +261,85 @@ class TestAgentDomainClassifierAudit:
         assert len(hook_ids) == 1
         assert usage_ids == hook_ids
         assert None not in hook_ids
+
+
+class TestQwenClassifierRobustness:
+    """Stage 3 of plan 33: a local model's classification must not be thrown away.
+
+    The compact run rejected two E18 outputs and fell back to empty routing, so
+    the informational fields are optional and confidence is clamped rather than
+    rejected. Hosted output that fills every field validates as before.
+    """
+
+    def test_confidence_above_one_is_clamped(self) -> None:
+        from neocortex.domains.models import DomainClassification
+
+        assert DomainClassification(domain_slug="work_context", confidence=1.2).confidence == 1.0
+        assert DomainClassification(domain_slug="work_context", confidence=-0.5).confidence == 0.0
+
+    def test_missing_reasoning_is_accepted(self) -> None:
+        from neocortex.domains.models import DomainClassification
+
+        assert DomainClassification(domain_slug="work_context", confidence=0.8).reasoning == ""
+
+    def test_proposal_without_description_or_reasoning_is_accepted(self) -> None:
+        from neocortex.domains.models import ProposedDomain
+
+        proposal = ProposedDomain(slug="rust", name="Rust")
+        assert (proposal.description, proposal.reasoning, proposal.parent_slug) == ("", "", None)
+
+    def test_hosted_shaped_output_is_unchanged(self) -> None:
+        from neocortex.domains.models import DomainClassification, ProposedDomain
+
+        match = DomainClassification(domain_slug="work_context", confidence=0.8, reasoning="team meeting")
+        assert (match.confidence, match.reasoning) == (0.8, "team meeting")
+        proposal = ProposedDomain(slug="rust", name="Rust", description="A language", reasoning="novel")
+        assert (proposal.description, proposal.reasoning) == ("A language", "novel")
+
+    def test_non_numeric_confidence_still_fails(self) -> None:
+        import pydantic
+
+        from neocortex.domains.models import DomainClassification
+
+        with pytest.raises(pydantic.ValidationError):
+            DomainClassification(domain_slug="work_context", confidence="high")  # ty: ignore[invalid-argument-type]
+
+    @pytest.mark.asyncio
+    async def test_qwen_prompt_is_short_and_shows_a_json_example(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from neocortex.model_factory import QWEN_MAX_OUTPUT_TOKENS, LocalEndpoint
+
+        domain = SemanticDomain(slug="work_context", name="Work", description="Projects", depth=0, path="work_context")
+        prompts: list[str] = []
+
+        def capture(*args, **kwargs):
+            prompts.append(str(kwargs["system_prompt"]))
+            instance = AsyncMock()
+            instance.run = AsyncMock(return_value=MagicMock(output=ClassificationResult(matched_domains=[])))
+            return instance
+
+        endpoint = LocalEndpoint(
+            base_url="http://127.0.0.1:24000/v1",
+            api_key_env="LITELLM_API_KEY",
+            temperature=0.6,
+            top_p=0.95,
+            temperature_nothink=0.3,
+            top_p_nothink=0.9,
+            timeout_s=600.0,
+        )
+        monkeypatch.setattr("neocortex.domains.classifier.Agent", capture)
+        monkeypatch.setattr("neocortex.domains.classifier.build_model", lambda *a, **k: TestModel())
+        qwen = AgentDomainClassifier(
+            model_name="local:qwen3.8-flash-next", thinking_effort=False, local_endpoint=endpoint
+        )
+        assert qwen._max_output_tokens == QWEN_MAX_OUTPUT_TOKENS["domain_classifier"]
+        await qwen.classify("A team meeting", [domain])
+
+        hosted = AgentDomainClassifier()
+        assert hosted._max_output_tokens is None
+        await hosted.classify("A team meeting", [domain])
+
+        qwen_prompt, hosted_prompt = prompts
+        assert '{"matched_domains":[{"domain_slug":"work_context","confidence":0.8' in qwen_prompt
+        assert len(qwen_prompt) < len(hosted_prompt)
+        assert "MULTI-LABEL" in hosted_prompt
+        assert "MULTI-LABEL" not in qwen_prompt

@@ -145,6 +145,9 @@ async def test_extract_job_logs_presence_flags_instead_of_dynamic_identifiers(
         extraction_tool_calls_limit=150,
         ontology_tool_calls_limit=30,
         ontology_max_new_types=3,
+        ontology_max_tokens=600,
+        extractor_max_tokens=2500,
+        librarian_max_tokens=1500,
     )
     monkeypatch.setattr(
         context,

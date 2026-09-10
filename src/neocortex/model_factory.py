@@ -10,7 +10,7 @@ from typing import cast
 from openai.types import chat
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models import Model, ModelRequestParameters
-from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings, ThinkingLevel
 
@@ -110,12 +110,47 @@ def build_model(model_name: str, endpoint: LocalEndpoint | None) -> str | Model:
     )
 
 
+def qwen_nothink_extra_body() -> dict[str, object]:
+    """Return the chat-template switch that turns Qwen thinking off server-side.
+
+    The unified ``thinking=False`` setting alone is not enough: PydanticAI
+    1.72.0 resolves ``ModelSettings.thinking`` against the model profile, and
+    ``openai_model_profile`` reports ``supports_thinking=False`` for every model
+    name it does not recognise (Qwen included).  ``Model.prepare_request`` then
+    drops the setting silently, ``ModelRequestParameters.thinking`` stays
+    ``None``, and ``OpenAIChatModel._get_reasoning_effort`` omits
+    ``reasoning_effort`` from the request — so the server keeps thinking on.
+    ``openai_reasoning_effort`` is read before the profile is consulted, so
+    setting it explicitly restores the intent; this chat-template kwarg covers
+    servers that ignore the OpenAI field.  A fresh dict per call: the value
+    travels into request bodies that must not share mutable state.
+    """
+    return {"chat_template_kwargs": {"enable_thinking": False}}
+
+
+# Per-agent output ceilings for Qwen models, in tokens.  The local endpoint
+# decodes at ~34 tokens/s, so an unbounded response is an unbounded stage.
+# ``MCPSettings.<agent>_max_tokens`` defaults to these and can override them.
+QWEN_MAX_OUTPUT_TOKENS: dict[str, int] = {
+    "ontology": 600,
+    "extractor": 2500,
+    "librarian": 1500,
+    "domain_classifier": 400,
+}
+
+
 def build_model_settings(
     thinking_effort: ThinkingLevel | None,
     model_name: str,
     endpoint: LocalEndpoint | None,
+    *,
+    max_output_tokens: int | None = None,
 ) -> ModelSettings | None:
-    """Build common pydantic-ai settings, adding sampling controls for local models."""
+    """Build common pydantic-ai settings, adding sampling controls for local models.
+
+    ``max_output_tokens`` bounds the response of Qwen models only; hosted and
+    other local models keep the provider default.
+    """
     if thinking_effort is None:
         return None
     if not is_local_model(model_name):
@@ -123,9 +158,19 @@ def build_model_settings(
     if endpoint is None:
         raise ValueError(f"{model_name!r} requires NEOCORTEX_LOCAL_MODEL_BASE_URL to be set")
     thinking_on = thinking_effort is not False
-    return ModelSettings(
+    # The OpenAI-flavoured settings mapping: a superset of ModelSettings that
+    # also carries ``openai_reasoning_effort``.
+    settings = OpenAIChatModelSettings(
         thinking=thinking_effort,
         temperature=endpoint.temperature if thinking_on else endpoint.temperature_nothink,
         top_p=endpoint.top_p if thinking_on else endpoint.top_p_nothink,
         timeout=endpoint.timeout_s,
     )
+    if not is_qwen_model(model_name):
+        return settings
+    if max_output_tokens is not None:
+        settings["max_tokens"] = max_output_tokens
+    if not thinking_on:
+        settings["openai_reasoning_effort"] = "none"
+        settings["extra_body"] = qwen_nothink_extra_body()
+    return settings

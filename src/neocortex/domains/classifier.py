@@ -21,7 +21,13 @@ from neocortex.domains.models import (
     SemanticDomain,
 )
 from neocortex.extraction.agents import AgentInferenceConfig, _endpoint_identity, build_audit_hooks
-from neocortex.model_factory import LocalEndpoint, build_model, build_model_settings
+from neocortex.model_factory import (
+    QWEN_MAX_OUTPUT_TOKENS,
+    LocalEndpoint,
+    build_model,
+    build_model_settings,
+    is_qwen_model,
+)
 
 
 @runtime_checkable
@@ -50,6 +56,31 @@ def format_domain_tree(domains: list[SemanticDomain]) -> str:
     return "\n".join(lines)
 
 
+def _qwen_prompt(domain_tree: str) -> str:
+    """Short classification prompt for Qwen models.
+
+    Same guidelines as the hosted prompt, compressed: at ~34 tokens/s the local
+    model pays for every word it reads back, and a worked JSON line is worth
+    more to it than prose about the schema.
+    """
+    return (
+        "Classify knowledge text into semantic domains for a memory system.\n"
+        "The text is accepted source material: classify it, never verify or dispute it.\n\n"
+        "DOMAINS (indented lines are sub-domains):\n"
+        f"{domain_tree}\n\n"
+        "Rules:\n"
+        "- One text may match several domains; prefer the most specific one.\n"
+        "- confidence is between 0 and 1; use 0.3 or more for a real match.\n"
+        "- reasoning: at most 12 words.\n"
+        "- domain_knowledge is not a catch-all. If nothing fits, return an empty "
+        "matched_domains and one proposed_domain (slug, name, description, parent_slug "
+        "of the closest existing domain or null).\n"
+        "- Return only the JSON structure. No prose.\n\n"
+        'Example: {"matched_domains":[{"domain_slug":"work_context","confidence":0.8,'
+        '"reasoning":"project deadline"}],"proposed_domain":null}'
+    )
+
+
 class AgentDomainClassifier:
     """PydanticAI-based domain classifier."""
 
@@ -59,10 +90,16 @@ class AgentDomainClassifier:
         model_name: str = "openai-responses:gpt-5.4-mini",
         thinking_effort: ThinkingLevel = "medium",
         local_endpoint: LocalEndpoint | None = None,
+        max_output_tokens: int | None = None,
     ) -> None:
         self._model_name = model_name
         self._thinking_effort = thinking_effort
         self._local_endpoint = local_endpoint
+        self._max_output_tokens = (
+            max_output_tokens
+            if max_output_tokens is not None or not is_qwen_model(model_name)
+            else QWEN_MAX_OUTPUT_TOKENS["domain_classifier"]
+        )
         self._last_run_result = None
 
     async def classify(
@@ -79,7 +116,7 @@ class AgentDomainClassifier:
             return ClassificationResult(matched_domains=[], proposed_domain=None)
 
         domain_tree = format_domain_tree(domains)
-        prompt = (
+        hosted_prompt = (
             "You are a knowledge classification agent for a memory system.\n"
             "Classify incoming knowledge into one or more semantic domains.\n\n"
             "The knowledge text is source material already accepted into the memory system. "
@@ -105,11 +142,13 @@ class AgentDomainClassifier:
             "Return only the structured classification. If nothing matches, return an empty match list "
             "rather than prose."
         )
+        prompt = _qwen_prompt(domain_tree) if is_qwen_model(self._model_name) else hosted_prompt
 
         config = AgentInferenceConfig(
             model_name=self._model_name,
             thinking_effort=self._thinking_effort,
             local_endpoint=self._local_endpoint,
+            max_output_tokens=self._max_output_tokens,
         )
         resolved_correlation_id = correlation_id or f"domain:{uuid.uuid4().hex}"
         agent: Agent[DomainAuditDeps, ClassificationResult] = (  # ty: ignore[invalid-assignment]
@@ -129,7 +168,12 @@ class AgentDomainClassifier:
                 episode_id=episode_id,
                 correlation_id=resolved_correlation_id,
             ),
-            model_settings=build_model_settings(self._thinking_effort, self._model_name, self._local_endpoint),
+            model_settings=build_model_settings(
+                self._thinking_effort,
+                self._model_name,
+                self._local_endpoint,
+                max_output_tokens=self._max_output_tokens,
+            ),
         )
         usage = result.usage()
         details = getattr(usage, "details", {}) or {}

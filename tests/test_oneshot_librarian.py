@@ -143,6 +143,16 @@ def _node(repo: InMemoryRepository, node_id: int) -> Any:
     return repo._nodes[node_id]
 
 
+def _edge_types_between(repo: InMemoryRepository, source_id: int, target_id: int) -> list[str]:
+    """Edge type names stored for one ordered pair — the drift unit in the mock."""
+    names = {edge_type.id: name for name, edge_type in repo._edge_types.items()}
+    return sorted(
+        names[edge.type_id]
+        for edge in repo._edges.values()
+        if edge.source_id == source_id and edge.target_id == target_id
+    )
+
+
 async def _counts(repo: InMemoryRepository) -> tuple[int, int]:
     summary = await repo.get_ontology_summary(AGENT)
     return int(summary["total_nodes"]), int(summary["total_edges"])
@@ -533,11 +543,120 @@ async def test_relation_to_a_predecessor_binds_to_the_resolved_node(repo: InMemo
     report, sink = await _run(repo, extraction, model=_NoModelCall())
 
     assert sink.events("edge_skipped_missing_node") == []
-    # One temporal edge; the explicit relation upserts onto the same triple.
-    assert report.edges_created == 2
+    # Both endpoints bind, but the relation lands on the temporal pair, so the
+    # host steps around it and only the temporal edge is written.
+    assert report.edges_created == 1
+    assert report.edges_unchanged == 1
+    skipped = sink.events("edge_skipped_temporal_pair")
+    assert [fields["reason_code"] for fields in skipped] == ["temporal_pair"]
     nodes, edges = await _counts(repo)
     assert (nodes, edges) == (2, 1)
     assert predecessor.id in {node.id for node in await repo.find_nodes_by_name(AGENT, "Metaphone3")}
+
+
+@pytest.mark.asyncio
+async def test_temporal_edge_survives_a_relation_over_the_same_pair(repo: InMemoryRepository) -> None:
+    """Regression: edge-type drift must not overwrite SUPERSEDES with a relation type.
+
+    ``upsert_edge`` rewrites the type of a lone edge between an ordered pair, so a
+    relation such as (B, REPLACED, A) written after the temporal edge would erase it.
+    """
+    await _run(
+        repo,
+        ExtractionResult(
+            entities=[
+                ExtractedEntity(name="Metaphone3", type_name="Strategy", description="Phonetic matching strategy.")
+            ]
+        ),
+        model=_NoModelCall(),
+        episode_id=1,
+    )
+    predecessors = await repo.find_nodes_by_name(AGENT, "Metaphone3")
+    assert len(predecessors) == 1
+    predecessor_id = predecessors[0].id
+
+    report, sink = await _run(
+        repo,
+        ExtractionResult(
+            entities=[
+                ExtractedEntity(
+                    name="Metaphone3 8-Character Codes",
+                    type_name="Strategy",
+                    description="Longer phonetic codes replacing Metaphone3.",
+                    supersedes="Metaphone3",
+                    temporal_signal="SUPERSEDES",
+                )
+            ],
+            relations=[
+                ExtractedRelation(
+                    source_name="Metaphone3 8-Character Codes",
+                    target_name="Metaphone3",
+                    relation_type="REPLACED",
+                )
+            ],
+        ),
+        model=_NoModelCall(),
+        episode_id=2,
+    )
+
+    successors = await repo.find_nodes_by_name(AGENT, "Metaphone3 8-Character Codes")
+    assert len(successors) == 1
+    assert _edge_types_between(repo, successors[0].id, predecessor_id) == ["SUPERSEDES"]
+    assert report.edges_created == 1
+    assert report.edges_unchanged == 1
+    assert [fields["reason_code"] for fields in sink.events("edge_skipped_temporal_pair")] == ["temporal_pair"]
+
+
+@pytest.mark.asyncio
+async def test_a_relation_on_the_reverse_pair_keeps_both_edges(repo: InMemoryRepository) -> None:
+    """Drift is keyed on the ordered pair, so the mirror relation is left alone."""
+    await _run(
+        repo,
+        ExtractionResult(
+            entities=[
+                ExtractedEntity(name="Metaphone3", type_name="Strategy", description="Phonetic matching strategy.")
+            ]
+        ),
+        model=_NoModelCall(),
+        episode_id=1,
+    )
+    predecessors = await repo.find_nodes_by_name(AGENT, "Metaphone3")
+    assert len(predecessors) == 1
+    predecessor_id = predecessors[0].id
+
+    report, sink = await _run(
+        repo,
+        ExtractionResult(
+            entities=[
+                ExtractedEntity(
+                    name="Metaphone3 8-Character Codes",
+                    type_name="Strategy",
+                    description="Longer phonetic codes replacing Metaphone3.",
+                    supersedes="Metaphone3",
+                    temporal_signal="SUPERSEDES",
+                ),
+                ExtractedEntity(name="Metaphone3", type_name="Strategy", description="Phonetic matching strategy."),
+            ],
+            relations=[
+                ExtractedRelation(
+                    source_name="Metaphone3",
+                    target_name="Metaphone3 8-Character Codes",
+                    relation_type="MEASURED_BY",
+                )
+            ],
+        ),
+        model=_decisions_model({"decisions": [{"index": 1, "decision": "unchanged", "node_id": predecessor_id}]}),
+        episode_id=2,
+    )
+
+    successors = await repo.find_nodes_by_name(AGENT, "Metaphone3 8-Character Codes")
+    assert len(successors) == 1
+    successor_id = successors[0].id
+    assert _edge_types_between(repo, successor_id, predecessor_id) == ["SUPERSEDES"]
+    assert _edge_types_between(repo, predecessor_id, successor_id) == ["MEASURED_BY"]
+    assert report.edges_created == 2
+    assert report.edges_unchanged == 0
+    assert sink.events("edge_skipped_temporal_pair") == []
 
 
 @pytest.mark.asyncio

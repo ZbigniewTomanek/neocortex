@@ -137,6 +137,7 @@ async def create_services(settings: MCPSettings) -> ServiceContext:
             model_name=settings.domain_classifier_model,
             thinking_effort=settings.domain_classifier_thinking_effort,
             local_endpoint=local_endpoint,
+            max_output_tokens=settings.domain_classifier_max_tokens,
         )
 
     await migration_runner.run_graph_schemas()

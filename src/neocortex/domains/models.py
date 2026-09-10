@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SemanticDomain(BaseModel):
@@ -23,11 +23,23 @@ class SemanticDomain(BaseModel):
 
 
 class DomainClassification(BaseModel):
-    """A single domain match from the classifier."""
+    """A single domain match from the classifier.
+
+    ``confidence`` is clamped rather than rejected, and ``reasoning`` is
+    informational: a local model that answers 1.2 or omits its rationale is
+    still a usable classification, and rejecting it costs a whole retry.
+    """
 
     domain_slug: str
     confidence: float = Field(ge=0, le=1)
-    reasoning: str
+    reasoning: str = ""
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def clamp_confidence(cls, value: object) -> object:
+        if isinstance(value, int | float) and not isinstance(value, bool):
+            return min(1.0, max(0.0, float(value)))
+        return value
 
 
 class ProposedDomain(BaseModel):
@@ -35,8 +47,8 @@ class ProposedDomain(BaseModel):
 
     slug: str
     name: str
-    description: str
-    reasoning: str
+    description: str = ""
+    reasoning: str = ""
     parent_slug: str | None = None
 
 

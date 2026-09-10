@@ -22,7 +22,13 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.settings import ModelSettings, ThinkingLevel
 
-from neocortex.model_factory import LocalEndpoint, build_model, build_model_settings, is_qwen_model
+from neocortex.model_factory import (
+    QWEN_MAX_OUTPUT_TOKENS,
+    LocalEndpoint,
+    build_model,
+    build_model_settings,
+    is_qwen_model,
+)
 
 if TYPE_CHECKING:
     from neocortex.db.protocol import MemoryRepository
@@ -62,6 +68,62 @@ DEFAULT_THINKING_EFFORT = "low"
 # Keep this in one place with the librarian Agent construction.  The pipeline
 # uses the same value when deriving its operational request budget.
 DEFAULT_LIBRARIAN_RETRIES = 1
+
+# Qwen entity budget: the local endpoint decodes at ~34 tokens/s, so the size of
+# the extractor's output is the dominant cost of an episode.  The cap scales with
+# the episode instead of being a flat number, and is enforced twice: the prompt
+# states it, and the host trims what comes back.
+QWEN_ENTITY_CAP_MIN = 4
+QWEN_ENTITY_CAP_MAX = 12
+QWEN_ENTITY_CAP_WORDS_PER_ENTITY = 8
+# Type names shown to the tool-free Qwen ontology agent, per kind.
+QWEN_ONTOLOGY_TYPE_LIST_LIMIT = 40
+
+
+def qwen_entity_cap(text: str) -> int:
+    """Return the Qwen entity budget for one episode: min(12, max(4, ceil(words/8)))."""
+    words = len(text.split())
+    return min(QWEN_ENTITY_CAP_MAX, max(QWEN_ENTITY_CAP_MIN, ceil(words / QWEN_ENTITY_CAP_WORDS_PER_ENTITY)))
+
+
+def cap_extraction_entities(result: ExtractionResult, cap: int) -> ExtractionResult:
+    """Keep the ``cap`` most important entities and drop now-dangling relations.
+
+    Selection is by descending ``importance``; ties keep the extractor's order.
+    Survivors are returned in the extractor's original order, because the
+    librarian addresses entities by index.  Returns the same object when the
+    result already fits, so a compliant model pays nothing for the guard.
+    """
+    if len(result.entities) <= cap:
+        return result
+    ranked = sorted(enumerate(result.entities), key=lambda item: -item[1].importance)
+    kept_indices = {index for index, _entity in ranked[:cap]}
+    entities = [entity for index, entity in enumerate(result.entities) if index in kept_indices]
+    names = {entity.name for entity in entities}
+    relations = [r for r in result.relations if r.source_name in names and r.target_name in names]
+    return ExtractionResult(entities=entities, relations=relations, rationale=result.rationale)
+
+
+def _qwen_output_cap(config: AgentInferenceConfig, agent_kind: str) -> int | None:
+    """Return the max output tokens for one Qwen agent, or None for other models.
+
+    ``AgentInferenceConfig.max_output_tokens`` (fed by ``MCPSettings`` in the
+    worker) wins; otherwise the code default applies, so every caller of the
+    builders gets the ceiling without having to know about it.
+    """
+    if not is_qwen_model(config.model_name):
+        return None
+    return config.max_output_tokens if config.max_output_tokens is not None else QWEN_MAX_OUTPUT_TOKENS[agent_kind]
+
+
+def _qwen_output_cap_settings(config: AgentInferenceConfig, agent_kind: str) -> ModelSettings | None:
+    """Agent-level settings carrying only the Qwen output ceiling.
+
+    Run-level ``model_settings`` are merged over these, so the ceiling survives
+    without the call sites having to know about it.
+    """
+    cap = _qwen_output_cap(config, agent_kind)
+    return None if cap is None else ModelSettings(max_tokens=cap)
 
 
 # Tool names are code-owned identifiers.  Keep the allow-list here so an
@@ -376,12 +438,19 @@ class AgentInferenceConfig:
     thinking_effort: ThinkingLevel | None = DEFAULT_THINKING_EFFORT
     use_test_model: bool = False
     local_endpoint: LocalEndpoint | None = None
+    # Overrides the per-agent NEOCORTEX_*_MAX_TOKENS setting; Qwen models only.
+    max_output_tokens: int | None = None
 
     @property
     def model_settings(self) -> ModelSettings | None:
         """Build pydantic-ai model_settings dict for agent.run()."""
         if self.thinking_effort is not None:
-            return build_model_settings(self.thinking_effort, self.model_name, self.local_endpoint)
+            return build_model_settings(
+                self.thinking_effort,
+                self.model_name,
+                self.local_endpoint,
+                max_output_tokens=self.max_output_tokens,
+            )
         return None
 
 
@@ -637,179 +706,257 @@ class OntologyAgentDeps:
     correlation_id: str | None = None
 
 
+def _type_usage_line(entries: list[dict[str, Any]]) -> str:
+    """Render ``name x usage`` for the used types, most used first."""
+    used = [entry for entry in entries if int(entry["usage_count"]) > 0]
+    used.sort(key=lambda entry: (-int(entry["usage_count"]), str(entry["name"])))
+    return ", ".join(f"{entry['name']}x{entry['usage_count']}" for entry in used[:QWEN_ONTOLOGY_TYPE_LIST_LIMIT])
+
+
+async def _ontology_overview_lines(deps: OntologyAgentDeps) -> list[str]:
+    """Inline what get_ontology_overview would have returned, for the tool-free path."""
+    node_line = edge_line = ""
+    if deps.repo is not None:
+        summary = await deps.repo.get_ontology_summary(deps.agent_id, target_schema=deps.target_schema)
+        node_line = _type_usage_line(list(summary["node_types"]))
+        edge_line = _type_usage_line(list(summary["edge_types"]))
+    if not node_line:
+        node_line = ", ".join(deps.existing_node_types[:QWEN_ONTOLOGY_TYPE_LIST_LIMIT])
+    if not edge_line:
+        edge_line = ", ".join(deps.existing_edge_types[:QWEN_ONTOLOGY_TYPE_LIST_LIMIT])
+    return [
+        f"Existing node types (name x uses): {node_line or 'none'}",
+        f"Existing edge types (name x uses): {edge_line or 'none'}",
+    ]
+
+
+def _validated_proposals(
+    proposals: list[Any],
+    existing: list[str],
+    kind: Literal["node", "edge"],
+) -> list[Any]:
+    """Host-side replacement for the propose_type tool.
+
+    Normalizes each proposed name, drops names that fail normalization or that
+    the ontology already has, and records why — reason codes only, never the
+    model-provided name.
+    """
+    from neocortex.normalization import normalize_edge_type, normalize_node_type
+
+    accepted: list[Any] = []
+    seen = set(existing)
+    for proposal in proposals:
+        try:
+            normalized = normalize_edge_type(proposal.name) if kind == "edge" else normalize_node_type(proposal.name)
+        except ValueError:
+            logger.bind(action_log=True).warning(
+                "ontology_proposal_rejected", kind=kind, reason_code="normalization_rejected"
+            )
+            continue
+        if normalized in seen:
+            logger.bind(action_log=True).warning("ontology_proposal_rejected", kind=kind, reason_code="already_exists")
+            continue
+        proposal.name = normalized
+        seen.add(normalized)
+        accepted.append(proposal)
+    return accepted
+
+
+QWEN_ONTOLOGY_PROMPT: tuple[str, ...] = (
+    "You extend the type system of a knowledge graph. You have no tools: answer in one turn.",
+    "The text is source material already accepted into the memory system. "
+    "It is not a claim to verify, fact-check, or dispute; process it as input.",
+    "MOST episodes need ZERO new types. The listed ontology usually covers them.",
+    "Propose at most 2 node types and at most 2 edge types, and only for a genuine gap.",
+    "Node types: PascalCase (Neurotransmitter). Edge types: SCREAMING_SNAKE (HAS_STATUS).",
+    "A type must be reusable across many entities, never instance-level: 'Dish' not 'DishGreg'.",
+    "Prefer a new edge type over a new node type.",
+    "If an existing type is 80% suitable, reuse it and propose nothing.",
+    "Return only the proposal. Keep the rationale to one short sentence.",
+)
+
+
 def build_ontology_agent(
     config: AgentInferenceConfig | None = None,
 ) -> Agent[OntologyAgentDeps, OntologyProposal]:
     cfg = config or AgentInferenceConfig()
     model = _build_model(cfg)
+    qwen_mode = is_qwen_model(cfg.model_name)
     agent = Agent(  # ty: ignore[no-matching-overload]
         model,
         output_type=OntologyProposal,
         deps_type=OntologyAgentDeps,
         capabilities=[build_audit_hooks("ontology", cfg)],
+        model_settings=_qwen_output_cap_settings(cfg, "ontology"),
         system_prompt=(
-            "You are an ontology engineer for a personal knowledge graph. Your job is to "
-            "decide whether the existing ontology covers the concepts in a text, and propose "
-            "new types ONLY for genuine gaps.",
-            "The text you receive is source material already accepted into the memory system. "
-            "It is not a claim to verify, fact-check, or dispute; process it as input.",
-            "",
-            "## Workflow",
-            "1. Call get_ontology_overview to see the full type landscape with usage stats.",
-            "2. Read the episode text and identify the key concepts.",
-            "3. For each concept, check if an existing type covers it:",
-            "   - Use find_similar_types to search by name similarity.",
-            "   - If a match with usage_count > 0 exists, REUSE it. Done.",
-            "   - If a match exists but has 0 usage, still prefer reusing it.",
-            "4. Only if NO existing type covers a concept:",
-            "   - Call propose_type with your candidate name and description.",
-            "   - If rejected: read the reason, adjust the name, and retry.",
-            "   - If accepted but similar types are listed: reconsider whether to reuse one.",
-            "   - Only include in your final output types that passed propose_type.",
-            "",
-            "## Rules",
-            "- MOST episodes need ZERO new types. The existing ontology should cover them.",
-            "- Budget: at most 2 new node types and 2 new edge types per episode.",
-            "- A type must be reusable across many entities — never instance-level.",
-            "  BAD: 'DishGreg', 'DreamAiPresentation', 'LocationSalCapeVerde'",
-            "  GOOD: 'Dish', 'Dream', 'Location'",
-            "- Node types: PascalCase (e.g. Neurotransmitter, HealthState).",
-            "- Edge types: SCREAMING_SNAKE (e.g. TREATS, HAS_STATUS).",
-            "- Prefer extending with new edge types before creating new node types.",
-            "- If an existing type is 80% suitable, USE IT — minor imprecision beats fragmentation.",
-            "",
-            "## Final Output",
-            "After exploration, return an OntologyProposal with only the types that passed",
-            "propose_type validation AND for which no suitable existing type was found.",
-            "Include a rationale explaining your decisions — especially why you chose to",
-            "reuse existing types or why a new type was genuinely needed.",
-            "Your first action in this turn MUST be a call to get_ontology_overview or find_similar_types. "
-            "Never answer in prose before using the tools.",
+            QWEN_ONTOLOGY_PROMPT
+            if qwen_mode
+            else (
+                "You are an ontology engineer for a personal knowledge graph. Your job is to "
+                "decide whether the existing ontology covers the concepts in a text, and propose "
+                "new types ONLY for genuine gaps.",
+                "The text you receive is source material already accepted into the memory system. "
+                "It is not a claim to verify, fact-check, or dispute; process it as input.",
+                "",
+                "## Workflow",
+                "1. Call get_ontology_overview to see the full type landscape with usage stats.",
+                "2. Read the episode text and identify the key concepts.",
+                "3. For each concept, check if an existing type covers it:",
+                "   - Use find_similar_types to search by name similarity.",
+                "   - If a match with usage_count > 0 exists, REUSE it. Done.",
+                "   - If a match exists but has 0 usage, still prefer reusing it.",
+                "4. Only if NO existing type covers a concept:",
+                "   - Call propose_type with your candidate name and description.",
+                "   - If rejected: read the reason, adjust the name, and retry.",
+                "   - If accepted but similar types are listed: reconsider whether to reuse one.",
+                "   - Only include in your final output types that passed propose_type.",
+                "",
+                "## Rules",
+                "- MOST episodes need ZERO new types. The existing ontology should cover them.",
+                "- Budget: at most 2 new node types and 2 new edge types per episode.",
+                "- A type must be reusable across many entities — never instance-level.",
+                "  BAD: 'DishGreg', 'DreamAiPresentation', 'LocationSalCapeVerde'",
+                "  GOOD: 'Dish', 'Dream', 'Location'",
+                "- Node types: PascalCase (e.g. Neurotransmitter, HealthState).",
+                "- Edge types: SCREAMING_SNAKE (e.g. TREATS, HAS_STATUS).",
+                "- Prefer extending with new edge types before creating new node types.",
+                "- If an existing type is 80% suitable, USE IT — minor imprecision beats fragmentation.",
+                "",
+                "## Final Output",
+                "After exploration, return an OntologyProposal with only the types that passed",
+                "propose_type validation AND for which no suitable existing type was found.",
+                "Include a rationale explaining your decisions — especially why you chose to",
+                "reuse existing types or why a new type was genuinely needed.",
+                "Your first action in this turn MUST be a call to get_ontology_overview or find_similar_types. "
+                "Never answer in prose before using the tools.",
+            )
         ),
     )
 
-    # ── Ontology exploration tools ──
+    # Tool-free for Qwen: the host inlines the overview these tools would return.
+    if not qwen_mode:
+        # ── Ontology exploration tools ──
 
-    @agent.tool
-    async def find_similar_types(
-        ctx: RunContext[OntologyAgentDeps],
-        query: str,
-        kind: Literal["node", "edge"] = "node",
-    ) -> list[dict]:
-        """Search existing types by name similarity.
-        Use this to check if a type like the one you're considering already exists.
+        @agent.tool
+        async def find_similar_types(
+            ctx: RunContext[OntologyAgentDeps],
+            query: str,
+            kind: Literal["node", "edge"] = "node",
+        ) -> list[dict]:
+            """Search existing types by name similarity.
+            Use this to check if a type like the one you're considering already exists.
 
-        Args:
-            query: Type name to search for (e.g. "HealthCondition", "CAUSES")
-            kind: "node" for node types, "edge" for edge types
+            Args:
+                query: Type name to search for (e.g. "HealthCondition", "CAUSES")
+                kind: "node" for node types, "edge" for edge types
 
-        Returns:
-            List of {name, description, usage_count, example_entities} dicts,
-            sorted by similarity. Empty list if no repo is available.
-        """
-        if not ctx.deps.repo:
-            return []
-        results = await ctx.deps.repo.find_similar_types(
-            ctx.deps.agent_id,
-            query,
-            kind=kind,
-            target_schema=ctx.deps.target_schema,
-        )
-        return [
-            {
-                "name": t.name,
-                "description": t.description or "",
-                "usage_count": count,
-                "example_entities": examples,
-            }
-            for t, count, examples in results
-        ]
-
-    @agent.tool
-    async def get_ontology_overview(
-        ctx: RunContext[OntologyAgentDeps],
-        include_unused: bool = False,
-    ) -> dict:
-        """Get a snapshot of the current ontology with usage statistics.
-        Call this once at the start to understand the type landscape before
-        making any proposals.
-
-        Args:
-            include_unused: If False (default), only return types with usage_count > 0.
-                Set to True to see all types including unused ones.
-
-        Returns:
-            Dict with node_types, edge_types (each with name, description,
-            usage_count), total_nodes, total_edges.
-        """
-        if not ctx.deps.repo:
-            return {"node_types": [], "edge_types": [], "total_nodes": 0, "total_edges": 0}
-        summary = await ctx.deps.repo.get_ontology_summary(
-            ctx.deps.agent_id,
-            target_schema=ctx.deps.target_schema,
-        )
-        if not include_unused:
-            summary["node_types"] = [t for t in summary["node_types"] if t["usage_count"] > 0]
-            summary["edge_types"] = [t for t in summary["edge_types"] if t["usage_count"] > 0]
-        return summary
-
-    @agent.tool
-    async def propose_type(
-        ctx: RunContext[OntologyAgentDeps],
-        name: str,
-        description: str,
-        kind: Literal["node", "edge"] = "node",
-    ) -> dict:
-        """Propose a new type with inline validation.
-        Runs normalization checks and similarity search before accepting.
-        Does NOT persist the type — just validates and returns feedback.
-
-        Args:
-            name: Proposed type name (PascalCase for node, SCREAMING_SNAKE for edge)
-            description: What this type represents
-            kind: "node" or "edge"
-
-        Returns:
-            {accepted: bool, normalized_name: str, reason: str, similar_existing: list}
-            If rejected, reason explains why. If accepted but similar types exist,
-            similar_existing lists them so you can reconsider.
-        """
-        from neocortex.normalization import normalize_edge_type, normalize_node_type
-
-        # 1. Run Stage 1 normalization/validation
-        try:
-            normalized = normalize_edge_type(name) if kind == "edge" else normalize_node_type(name)
-        except ValueError as e:
-            return {"accepted": False, "normalized_name": name, "reason": str(e), "similar_existing": []}
-
-        # 2. Check for similar existing types
-        similar: list[str] = []
-        if ctx.deps.repo:
+            Returns:
+                List of {name, description, usage_count, example_entities} dicts,
+                sorted by similarity. Empty list if no repo is available.
+            """
+            if not ctx.deps.repo:
+                return []
             results = await ctx.deps.repo.find_similar_types(
                 ctx.deps.agent_id,
-                normalized,
+                query,
                 kind=kind,
-                limit=3,
                 target_schema=ctx.deps.target_schema,
             )
-            similar = [t.name for t, _count, _ex in results]
+            return [
+                {
+                    "name": t.name,
+                    "description": t.description or "",
+                    "usage_count": count,
+                    "example_entities": examples,
+                }
+                for t, count, examples in results
+            ]
 
-        # 3. Check if type already exists (exact match)
-        existing_types = ctx.deps.existing_node_types if kind == "node" else ctx.deps.existing_edge_types
-        if normalized in existing_types:
+        @agent.tool
+        async def get_ontology_overview(
+            ctx: RunContext[OntologyAgentDeps],
+            include_unused: bool = False,
+        ) -> dict:
+            """Get a snapshot of the current ontology with usage statistics.
+            Call this once at the start to understand the type landscape before
+            making any proposals.
+
+            Args:
+                include_unused: If False (default), only return types with usage_count > 0.
+                    Set to True to see all types including unused ones.
+
+            Returns:
+                Dict with node_types, edge_types (each with name, description,
+                usage_count), total_nodes, total_edges.
+            """
+            if not ctx.deps.repo:
+                return {"node_types": [], "edge_types": [], "total_nodes": 0, "total_edges": 0}
+            summary = await ctx.deps.repo.get_ontology_summary(
+                ctx.deps.agent_id,
+                target_schema=ctx.deps.target_schema,
+            )
+            if not include_unused:
+                summary["node_types"] = [t for t in summary["node_types"] if t["usage_count"] > 0]
+                summary["edge_types"] = [t for t in summary["edge_types"] if t["usage_count"] > 0]
+            return summary
+
+        @agent.tool
+        async def propose_type(
+            ctx: RunContext[OntologyAgentDeps],
+            name: str,
+            description: str,
+            kind: Literal["node", "edge"] = "node",
+        ) -> dict:
+            """Propose a new type with inline validation.
+            Runs normalization checks and similarity search before accepting.
+            Does NOT persist the type — just validates and returns feedback.
+
+            Args:
+                name: Proposed type name (PascalCase for node, SCREAMING_SNAKE for edge)
+                description: What this type represents
+                kind: "node" or "edge"
+
+            Returns:
+                {accepted: bool, normalized_name: str, reason: str, similar_existing: list}
+                If rejected, reason explains why. If accepted but similar types exist,
+                similar_existing lists them so you can reconsider.
+            """
+            from neocortex.normalization import normalize_edge_type, normalize_node_type
+
+            # 1. Run Stage 1 normalization/validation
+            try:
+                normalized = normalize_edge_type(name) if kind == "edge" else normalize_node_type(name)
+            except ValueError as e:
+                return {"accepted": False, "normalized_name": name, "reason": str(e), "similar_existing": []}
+
+            # 2. Check for similar existing types
+            similar: list[str] = []
+            if ctx.deps.repo:
+                results = await ctx.deps.repo.find_similar_types(
+                    ctx.deps.agent_id,
+                    normalized,
+                    kind=kind,
+                    limit=3,
+                    target_schema=ctx.deps.target_schema,
+                )
+                similar = [t.name for t, _count, _ex in results]
+
+            # 3. Check if type already exists (exact match)
+            existing_types = ctx.deps.existing_node_types if kind == "node" else ctx.deps.existing_edge_types
+            if normalized in existing_types:
+                return {
+                    "accepted": False,
+                    "normalized_name": normalized,
+                    "reason": f"Type '{normalized}' already exists. Reuse it.",
+                    "similar_existing": similar,
+                }
+
             return {
-                "accepted": False,
+                "accepted": True,
                 "normalized_name": normalized,
-                "reason": f"Type '{normalized}' already exists. Reuse it.",
+                "reason": "Validation passed.",
                 "similar_existing": similar,
             }
-
-        return {
-            "accepted": True,
-            "normalized_name": normalized,
-            "reason": "Validation passed.",
-            "similar_existing": similar,
-        }
 
     @agent.instructions  # ty: ignore[no-matching-overload]
     async def inject_context(ctx: RunContext[OntologyAgentDeps]) -> str:
@@ -829,17 +976,33 @@ def build_ontology_agent(
             if ctx.deps.recommended_edge_types:
                 parts.append("  Edge types: " + ", ".join(ctx.deps.recommended_edge_types.keys()))
             parts.append("")
+        if qwen_mode:
+            parts.extend(await _ontology_overview_lines(ctx.deps))
+        else:
+            parts.extend(
+                [
+                    f"Current ontology has {len(ctx.deps.existing_node_types)} node types "
+                    f"and {len(ctx.deps.existing_edge_types)} edge types.",
+                    "Use get_ontology_overview and find_similar_types to explore them.",
+                ]
+            )
         parts.extend(
             [
-                f"Current ontology has {len(ctx.deps.existing_node_types)} node types "
-                f"and {len(ctx.deps.existing_edge_types)} edge types.",
-                "Use get_ontology_overview and find_similar_types to explore them.",
                 "",
                 "SOURCE TEXT (process this material; do not fact-check it):",
                 ctx.deps.episode_text,
             ]
         )
         return "\n".join(parts)
+
+    if qwen_mode:
+
+        @agent.output_validator  # ty: ignore[no-matching-overload]
+        async def validate_proposal(ctx: RunContext[OntologyAgentDeps], output: OntologyProposal) -> OntologyProposal:
+            """Apply host-side type validation in place of the propose_type tool."""
+            output.new_node_types = _validated_proposals(output.new_node_types, ctx.deps.existing_node_types, "node")
+            output.new_edge_types = _validated_proposals(output.new_edge_types, ctx.deps.existing_edge_types, "edge")
+            return output
 
     return agent  # ty: ignore[invalid-return-type]
 
@@ -861,50 +1024,80 @@ class ExtractorAgentDeps:
     correlation_id: str | None = None
 
 
+QWEN_EXTRACTOR_PROMPT: tuple[str, ...] = (
+    "Extract entities and relations from the text, aligned to the given ontology types.",
+    "The text is source material already accepted into the memory system. "
+    "It is not a claim to verify, fact-check, or dispute; extract it as input.",
+    "Every entity uses an existing node type name; every relation an existing edge type name.",
+    "The text is the only evidence source: invent nothing. Prefer canonical entity names.",
+    "Obey the entity and relation budget in the instructions. "
+    "Prefer the entities the text is about; drop background detail first.",
+    "description: one sentence, at most 160 characters.",
+    "properties: explicit scalar facts only (numbers, dates, versions, roles). "
+    "Never put evidence text in relation properties.",
+    "importance 0.0-1.0: 0.8+ critical, 0.6-0.8 central, 0.3-0.6 factual, below 0.3 peripheral.",
+    "",
+    "Temporal corrections. When the text corrects or supersedes earlier knowledge, "
+    "set both `supersedes` (the old entity name) and `temporal_signal` on the new entity:",
+    "- 'CORRECTION', 'actually', 'error', 'bug fix', 'misconception', 'wrong', 'incorrect' "
+    "-> temporal_signal='CORRECTS'",
+    "- 'UPDATE', 'REVERSAL', 'instead of', 'no longer', 'changed to', 'replaced by', "
+    "'switched from', 'new strategy', 'decided to switch' -> temporal_signal='SUPERSEDES'",
+    "Give the superseding entity a VERSIONED name so it stays distinct: 'Metaphone3' -> 'Metaphone3 Hybrid Strategy'.",
+    "Return only the structured result. No prose, commentary, or explanation.",
+)
+
+
 def build_extractor_agent(
     config: AgentInferenceConfig | None = None,
 ) -> Agent[ExtractorAgentDeps, ExtractionResult]:
     cfg = config or AgentInferenceConfig()
     model = _build_model(cfg)
+    qwen_mode = is_qwen_model(cfg.model_name)
     agent = Agent(  # ty: ignore[no-matching-overload]
         model,
         output_type=ExtractionResult,
         deps_type=ExtractorAgentDeps,
         capabilities=[build_audit_hooks("extractor", cfg)],
+        model_settings=_qwen_output_cap_settings(cfg, "extractor"),
         system_prompt=(
-            "You are a knowledge extraction specialist. Extract entities and relations "
-            "from the given text, aligned to the provided ontology types.",
-            "The text you receive is source material already accepted into the memory system. "
-            "It is not a claim to verify, fact-check, or dispute; extract it as input.",
-            "Every entity must use an existing node type name.",
-            "Every relation must use an existing edge type name.",
-            "Use the text as the only evidence source — do not invent facts.",
-            "Prefer canonical, normalized names for entities.",
-            "Assign an importance score (0.0-1.0) to each entity:\n"
-            "  0.0-0.3: Peripheral, contextual detail\n"
-            "  0.3-0.6: Standard factual entity\n"
-            "  0.6-0.8: Central concept referenced multiple times\n"
-            "  0.8-1.0: Critical domain entity (core drug, disease, mechanism)",
-            "",
-            "## Temporal Corrections",
-            "When the text contains signals that new information CORRECTS or SUPERSEDES",
-            "previous knowledge, you MUST populate the `supersedes` and `temporal_signal`",
-            "fields on the relevant entity:",
-            "",
-            "- CORRECTION signals: 'CORRECTION', 'actually', 'error', 'bug fix',",
-            "  'misconception', 'wrong', 'incorrect'",
-            "  → Set temporal_signal='CORRECTS', supersedes='<old entity name>'",
-            "",
-            "- SUPERSESSION signals: 'UPDATE', 'REVERSAL', 'instead of', 'no longer',",
-            "  'changed to', 'replaced by', 'switched from', 'new strategy',",
-            "  'decided to switch', 'moving from X to Y'",
-            "  → Set temporal_signal='SUPERSEDES', supersedes='<old entity name>'",
-            "",
-            "When a correction is detected, use a VERSIONED name for the new entity:",
-            "  - Old: 'Metaphone3' → New: 'Metaphone3 Hybrid Strategy'",
-            "  - Old: 'Jonas Weber' role → New entity: 'Jonas Weber Security Role'",
-            "This prevents the librarian from merging the new entity into the old one.",
-            "Return only the structured result. Never write prose, commentary, or explanation outside the schema.",
+            QWEN_EXTRACTOR_PROMPT
+            if qwen_mode
+            else (
+                "You are a knowledge extraction specialist. Extract entities and relations "
+                "from the given text, aligned to the provided ontology types.",
+                "The text you receive is source material already accepted into the memory system. "
+                "It is not a claim to verify, fact-check, or dispute; extract it as input.",
+                "Every entity must use an existing node type name.",
+                "Every relation must use an existing edge type name.",
+                "Use the text as the only evidence source — do not invent facts.",
+                "Prefer canonical, normalized names for entities.",
+                "Assign an importance score (0.0-1.0) to each entity:\n"
+                "  0.0-0.3: Peripheral, contextual detail\n"
+                "  0.3-0.6: Standard factual entity\n"
+                "  0.6-0.8: Central concept referenced multiple times\n"
+                "  0.8-1.0: Critical domain entity (core drug, disease, mechanism)",
+                "",
+                "## Temporal Corrections",
+                "When the text contains signals that new information CORRECTS or SUPERSEDES",
+                "previous knowledge, you MUST populate the `supersedes` and `temporal_signal`",
+                "fields on the relevant entity:",
+                "",
+                "- CORRECTION signals: 'CORRECTION', 'actually', 'error', 'bug fix',",
+                "  'misconception', 'wrong', 'incorrect'",
+                "  → Set temporal_signal='CORRECTS', supersedes='<old entity name>'",
+                "",
+                "- SUPERSESSION signals: 'UPDATE', 'REVERSAL', 'instead of', 'no longer',",
+                "  'changed to', 'replaced by', 'switched from', 'new strategy',",
+                "  'decided to switch', 'moving from X to Y'",
+                "  → Set temporal_signal='SUPERSEDES', supersedes='<old entity name>'",
+                "",
+                "When a correction is detected, use a VERSIONED name for the new entity:",
+                "  - Old: 'Metaphone3' → New: 'Metaphone3 Hybrid Strategy'",
+                "  - Old: 'Jonas Weber' role → New entity: 'Jonas Weber Security Role'",
+                "This prevents the librarian from merging the new entity into the old one.",
+                "Return only the structured result. Never write prose, commentary, or explanation outside the schema.",
+            )
         ),
     )
 
@@ -921,18 +1114,36 @@ def build_extractor_agent(
             )
         nt_descs = ctx.deps.node_type_descriptions or {}
         et_descs = ctx.deps.edge_type_descriptions or {}
-        nt_list = (
-            "\n".join(f"- {n}: {nt_descs[n]}" if nt_descs.get(n) else f"- {n}" for n in ctx.deps.node_types) or "- none"
-        )
-        et_list = (
-            "\n".join(f"- {n}: {et_descs[n]}" if et_descs.get(n) else f"- {n}" for n in ctx.deps.edge_types) or "- none"
-        )
+        # A type the graph already uses is explained by its examples, so Qwen sees
+        # the name alone; only unused types still need their description.
+        known_examples: dict[str, list[str]] = ctx.deps.type_examples or {}
+
+        def describe(name: str, descriptions: dict[str, str]) -> str:
+            if qwen_mode and known_examples.get(name):
+                return f"- {name}"
+            return f"- {name}: {descriptions[name]}" if descriptions.get(name) else f"- {name}"
+
+        nt_list = "\n".join(describe(n, nt_descs) for n in ctx.deps.node_types) or "- none"
+        et_list = "\n".join(describe(n, et_descs) for n in ctx.deps.edge_types) or "- none"
+        if qwen_mode:
+            cap = qwen_entity_cap(ctx.deps.episode_text)
+            parts.extend(
+                [
+                    f"Budget: at most {cap} entities and at most {cap * 2} relations.",
+                    "Extract only ontology-aligned entities and relations; omit a relation that cannot fit.",
+                ]
+            )
+        else:
+            parts.extend(
+                [
+                    "Rules:",
+                    "- Extract only ontology-aligned entities and relations.",
+                    "- If a relation cannot fit the ontology, omit it.",
+                    "- Include evidence text in relation properties when possible.",
+                ]
+            )
         parts.extend(
             [
-                "Rules:",
-                "- Extract only ontology-aligned entities and relations.",
-                "- If a relation cannot fit the ontology, omit it.",
-                "- Include evidence text in relation properties when possible.",
                 "",
                 "Available node types:",
                 nt_list,
@@ -1799,6 +2010,7 @@ def build_librarian_agent(
         deps_type=LibrarianAgentDeps,
         retries=retries,
         capabilities=[build_audit_hooks("librarian", cfg)],
+        model_settings=_qwen_output_cap_settings(cfg, "librarian"),
         system_prompt=system_prompt,
     )
 

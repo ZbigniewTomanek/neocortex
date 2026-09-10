@@ -149,6 +149,9 @@ async def test_extract_episode_calls_run_extraction(provided_correlation_id: str
     mock_settings.librarian_max_duplicate_calls = 2
     mock_settings.ontology_tool_calls_limit = 30
     mock_settings.ontology_max_new_types = 3
+    mock_settings.ontology_max_tokens = 600
+    mock_settings.extractor_max_tokens = 2500
+    mock_settings.librarian_max_tokens = 1500
 
     mock_seed_generator = AsyncMock()
 
@@ -208,14 +211,17 @@ async def test_extract_episode_calls_run_extraction(provided_correlation_id: str
             ontology_config=AgentInferenceConfig(
                 model_name="test-model",
                 thinking_effort="low",
+                max_output_tokens=600,
             ),
             extractor_config=AgentInferenceConfig(
                 model_name="test-model",
                 thinking_effort="low",
+                max_output_tokens=2500,
             ),
             librarian_config=AgentInferenceConfig(
                 model_name="test-model",
                 thinking_effort="low",
+                max_output_tokens=1500,
             ),
             librarian_use_tools=True,
             tool_calls_limit=150,

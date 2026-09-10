@@ -189,8 +189,18 @@ def test_local_model_settings_include_sampling_and_timeout(endpoint: LocalEndpoi
         top_p_nothink=0.9,
         timeout_s=42.0,
     )
+    # Thinking off also has to reach the server: PydanticAI drops the unified
+    # thinking flag for model names its profile does not know, so the Qwen route
+    # sends the OpenAI field and the chat-template kwarg explicitly.
     settings = build_model_settings(False, "local:qwen3.8-flash-next", nothink_endpoint)
-    assert settings == ModelSettings(thinking=False, temperature=0.3, top_p=0.9, timeout=42.0)
+    assert settings == {
+        "thinking": False,
+        "temperature": 0.3,
+        "top_p": 0.9,
+        "timeout": 42.0,
+        "openai_reasoning_effort": "none",
+        "extra_body": {"chat_template_kwargs": {"enable_thinking": False}},
+    }
 
 
 def test_two_agents_can_use_different_providers(endpoint: LocalEndpoint) -> None:

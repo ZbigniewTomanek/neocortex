@@ -4,6 +4,8 @@ from pydantic import Field
 from pydantic_ai.settings import ThinkingLevel
 from pydantic_settings import BaseSettings
 
+from neocortex.model_factory import QWEN_MAX_OUTPUT_TOKENS
+
 
 class MCPSettings(BaseSettings):
     """MCP server configuration. Loaded from env vars with NEOCORTEX_ prefix."""
@@ -123,12 +125,19 @@ class MCPSettings(BaseSettings):
     librarian_use_tools: bool = True  # False falls back to _persist_payload
     # Per-agent inference config (env: NEOCORTEX_<AGENT>_MODEL / _THINKING_EFFORT)
     # Thinking effort: minimal|low|medium|high|xhigh (maps to token budgets)
+    # A thinking effort of "false" (env) / False disables reasoning entirely.
     ontology_model: str = "openai-responses:gpt-5.4-mini"
     ontology_thinking_effort: ThinkingLevel = "medium"
     extractor_model: str = "openai-responses:gpt-5.4-mini"
     extractor_thinking_effort: ThinkingLevel = "low"
     librarian_model: str = "openai-responses:gpt-5.4-mini"
     librarian_thinking_effort: ThinkingLevel = "low"
+    # Per-agent output ceilings. Applied to Qwen models only, where every output
+    # token costs wall time; hosted and other local models keep the provider default.
+    ontology_max_tokens: int = Field(default=QWEN_MAX_OUTPUT_TOKENS["ontology"], ge=1)
+    extractor_max_tokens: int = Field(default=QWEN_MAX_OUTPUT_TOKENS["extractor"], ge=1)
+    librarian_max_tokens: int = Field(default=QWEN_MAX_OUTPUT_TOKENS["librarian"], ge=1)
+    domain_classifier_max_tokens: int = Field(default=QWEN_MAX_OUTPUT_TOKENS["domain_classifier"], ge=1)
     # Local OpenAI-compatible endpoint (LiteLLM / vLLM / SGLang / Ollama).
     # Any *_model value prefixed "local:" is routed here instead of to a hosted provider.
     local_model_base_url: str | None = None

@@ -34,6 +34,8 @@ from neocortex.extraction.agents import (
     build_librarian_agent,
     build_librarian_relation_items,
     build_ontology_agent,
+    cap_extraction_entities,
+    qwen_entity_cap,
 )
 from neocortex.extraction.oneshot_librarian import ONESHOT_REQUEST_LIMIT, run_oneshot_librarian
 from neocortex.extraction.schemas import (
@@ -55,6 +57,9 @@ if TYPE_CHECKING:
     from neocortex.embedding_service import EmbeddingService
 
 _UNSET: str = "__UNSET__"
+
+# Tool-free Qwen ontology: one request, plus one spare for an output-validation retry.
+QWEN_ONTOLOGY_REQUEST_LIMIT = 2
 
 
 @dataclass(frozen=True)
@@ -261,6 +266,12 @@ async def run_extraction(
 
     ontology_agent = build_ontology_agent(ont_cfg)
     extractor_agent = build_extractor_agent(ext_cfg)
+    # The Qwen ontology agent has no tools: one request, plus one for an output retry.
+    ontology_usage_limits = (
+        UsageLimits(request_limit=QWEN_ONTOLOGY_REQUEST_LIMIT)
+        if is_qwen_model(ont_cfg.model_name)
+        else UsageLimits(tool_calls_limit=ontology_tool_calls_limit)
+    )
     librarian_retry_limit = DEFAULT_LIBRARIAN_RETRIES
     librarian_build_kwargs: dict[str, Any] = {
         "use_tools": librarian_use_tools,
@@ -353,7 +364,7 @@ async def run_extraction(
                     correlation_id=correlation_id,
                 ),
                 model_settings=ont_cfg.model_settings,
-                usage_limits=UsageLimits(tool_calls_limit=ontology_tool_calls_limit),
+                usage_limits=ontology_usage_limits,
             )
             ontology_elapsed = round(time.monotonic() - t0, 2)
             _audit_usage("ontology_agent", ontology_result, ont_cfg, agent_id, correlation_id, episode_id)
@@ -465,6 +476,20 @@ async def run_extraction(
                 model_settings=ext_cfg.model_settings,
             )
             _audit_usage("extractor_agent", extraction_result, ext_cfg, agent_id, correlation_id, episode_id)
+            if is_qwen_model(ext_cfg.model_name):
+                # Second half of the entity budget: the prompt states it, the host enforces it.
+                cap = qwen_entity_cap(text)
+                before = len(extraction_result.output.entities)
+                capped = cap_extraction_entities(extraction_result.output, cap)
+                if capped is not extraction_result.output:
+                    extraction_result = _PrecomputedExtraction(output=capped)
+                    logger.bind(action_log=True).warning(
+                        "extractor_cardinality_capped",
+                        **_audit_fields("extractor_agent", ext_cfg, agent_id, correlation_id, episode_id),
+                        before=before,
+                        after=len(capped.entities),
+                        cap=cap,
+                    )
             logger.bind(action_log=True).info(
                 "extractor_cardinality",
                 **_audit_fields("extractor_agent", ext_cfg, agent_id, correlation_id, episode_id),
