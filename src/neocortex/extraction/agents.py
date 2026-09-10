@@ -45,6 +45,7 @@ from neocortex.extraction.schemas import (
     ExtractionResult,
     LibrarianPayload,
     LibrarianTerminal,
+    OneshotDecisions,
     OntologyProposal,
     RelationCheck,
     RelationCheckBatch,
@@ -164,7 +165,7 @@ class LibrarianIdentityMismatch(RuntimeError):  # noqa: N818 - frozen public con
     """An update did not preserve the resolver-bound repository identity."""
 
 
-LibrarianProfile = Literal["hosted", "qwen_legacy", "qwen_finite", "qwen_bounded"]
+LibrarianProfile = Literal["hosted", "qwen_legacy", "qwen_finite", "qwen_bounded", "qwen_oneshot"]
 
 
 @dataclass
@@ -398,6 +399,31 @@ def _endpoint_identity(config: AgentInferenceConfig) -> str:
     if parsed.port is not None:
         host = f"{host}:{parsed.port}"
     return urlunsplit((parsed.scheme, host, parsed.path.rstrip("/"), "", ""))
+
+
+def build_audit_fields(
+    stage: str,
+    config: AgentInferenceConfig,
+    agent_id: str,
+    correlation_id: str,
+    episode_id: int | None = None,
+) -> dict[str, object]:
+    """Return common non-secret fields for a pipeline-stage audit event.
+
+    Shared by ``extraction.pipeline`` and ``extraction.oneshot_librarian`` so
+    every stage event carries the same credential-free dimensions.
+    """
+    return {
+        "stage": stage,
+        "agent": stage.removesuffix("_agent"),
+        "agent_id": agent_id,
+        "episode_id": episode_id,
+        "correlation_id": correlation_id,
+        "model": config.model_name.removeprefix("local:"),
+        "endpoint": _endpoint_identity(config),
+        "effort": config.thinking_effort,
+        "run_id": os.environ.get("NEOCORTEX_BAKEOFF_RUN_ID") or "unavailable",
+    }
 
 
 def _audit_dimensions(ctx: RunContext[Any], agent_name: str, config: AgentInferenceConfig) -> dict[str, object]:
@@ -976,86 +1002,137 @@ def _node_candidate(node: Any, type_name: str, score: float | None = None) -> En
     )
 
 
+async def resolve_semantic_candidates(
+    repo: MemoryRepository,
+    agent_id: str,
+    target_schema: str | None,
+    name: str,
+    expected_type: str,
+    embedding: list[float] | None,
+    *,
+    type_names: dict[int, str],
+) -> tuple[str, list[tuple[Any, float | None]]]:
+    """Run only the embedding-backed step of entity resolution.
+
+    Split out of ``resolve_entity_candidates`` so a caller that resolves many
+    entities can spend one ``embed_batch`` on the names that actually reach
+    this step instead of one ``embed`` per entity.
+    """
+    semantic_all = await repo.search_nodes(
+        agent_id,
+        name,
+        limit=3,
+        query_embedding=embedding,
+        target_schema=target_schema,
+        expected_type=expected_type,
+    )
+    semantic = [
+        (node, float(score))
+        for node, score in semantic_all
+        if score > 0.5 and type_names.get(node.type_id, "").casefold() == expected_type.casefold()
+    ]
+    semantic.sort(key=lambda item: (-item[1], item[0].id))
+    if semantic:
+        if len(semantic) == 1 or semantic[0][1] - semantic[1][1] >= 0.10:
+            return "semantic", semantic[:3]  # ty: ignore[invalid-return-type]
+        return "ambiguous", semantic[:3]  # ty: ignore[invalid-return-type]
+    return "none", []
+
+
+async def resolve_entity_candidates(
+    repo: MemoryRepository,
+    embeddings: EmbeddingService | None,
+    agent_id: str,
+    target_schema: str | None,
+    name: str,
+    expected_type: str,
+    *,
+    type_names: dict[int, str] | None = None,
+    semantic: bool = True,
+) -> tuple[str, list[tuple[Any, float | None]]]:
+    """Resolve one entity name to typed graph candidates, host-side.
+
+    Tries exact name, then aliases, then trigram similarity, then (when
+    ``semantic`` is set and an embedding service is available) vector search.
+    Returns the match kind (``exact``/``alias``/``fuzzy``/``semantic``/
+    ``ambiguous``/``ambiguous_homonym``/``none``) and up to three candidates
+    with their score, if the step that produced them has one.
+
+    ``type_names`` lets a caller reuse one node-type snapshot across entities.
+    ``semantic=False`` stops before the embedding step, so a batching caller
+    can collect the unmatched names and finish with
+    ``resolve_semantic_candidates``.
+    """
+    types: dict[int, str] = type_names or {
+        item.id: item.name for item in await repo.get_node_types(agent_id, target_schema=target_schema)
+    }
+
+    def filtered(nodes: list[Any]) -> list[tuple[Any, float | None]]:
+        return [(node, None) for node in nodes if types.get(node.type_id, "").casefold() == expected_type.casefold()]
+
+    by_name = await repo.find_nodes_by_name(agent_id, name, target_schema=target_schema)
+    exact_all = [node for node in by_name if not node.forgotten]
+    exact = filtered(exact_all)
+    if exact_all:
+        if len(exact) == 1:
+            return "exact", exact
+        return ("ambiguous" if exact else "ambiguous_homonym"), exact
+
+    alias_all = [
+        node for node in await repo.resolve_alias(agent_id, name, target_schema=target_schema) if not node.forgotten
+    ]
+    alias = filtered(alias_all)
+    if alias_all:
+        if len(alias) == 1:
+            return "alias", alias
+        return ("ambiguous" if alias else "ambiguous_homonym"), alias
+
+    fuzzy_all = await repo.find_nodes_fuzzy(
+        agent_id,
+        name,
+        threshold=0.3,
+        limit=3,
+        target_schema=target_schema,
+        expected_type=expected_type,
+    )
+    fuzzy = [
+        (node, float(score))
+        for node, score in fuzzy_all
+        if types.get(node.type_id, "").casefold() == expected_type.casefold()
+    ]
+    fuzzy.sort(key=lambda item: (-item[1], item[0].id))
+    if fuzzy:
+        if len(fuzzy) == 1 or fuzzy[0][1] - fuzzy[1][1] >= 0.10:
+            return "fuzzy", fuzzy[:3]  # ty: ignore[invalid-return-type]
+        return "ambiguous", fuzzy[:3]  # ty: ignore[invalid-return-type]
+
+    if semantic and embeddings:
+        return await resolve_semantic_candidates(
+            repo,
+            agent_id,
+            target_schema,
+            name,
+            expected_type,
+            await embeddings.embed(name),
+            type_names=types,
+        )
+    return "none", []
+
+
 def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -> None:
     """Install the five non-overlapping Qwen batch tools."""
 
     async def typed_resolution(
         ctx: RunContext[LibrarianAgentDeps], name: str, expected_type: str
     ) -> tuple[str, list[tuple[Any, float | None]]]:
-        types = await ctx.deps.repo.get_node_types(ctx.deps.agent_id, target_schema=ctx.deps.target_schema)
-        type_names = {item.id: item.name for item in types}
-
-        def filtered(nodes: list[Any]) -> list[tuple[Any, float | None]]:
-            return [
-                (node, None)
-                for node in nodes
-                if type_names.get(node.type_id, "").casefold() == expected_type.casefold()
-            ]
-
-        exact_all = [
-            node
-            for node in await ctx.deps.repo.find_nodes_by_name(
-                ctx.deps.agent_id, name, target_schema=ctx.deps.target_schema
-            )
-            if not node.forgotten
-        ]
-        exact = filtered(exact_all)
-        if exact_all:
-            if len(exact) == 1:
-                return "exact", exact
-            return ("ambiguous" if exact else "ambiguous_homonym"), exact
-
-        alias_all = [
-            node
-            for node in await ctx.deps.repo.resolve_alias(ctx.deps.agent_id, name, target_schema=ctx.deps.target_schema)
-            if not node.forgotten
-        ]
-        alias = filtered(alias_all)
-        if alias_all:
-            if len(alias) == 1:
-                return "alias", alias
-            return ("ambiguous" if alias else "ambiguous_homonym"), alias
-
-        fuzzy_all = await ctx.deps.repo.find_nodes_fuzzy(
+        return await resolve_entity_candidates(
+            ctx.deps.repo,
+            ctx.deps.embeddings,
             ctx.deps.agent_id,
+            ctx.deps.target_schema,
             name,
-            threshold=0.3,
-            limit=3,
-            target_schema=ctx.deps.target_schema,
-            expected_type=expected_type,
+            expected_type,
         )
-        fuzzy = [
-            (node, float(score))
-            for node, score in fuzzy_all
-            if type_names.get(node.type_id, "").casefold() == expected_type.casefold()
-        ]
-        fuzzy.sort(key=lambda item: (-item[1], item[0].id))
-        if fuzzy:
-            if len(fuzzy) == 1 or fuzzy[0][1] - fuzzy[1][1] >= 0.10:
-                return "fuzzy", fuzzy[:3]  # ty: ignore[invalid-return-type]
-            return "ambiguous", fuzzy[:3]  # ty: ignore[invalid-return-type]
-
-        if ctx.deps.embeddings:
-            embedding = await ctx.deps.embeddings.embed(name)
-            semantic_all = await ctx.deps.repo.search_nodes(
-                ctx.deps.agent_id,
-                name,
-                limit=3,
-                query_embedding=embedding,
-                target_schema=ctx.deps.target_schema,
-                expected_type=expected_type,
-            )
-            semantic = [
-                (node, float(score))
-                for node, score in semantic_all
-                if score > 0.5 and type_names.get(node.type_id, "").casefold() == expected_type.casefold()
-            ]
-            semantic.sort(key=lambda item: (-item[1], item[0].id))
-            if semantic:
-                if len(semantic) == 1 or semantic[0][1] - semantic[1][1] >= 0.10:
-                    return "semantic", semantic[:3]  # ty: ignore[invalid-return-type]
-                return "ambiguous", semantic[:3]  # ty: ignore[invalid-return-type]
-        return "none", []
 
     @agent.tool
     async def resolve_entities(ctx: RunContext[LibrarianAgentDeps], entity_indices: list[int]) -> EntityResolutionBatch:
@@ -1561,18 +1638,36 @@ def build_librarian_agent(
     """
     cfg = config or AgentInferenceConfig()
     model = _build_model(cfg)
-    selected_profile: LibrarianProfile = profile or ("qwen_bounded" if is_qwen_model(cfg.model_name) else "hosted")
+    selected_profile: LibrarianProfile = profile or ("qwen_oneshot" if is_qwen_model(cfg.model_name) else "hosted")
     if not use_tools:
         selected_profile = "hosted"
 
-    output_type = (
-        LibrarianTerminal
-        if use_tools and selected_profile == "qwen_bounded"
-        else (CurationSummary if use_tools else LibrarianPayload)
-    )
+    output_type: Any
+    if use_tools and selected_profile == "qwen_oneshot":
+        output_type = OneshotDecisions
+    elif use_tools and selected_profile == "qwen_bounded":
+        output_type = LibrarianTerminal
+    else:
+        output_type = CurationSummary if use_tools else LibrarianPayload
 
     system_prompt: tuple[str, ...]
-    if use_tools and selected_profile in {"qwen_finite", "qwen_bounded"}:
+    if use_tools and selected_profile == "qwen_oneshot":
+        # Every output token costs wall time on the local endpoint, so ask for
+        # prose only where a merge actually needs it.
+        system_prompt = (
+            "Decide how new entities join a knowledge graph. Answer once; you have no tools.",
+            "Each input line is: index | name | type | new description, then its graph candidates indented.",
+            "Return exactly one decision per index:",
+            "merge - a candidate is the same real-world thing: give its node_id and content.",
+            "unchanged - a candidate already states every new fact: give its node_id, omit content.",
+            "create - no candidate is the same thing: omit node_id and content.",
+            "content is ONE combined description under 600 characters that keeps every existing fact and "
+            "adds or corrects it with the new one; newer numbers, dates, and versions win.",
+            "node_id must be a candidate id listed under that index.",
+            'Example: {"decisions":[{"index":0,"decision":"merge","node_id":12,"content":"..."},'
+            '{"index":1,"decision":"create"}]}',
+        )
+    elif use_tools and selected_profile in {"qwen_finite", "qwen_bounded"}:
         finish_rule = (
             'Return exactly {"status":"done"} only after every indexed item has a terminal decision.'
             if selected_profile == "qwen_bounded"
@@ -1706,6 +1801,10 @@ def build_librarian_agent(
         capabilities=[build_audit_hooks("librarian", cfg)],
         system_prompt=system_prompt,
     )
+
+    if use_tools and selected_profile == "qwen_oneshot":
+        # Tool-free by design: the host resolves candidates and applies decisions.
+        return agent  # ty: ignore[invalid-return-type]
 
     if use_tools and selected_profile == "qwen_bounded":
         _register_bounded_librarian_tools(agent, cfg)

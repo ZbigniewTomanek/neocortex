@@ -52,7 +52,7 @@ CACHE_DIR = ROOT / ".tmp/qwen-swift/cache"
 VALIDATION_DIR = ROOT / ".tmp/qwen-swift/validation"
 EPISODE_KEYS: dict[str, int] = {f"E{number:02d}": number for number in (2, 4, 5, 10, 18, 20, 26, 27)}
 THINKING: dict[str, ThinkingLevel] = {"off": False, "minimal": "minimal", "low": "low", "medium": "medium"}
-PROFILES = ("hosted", "qwen_legacy", "qwen_finite", "qwen_bounded")
+PROFILES = ("hosted", "qwen_legacy", "qwen_finite", "qwen_bounded", "qwen_oneshot")
 AGENTS = ("ontology", "extractor", "librarian")
 # ``stage`` on pipeline events carries the ``_agent`` suffix; ``agent`` on agent
 # lifecycle and usage events does not.  Both map to one probe stage name.
@@ -209,6 +209,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--episodes", nargs="+", choices=tuple(EPISODE_KEYS), default=["E04", "E05"])
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--thinking", choices=tuple(THINKING), default="low")
+    parser.add_argument(
+        "--cache-thinking",
+        choices=tuple(THINKING),
+        default=None,
+        help="read/write the extraction cache under this thinking level instead of --thinking, "
+        "so a librarian-only run can reuse an extraction produced at another level",
+    )
     parser.add_argument("--episode-timeout", type=float, default=900.0)
     parser.add_argument("--repo", choices=("fresh", "shared"), default="fresh")
     parser.add_argument("--stage", choices=("all", "librarian"), default="all")
@@ -268,7 +275,13 @@ async def run_episode(
     episode_id = await repo.store_episode(
         AGENT_ID, text, importance=float(str(record["importance"])), metadata={"importance_hint": record["importance"]}
     )
-    key = cache_key(episode, args.model, THINKING[args.thinking], corpus_sha256, test_model=args.test_model)
+    key = cache_key(
+        episode,
+        args.model,
+        THINKING[args.cache_thinking or args.thinking],
+        corpus_sha256,
+        test_model=args.test_model,
+    )
     collector.reset()
 
     precomputed: dict[int, ExtractionResult] | None = None
@@ -397,6 +410,7 @@ async def main(argv: list[str] | None = None) -> int:
     run_meta: dict[str, Any] = {
         "model": "test-model" if args.test_model else args.model,
         "thinking": args.thinking,
+        "cache_thinking": args.cache_thinking or args.thinking,
         "corpus_sha256": corpus_sha256,
         "episodes": list(args.episodes),
         "repo_mode": args.repo,

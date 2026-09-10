@@ -313,6 +313,39 @@ class LibrarianTerminal(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class OneshotCandidate(BaseModel):
+    """One existing node offered to the one-shot librarian for one entity."""
+
+    node_id: int
+    name: str = Field(max_length=256)
+    content: str = Field(default="", max_length=400)
+    properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=8)
+
+
+class OneshotItem(BaseModel):
+    """One extracted entity that has at least one host-resolved candidate."""
+
+    index: int = Field(ge=0)
+    name: str = Field(max_length=256)
+    type_name: str = Field(max_length=60)
+    description: str | None = None
+    properties: dict = Field(default_factory=dict)
+    candidates: list[OneshotCandidate] = Field(default_factory=list, max_length=3)
+
+
+class OneshotDecision(BaseModel):
+    """The model's decision for one entity index. Only `merge` needs content."""
+
+    index: int = Field(ge=0)
+    decision: Literal["merge", "create", "unchanged"]
+    node_id: int | None = None
+    content: str | None = Field(default=None, max_length=1200)
+
+
+class OneshotDecisions(BaseModel):
+    decisions: list[OneshotDecision] = Field(default_factory=list)
+
+
 class CurationReport(BaseModel):
     status: Literal["completed", "completed_with_unresolved", "failed"]
     entities_created: int

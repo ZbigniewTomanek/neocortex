@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import os
 import time
 from dataclasses import dataclass
 from math import ceil
@@ -30,12 +29,19 @@ from neocortex.extraction.agents import (
     LibrarianProfile,
     LibrarianTrajectoryTracker,
     OntologyAgentDeps,
+    build_audit_fields,
     build_extractor_agent,
     build_librarian_agent,
     build_librarian_relation_items,
     build_ontology_agent,
 )
-from neocortex.extraction.schemas import CurationSummary, ExtractionResult, LibrarianPayload
+from neocortex.extraction.oneshot_librarian import ONESHOT_REQUEST_LIMIT, run_oneshot_librarian
+from neocortex.extraction.schemas import (
+    CurationReport,
+    CurationSummary,
+    ExtractionResult,
+    LibrarianPayload,
+)
 from neocortex.extraction.type_consolidation import archive_unused_types
 from neocortex.jobs.correlation import normalize_extraction_correlation_id
 from neocortex.model_factory import is_local_model, is_qwen_model
@@ -179,27 +185,12 @@ def _audit_fields(
     correlation_id: str,
     episode_id: int | None = None,
 ) -> dict[str, object]:
-    """Return common non-secret fields for pipeline audit events."""
-    endpoint = "hosted"
-    if config.local_endpoint is not None and config.local_endpoint.base_url:
-        from urllib.parse import urlsplit, urlunsplit
+    """Return common non-secret fields for pipeline audit events.
 
-        parsed = urlsplit(config.local_endpoint.base_url)
-        host = parsed.hostname or ""
-        if parsed.port is not None:
-            host = f"{host}:{parsed.port}"
-        endpoint = urlunsplit((parsed.scheme, host, parsed.path.rstrip("/"), "", ""))
-    return {
-        "stage": stage,
-        "agent": stage.removesuffix("_agent"),
-        "agent_id": agent_id,
-        "episode_id": episode_id,
-        "correlation_id": correlation_id,
-        "model": config.model_name.removeprefix("local:"),
-        "endpoint": endpoint,
-        "effort": config.thinking_effort,
-        "run_id": os.environ.get("NEOCORTEX_BAKEOFF_RUN_ID") or "unavailable",
-    }
+    Shared with ``extraction.oneshot_librarian`` through ``build_audit_fields``
+    so every librarian profile emits identical audit dimensions.
+    """
+    return build_audit_fields(stage, config, agent_id, correlation_id, episode_id)
 
 
 async def run_extraction(
@@ -261,7 +252,7 @@ async def run_extraction(
     lib_cfg = librarian_config or AgentInferenceConfig()
     budget = librarian_budget or LibrarianBudgetConfig()
     selected_profile: LibrarianProfile = librarian_profile or (
-        "qwen_bounded" if librarian_use_tools and is_qwen_model(lib_cfg.model_name) else "hosted"
+        "qwen_oneshot" if librarian_use_tools and is_qwen_model(lib_cfg.model_name) else "hosted"
     )
 
     correlation_id = normalize_extraction_correlation_id(correlation_id)
@@ -275,7 +266,7 @@ async def run_extraction(
         "use_tools": librarian_use_tools,
         "retries": librarian_retry_limit,
     }
-    if librarian_profile is not None or selected_profile == "qwen_bounded":
+    if librarian_profile is not None or selected_profile in {"qwen_bounded", "qwen_oneshot"}:
         librarian_build_kwargs["profile"] = selected_profile
     librarian_agent = build_librarian_agent(lib_cfg, **librarian_build_kwargs)
     librarian_request_limit = _librarian_request_limit(tool_calls_limit, librarian_retry_limit)
@@ -497,7 +488,9 @@ async def run_extraction(
             # Pre-compute embeddings for extracted entity descriptions (single batch call)
             t0 = time.monotonic()
             precomputed_embeddings: dict[str, list[float]] = {}
-            if embeddings:
+            # qwen_oneshot embeds the contents it is about to write instead, so
+            # pre-embedding extractor descriptions here would be a wasted call.
+            if embeddings and selected_profile != "qwen_oneshot":
                 descriptions = [e.description for e in extraction_result.output.entities if e.description]
                 if descriptions:
                     batch_results = await embeddings.embed_batch(descriptions)
@@ -532,7 +525,11 @@ async def run_extraction(
                 )
             else:
                 action_tracker = CurationActionTracker()
-                librarian_request_limit = _librarian_request_limit(tool_calls_limit, librarian_retry_limit)
+                librarian_request_limit = (
+                    ONESHOT_REQUEST_LIMIT
+                    if selected_profile == "qwen_oneshot"
+                    else _librarian_request_limit(tool_calls_limit, librarian_retry_limit)
+                )
             librarian_settings = _librarian_model_settings(lib_cfg)
             logger.bind(action_log=True).info(
                 "librarian_progress",
@@ -547,30 +544,48 @@ async def run_extraction(
                     librarian_settings.get("parallel_tool_calls") if librarian_settings is not None else None
                 ),
             )
+            oneshot_report: CurationReport | None = None
+            librarian_result: Any = None
             try:
-                librarian_result = await librarian_agent.run(
-                    "Integrate the extracted entities and relations into the knowledge graph.",
-                    deps=LibrarianAgentDeps(
-                        episode_text=text,
-                        node_types=[t.name for t in node_types],
-                        edge_types=[t.name for t in edge_types],
-                        extracted_entities=extraction_result.output.entities,
-                        extracted_relations=relation_items,
+                if selected_profile == "qwen_oneshot":
+                    # Host-resolved and tool-free: at most one model request per
+                    # episode, and none when no entity resolved to a candidate.
+                    oneshot_report = await run_oneshot_librarian(
                         repo=repo,
                         embeddings=embeddings,
                         agent_id=agent_id,
                         target_schema=target_schema,
                         episode_id=episode_id,
                         correlation_id=correlation_id,
-                        precomputed_embeddings=precomputed_embeddings,
-                        action_tracker=action_tracker,
-                    ),
-                    model_settings=librarian_settings,
-                    usage_limits=UsageLimits(
-                        request_limit=librarian_request_limit,
-                        tool_calls_limit=tool_calls_limit,
-                    ),
-                )
+                        extraction=extraction_result.output,
+                        agent=librarian_agent,
+                        cfg=lib_cfg,
+                        tracker=action_tracker,
+                    )
+                else:
+                    librarian_result = await librarian_agent.run(
+                        "Integrate the extracted entities and relations into the knowledge graph.",
+                        deps=LibrarianAgentDeps(
+                            episode_text=text,
+                            node_types=[t.name for t in node_types],
+                            edge_types=[t.name for t in edge_types],
+                            extracted_entities=extraction_result.output.entities,
+                            extracted_relations=relation_items,
+                            repo=repo,
+                            embeddings=embeddings,
+                            agent_id=agent_id,
+                            target_schema=target_schema,
+                            episode_id=episode_id,
+                            correlation_id=correlation_id,
+                            precomputed_embeddings=precomputed_embeddings,
+                            action_tracker=action_tracker,
+                        ),
+                        model_settings=librarian_settings,
+                        usage_limits=UsageLimits(
+                            request_limit=librarian_request_limit,
+                            tool_calls_limit=tool_calls_limit,
+                        ),
+                    )
             except Exception as exc:
                 # A failed tool-driven attempt may have mutated the graph
                 # before PydanticAI rejected a later batch.  Keep the job
@@ -622,14 +637,20 @@ async def run_extraction(
                     )
                 raise
 
-            _audit_usage("librarian_agent", librarian_result, lib_cfg, agent_id, correlation_id, episode_id)
+            if librarian_result is not None:
+                # run_oneshot_librarian logs its own usage: it owns the model call.
+                _audit_usage("librarian_agent", librarian_result, lib_cfg, agent_id, correlation_id, episode_id)
             logger.bind(action_log=True).info(
                 "stage_timing",
                 **_audit_fields("librarian_agent", lib_cfg, agent_id, correlation_id, episode_id),
                 elapsed_s=round(time.monotonic() - t0, 2),
             )
 
-            report = action_tracker.build_report() if isinstance(action_tracker, LibrarianTrajectoryTracker) else None
+            report = (
+                oneshot_report
+                if oneshot_report is not None
+                else (action_tracker.build_report() if isinstance(action_tracker, LibrarianTrajectoryTracker) else None)
+            )
 
             # Mark episode as consolidated only after bounded terminal validation.
             await repo.mark_episode_consolidated(agent_id, episode_id, target_schema=read_schema)
@@ -637,8 +658,8 @@ async def run_extraction(
                 await repo.link_personal_episode_to_session_predecessor(agent_id, episode_id)
 
             # Log the curation summary
-            summary = librarian_result.output
-            if selected_profile != "qwen_bounded":
+            summary = librarian_result.output if librarian_result is not None else None
+            if selected_profile not in {"qwen_bounded", "qwen_oneshot"}:
                 assert isinstance(summary, CurationSummary)
             logger.bind(action_log=True).info(
                 "curation_complete",
@@ -659,7 +680,11 @@ async def run_extraction(
                 ),
                 model_summary_actions=(len(summary.actions) if isinstance(summary, CurationSummary) else 0),
             )
-            if isinstance(action_tracker, LibrarianTrajectoryTracker) and report is not None:
+            if (
+                librarian_result is not None
+                and isinstance(action_tracker, LibrarianTrajectoryTracker)
+                and report is not None
+            ):
                 usage = librarian_result.usage()
                 logger.bind(action_log=True).info(
                     "librarian_trajectory",
