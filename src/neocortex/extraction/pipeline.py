@@ -10,6 +10,7 @@ import asyncio
 import inspect
 import os
 import time
+from math import ceil
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
@@ -24,15 +25,19 @@ from neocortex.extraction.agents import (
     CurationActionTracker,
     ExtractorAgentDeps,
     LibrarianAgentDeps,
+    LibrarianBudgetConfig,
+    LibrarianProfile,
+    LibrarianTrajectoryTracker,
     OntologyAgentDeps,
     build_extractor_agent,
     build_librarian_agent,
+    build_librarian_relation_items,
     build_ontology_agent,
 )
 from neocortex.extraction.schemas import CurationSummary, LibrarianPayload
 from neocortex.extraction.type_consolidation import archive_unused_types
 from neocortex.jobs.correlation import normalize_extraction_correlation_id
-from neocortex.model_factory import is_local_model
+from neocortex.model_factory import is_local_model, is_qwen_model
 from neocortex.schemas.memory import TypeInfo
 
 if TYPE_CHECKING:
@@ -73,6 +78,30 @@ def _librarian_request_limit(tool_calls_limit: int, retry_limit: int) -> int:
     budgeting on the same named value prevents the two settings from drifting.
     """
     return tool_calls_limit + 1 + retry_limit
+
+
+def _bounded_provider_minimum(entity_count: int, detail_count: int, relation_count: int) -> int:
+    return (
+        ceil(entity_count / 16)
+        + ceil(detail_count / 8)
+        + ceil(entity_count / 8)
+        + ceil(relation_count / 16)
+        + ceil(relation_count / 8)
+    )
+
+
+def _bounded_librarian_request_limit(
+    tool_calls_limit: int,
+    retry_limit: int,
+    entity_count: int,
+    relation_count: int,
+    budget: LibrarianBudgetConfig,
+) -> int:
+    pessimistic_minimum = _bounded_provider_minimum(entity_count, entity_count, relation_count)
+    return min(
+        _librarian_request_limit(tool_calls_limit, retry_limit),
+        1 + pessimistic_minimum + budget.hard_no_progress_calls + retry_limit,
+    )
 
 
 def _librarian_model_settings(config: AgentInferenceConfig) -> ModelSettings | None:
@@ -177,6 +206,8 @@ async def run_extraction(
     ontology_tool_calls_limit: int = 30,
     ontology_max_new_types: int = 3,
     archive_interval: int = 10,
+    librarian_budget: LibrarianBudgetConfig | None = None,
+    librarian_profile: LibrarianProfile | None = None,
 ) -> None:
     """Process episodes through the 3-agent pipeline and persist results.
 
@@ -204,6 +235,10 @@ async def run_extraction(
     ont_cfg = ontology_config or AgentInferenceConfig()
     ext_cfg = extractor_config or AgentInferenceConfig()
     lib_cfg = librarian_config or AgentInferenceConfig()
+    budget = librarian_budget or LibrarianBudgetConfig()
+    selected_profile: LibrarianProfile = librarian_profile or (
+        "qwen_bounded" if librarian_use_tools and is_qwen_model(lib_cfg.model_name) else "hosted"
+    )
 
     correlation_id = normalize_extraction_correlation_id(correlation_id)
 
@@ -212,11 +247,13 @@ async def run_extraction(
     ontology_agent = build_ontology_agent(ont_cfg)
     extractor_agent = build_extractor_agent(ext_cfg)
     librarian_retry_limit = DEFAULT_LIBRARIAN_RETRIES
-    librarian_agent = build_librarian_agent(
-        lib_cfg,
-        use_tools=librarian_use_tools,
-        retries=librarian_retry_limit,
-    )
+    librarian_build_kwargs: dict[str, Any] = {
+        "use_tools": librarian_use_tools,
+        "retries": librarian_retry_limit,
+    }
+    if librarian_profile is not None or selected_profile == "qwen_bounded":
+        librarian_build_kwargs["profile"] = selected_profile
+    librarian_agent = build_librarian_agent(lib_cfg, **librarian_build_kwargs)
     librarian_request_limit = _librarian_request_limit(tool_calls_limit, librarian_retry_limit)
 
     # Set to keep fire-and-forget task references alive (prevents GC + satisfies RUF006)
@@ -436,7 +473,28 @@ async def run_extraction(
             )
 
             t0 = time.monotonic()
-            action_tracker = CurationActionTracker()
+            relation_items = (
+                build_librarian_relation_items(extraction_result.output.entities, extraction_result.output.relations)
+                if selected_profile == "qwen_bounded"
+                else extraction_result.output.relations
+            )
+            action_tracker: CurationActionTracker | LibrarianTrajectoryTracker
+            if selected_profile == "qwen_bounded":
+                action_tracker = LibrarianTrajectoryTracker(
+                    entities=extraction_result.output.entities,
+                    relations=relation_items,
+                    budget=budget,
+                )
+                librarian_request_limit = _bounded_librarian_request_limit(
+                    tool_calls_limit,
+                    librarian_retry_limit,
+                    len(extraction_result.output.entities),
+                    len(relation_items),
+                    budget,
+                )
+            else:
+                action_tracker = CurationActionTracker()
+                librarian_request_limit = _librarian_request_limit(tool_calls_limit, librarian_retry_limit)
             librarian_settings = _librarian_model_settings(lib_cfg)
             logger.bind(action_log=True).info(
                 "librarian_progress",
@@ -459,7 +517,7 @@ async def run_extraction(
                         node_types=[t.name for t in node_types],
                         edge_types=[t.name for t in edge_types],
                         extracted_entities=extraction_result.output.entities,
-                        extracted_relations=extraction_result.output.relations,
+                        extracted_relations=relation_items,
                         repo=repo,
                         embeddings=embeddings,
                         agent_id=agent_id,
@@ -505,6 +563,25 @@ async def run_extraction(
                     error_type=type(exc).__name__,
                     graph_cleanliness="NOT_MEASURED",
                 )
+                if isinstance(action_tracker, LibrarianTrajectoryTracker):
+                    logger.bind(action_log=True).warning(
+                        "librarian_trajectory",
+                        **_audit_fields("librarian_agent", lib_cfg, agent_id, correlation_id, episode_id),
+                        profile=selected_profile,
+                        expected_entities=len(action_tracker.entities),
+                        expected_relations=len(action_tracker.relations),
+                        requests="NOT_MEASURED",
+                        provider_tool_calls=action_tracker.provider_batch_calls,
+                        reads=action_tracker.repository_item_reads,
+                        mutations_attempted=action_tracker.mutations_attempted,
+                        mutations_succeeded=action_tracker.mutations_succeeded,
+                        duplicates=action_tracker.duplicate_calls,
+                        validation_rejections=action_tracker.validation_rejections,
+                        max_read_streak=action_tracker.max_read_streak,
+                        soft_reasons=sorted(action_tracker.soft_reasons),
+                        hard_reason=action_tracker.hard_reason,
+                        result_source="host_tracker",
+                    )
                 raise
 
             _audit_usage("librarian_agent", librarian_result, lib_cfg, agent_id, correlation_id, episode_id)
@@ -514,14 +591,17 @@ async def run_extraction(
                 elapsed_s=round(time.monotonic() - t0, 2),
             )
 
-            # Mark episode as consolidated
+            report = action_tracker.build_report() if isinstance(action_tracker, LibrarianTrajectoryTracker) else None
+
+            # Mark episode as consolidated only after bounded terminal validation.
             await repo.mark_episode_consolidated(agent_id, episode_id, target_schema=read_schema)
             if target_schema is None and read_schema is None:
                 await repo.link_personal_episode_to_session_predecessor(agent_id, episode_id)
 
             # Log the curation summary
             summary = librarian_result.output
-            assert isinstance(summary, CurationSummary)
+            if selected_profile != "qwen_bounded":
+                assert isinstance(summary, CurationSummary)
             logger.bind(action_log=True).info(
                 "curation_complete",
                 **_audit_fields("librarian_agent", lib_cfg, agent_id, correlation_id, episode_id),
@@ -539,8 +619,29 @@ async def run_extraction(
                         action_tracker.edges_removed,
                     )
                 ),
-                model_summary_actions=len(summary.actions),
+                model_summary_actions=(len(summary.actions) if isinstance(summary, CurationSummary) else 0),
             )
+            if isinstance(action_tracker, LibrarianTrajectoryTracker) and report is not None:
+                usage = librarian_result.usage()
+                logger.bind(action_log=True).info(
+                    "librarian_trajectory",
+                    **_audit_fields("librarian_agent", lib_cfg, agent_id, correlation_id, episode_id),
+                    profile=selected_profile,
+                    expected_entities=len(action_tracker.entities),
+                    expected_relations=len(action_tracker.relations),
+                    terminal_counts=report.model_dump(exclude={"result_source", "status"}),
+                    requests=int(getattr(usage, "requests", 0)),
+                    provider_tool_calls=int(getattr(usage, "tool_calls", 0)),
+                    reads=action_tracker.repository_item_reads,
+                    mutations_attempted=action_tracker.mutations_attempted,
+                    mutations_succeeded=action_tracker.mutations_succeeded,
+                    duplicates=action_tracker.duplicate_calls,
+                    validation_rejections=action_tracker.validation_rejections,
+                    max_read_streak=action_tracker.max_read_streak,
+                    soft_reasons=sorted(action_tracker.soft_reasons),
+                    hard_reason=action_tracker.hard_reason,
+                    result_source="host_tracker",
+                )
 
             # Clean up empty types (fire-and-forget — non-blocking)
             task = asyncio.create_task(_cleanup_bg())

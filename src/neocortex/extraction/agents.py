@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from hashlib import sha256
+from math import ceil
 from time import monotonic
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -21,19 +22,34 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.settings import ModelSettings, ThinkingLevel
 
-from neocortex.model_factory import LocalEndpoint, build_model, build_model_settings
+from neocortex.model_factory import LocalEndpoint, build_model, build_model_settings, is_qwen_model
 
 if TYPE_CHECKING:
     from neocortex.db.protocol import MemoryRepository
     from neocortex.embedding_service import EmbeddingService
 
 from neocortex.extraction.schemas import (
+    CurationReport,
     CurationSummary,
+    DecisionOutcomeBatch,
+    EntityCandidate,
+    EntityDecision,
+    EntityDetail,
+    EntityDetailBatch,
+    EntityDetailRequest,
+    EntityResolution,
+    EntityResolutionBatch,
     ExtractedEntity,
     ExtractedRelation,
     ExtractionResult,
     LibrarianPayload,
+    LibrarianTerminal,
     OntologyProposal,
+    RelationCheck,
+    RelationCheckBatch,
+    RelationDecision,
+    TemporalPredecessorCandidate,
+    ToolOutcome,
 )
 
 # Plan 33 introduces an opt-in local: model route; Stage 9 changes defaults after the gate.
@@ -61,6 +77,11 @@ _AUDIT_TOOL_NAMES = frozenset(
         "propose_type",
         "remove_edge",
         "search_existing_nodes",
+        "resolve_entities",
+        "read_entity_details",
+        "apply_entity_decisions",
+        "check_relations",
+        "apply_relation_decisions",
     }
 )
 
@@ -111,6 +132,204 @@ class CurationActionTracker:
     def record_edge_removal(self, removed: bool) -> None:
         if removed:
             self.edges_removed += 1
+
+
+@dataclass(frozen=True)
+class LibrarianBudgetConfig:
+    entity_read_limit: int = 2
+    relation_read_limit: int = 1
+    soft_read_streak: int = 6
+    hard_read_streak: int = 10
+    soft_no_progress_calls: int = 8
+    hard_no_progress_calls: int = 14
+    max_duplicate_calls: int = 2
+
+    def __post_init__(self) -> None:
+        if any(value < 1 for value in self.__dict__.values()):
+            raise ValueError("librarian budget values must all be at least one")
+
+
+class LibrarianTrajectoryLimitExceeded(RuntimeError):  # noqa: N818 - frozen public contract
+    """A bounded librarian exceeded a host-enforced trajectory budget."""
+
+
+class LibrarianIncompleteError(RuntimeError):
+    """The model declared completion while indexed work remained pending."""
+
+
+class LibrarianIdentityMismatch(RuntimeError):  # noqa: N818 - frozen public contract
+    """An update did not preserve the resolver-bound repository identity."""
+
+
+LibrarianProfile = Literal["hosted", "qwen_legacy", "qwen_finite", "qwen_bounded"]
+
+
+@dataclass
+class LibrarianTrajectoryTracker(CurationActionTracker):
+    """Host authority for bounded librarian work, progress, and budgets."""
+
+    entities: list[ExtractedEntity] = field(default_factory=list)
+    relations: list[ExtractedRelation] = field(default_factory=list)
+    budget: LibrarianBudgetConfig = field(default_factory=LibrarianBudgetConfig)
+    entity_states: dict[int, str] = field(init=False)
+    relation_states: dict[int, str] = field(init=False)
+    entity_candidates: dict[int, dict[int, Any]] = field(default_factory=dict)
+    selected_nodes: dict[int, int] = field(default_factory=dict)
+    bound_node_ids: dict[int, int] = field(default_factory=dict)
+    detailed_entities: set[int] = field(default_factory=set)
+    truncated_entities: set[int] = field(default_factory=set)
+    resolved_entities: set[int] = field(default_factory=set)
+    entity_resolution_reason: dict[int, str] = field(default_factory=dict)
+    temporal_predecessors: dict[int, int] = field(default_factory=dict)
+    checked_edges: dict[int, set[int]] = field(default_factory=dict)
+    entity_reads: dict[int, int] = field(default_factory=dict)
+    relation_reads: dict[int, int] = field(default_factory=dict)
+    provider_batch_calls: int = 0
+    repository_item_reads: int = 0
+    mutations_attempted: int = 0
+    mutations_succeeded: int = 0
+    duplicate_calls: int = 0
+    validation_rejections: int = 0
+    read_streak: int = 0
+    max_read_streak: int = 0
+    calls_since_progress: int = 0
+    soft_reasons: set[str] = field(default_factory=set)
+    hard_reason: str | None = None
+    seen_item_calls: set[tuple[str, int]] = field(default_factory=set)
+    successful_node_ids: set[int] = field(default_factory=set)
+    successful_edge_ids: set[int] = field(default_factory=set)
+    successful_edge_signatures: dict[int, tuple[int, int, int]] = field(default_factory=dict)
+    removed_edge_ids: set[int] = field(default_factory=set)
+
+    def __post_init__(self) -> None:
+        self.entity_states = {index: "pending" for index in range(len(self.entities))}
+        self.relation_states = {index: "pending" for index in range(len(self.relations))}
+
+    @staticmethod
+    def validate_indices(indices: list[int], count: int, limit: int) -> None:
+        if not indices or len(indices) > limit or indices != sorted(set(indices)) or indices[0] < 0:
+            raise ValueError("indices must be non-empty, unique, ascending, and within the batch limit")
+        if indices[-1] >= count:
+            raise ValueError("item index out of range")
+
+    def _record_duplicate(self) -> None:
+        self.duplicate_calls += 1
+        if self.duplicate_calls > self.budget.max_duplicate_calls:
+            self.hard_reason = "duplicate_calls"
+            raise LibrarianTrajectoryLimitExceeded(self.hard_reason)
+
+    def begin_call(self, tool: str, indices: list[int], *, read: bool) -> set[int]:
+        if self.hard_reason:
+            raise LibrarianTrajectoryLimitExceeded(self.hard_reason)
+        if self.calls_since_progress >= self.budget.hard_no_progress_calls:
+            self.hard_reason = "no_progress"
+            raise LibrarianTrajectoryLimitExceeded(self.hard_reason)
+        if read and self.read_streak >= self.budget.hard_read_streak:
+            self.hard_reason = "read_streak"
+            raise LibrarianTrajectoryLimitExceeded(self.hard_reason)
+        pessimistic_minimum = (
+            ceil(len(self.entities) / 16)
+            + ceil(len(self.entities) / 8)
+            + ceil(len(self.entities) / 8)
+            + ceil(len(self.relations) / 16)
+            + ceil(len(self.relations) / 8)
+        )
+        if self.provider_batch_calls >= pessimistic_minimum + self.budget.hard_no_progress_calls:
+            self.hard_reason = "provider_call_limit"
+            raise LibrarianTrajectoryLimitExceeded(self.hard_reason)
+        self.provider_batch_calls += 1
+        self.calls_since_progress += 1
+        if read:
+            self.read_streak += 1
+            self.max_read_streak = max(self.max_read_streak, self.read_streak)
+            if self.read_streak >= self.budget.soft_read_streak:
+                self.soft_reasons.add("read_streak")
+        else:
+            self.read_streak = 0
+        if self.calls_since_progress >= self.budget.soft_no_progress_calls:
+            self.soft_reasons.add("no_progress")
+        if self.provider_batch_calls >= pessimistic_minimum + 4:
+            self.soft_reasons.add("provider_call_limit")
+        duplicates: set[int] = set()
+        for index in indices:
+            key = (tool, index)
+            if key in self.seen_item_calls:
+                self._record_duplicate()
+                duplicates.add(index)
+            else:
+                self.seen_item_calls.add(key)
+        return duplicates
+
+    def record_progress(self) -> None:
+        self.calls_since_progress = 0
+
+    def consume_entity_read(self, index: int) -> None:
+        count = self.entity_reads.get(index, 0)
+        if count >= self.budget.entity_read_limit:
+            self.hard_reason = "entity_read_limit"
+            raise LibrarianTrajectoryLimitExceeded(self.hard_reason)
+        self.entity_reads[index] = count + 1
+        self.repository_item_reads += 1
+
+    def consume_relation_read(self, index: int) -> None:
+        count = self.relation_reads.get(index, 0)
+        if count >= self.budget.relation_read_limit:
+            self.hard_reason = "relation_read_limit"
+            raise LibrarianTrajectoryLimitExceeded(self.hard_reason)
+        self.relation_reads[index] = count + 1
+        self.repository_item_reads += 1
+
+    def build_report(self) -> CurationReport:
+        pending_entities = sum(state == "pending" for state in self.entity_states.values())
+        pending_relations = sum(state == "pending" for state in self.relation_states.values())
+        if pending_entities or pending_relations:
+            raise LibrarianIncompleteError(
+                f"librarian finished with {pending_entities} entities and {pending_relations} relations pending"
+            )
+        entity_unresolved = sum(state == "unresolved" for state in self.entity_states.values())
+        relation_unresolved = sum(state == "unresolved" for state in self.relation_states.values())
+        status = "completed_with_unresolved" if entity_unresolved or relation_unresolved else "completed"
+        return CurationReport(
+            status=status,
+            entities_created=sum(state == "created" for state in self.entity_states.values()),
+            entities_updated=sum(state == "updated" for state in self.entity_states.values()),
+            entities_unchanged=sum(state == "unchanged" for state in self.entity_states.values()),
+            entities_unresolved=entity_unresolved,
+            entities_archived=self.entities_archived,
+            edges_created=sum(state == "created" for state in self.relation_states.values()),
+            edges_unchanged=sum(state == "unchanged" for state in self.relation_states.values()),
+            edges_unresolved=relation_unresolved,
+            edges_removed=self.edges_removed,
+            pending_entities=0,
+            pending_relations=0,
+        )
+
+    @property
+    def all_entities_terminal(self) -> bool:
+        return all(state != "pending" for state in self.entity_states.values())
+
+
+def build_librarian_relation_items(
+    entities: list[ExtractedEntity], relations: list[ExtractedRelation]
+) -> list[ExtractedRelation]:
+    """Append missing explicit temporal relations in stable entity order."""
+    result = list(relations)
+    existing = {(r.source_name, r.target_name, r.relation_type) for r in result}
+    for entity in entities:
+        if not entity.supersedes or not entity.temporal_signal:
+            continue
+        key = (entity.name, entity.supersedes, entity.temporal_signal)
+        if key not in existing:
+            result.append(
+                ExtractedRelation(
+                    source_name=entity.name,
+                    target_name=entity.supersedes,
+                    relation_type=entity.temporal_signal,
+                    properties={"synthetic_temporal": True},
+                )
+            )
+            existing.add(key)
+    return result
 
 
 @dataclass
@@ -296,6 +515,10 @@ def build_audit_hooks(agent_name: str, config: AgentInferenceConfig) -> Hooks:
         ctx: RunContext[Any], *, call: ToolCallPart, tool_def: Any, args: Any, error: Any
     ) -> Any:
         del tool_def, args
+        tracker = getattr(ctx.deps, "action_tracker", None)
+        if isinstance(tracker, LibrarianTrajectoryTracker):
+            tracker.validation_rejections += 1
+            tracker.calls_since_progress += 1
         logger.bind(action_log=True).warning(
             "tool_validation_rejected",
             **_audit_dimensions(ctx, agent_name, config),
@@ -696,14 +919,529 @@ class LibrarianAgentDeps:
     correlation_id: str | None = None
     known_node_names: list[str] | None = None  # Fallback dedup context (non-tool mode)
     precomputed_embeddings: dict[str, list[float]] = field(default_factory=dict)
-    action_tracker: CurationActionTracker | None = None
+    action_tracker: CurationActionTracker | LibrarianTrajectoryTracker | None = None
+
+
+def _trajectory_tracker(ctx: RunContext[LibrarianAgentDeps]) -> LibrarianTrajectoryTracker:
+    tracker = ctx.deps.action_tracker
+    if not isinstance(tracker, LibrarianTrajectoryTracker):
+        raise RuntimeError("qwen_bounded requires LibrarianTrajectoryTracker dependencies")
+    return tracker
+
+
+def _node_candidate(node: Any, type_name: str, score: float | None = None) -> EntityCandidate:
+    content = node.content or ""
+    return EntityCandidate(
+        node_id=node.id,
+        name=node.name,
+        type_name=type_name,
+        score=score,
+        content_digest=sha256(content.encode("utf-8")).hexdigest()[:16],
+        content_preview=content[:240] or None,
+    )
+
+
+def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -> None:
+    """Install the five non-overlapping Qwen batch tools."""
+
+    async def typed_resolution(
+        ctx: RunContext[LibrarianAgentDeps], name: str, expected_type: str
+    ) -> tuple[str, list[tuple[Any, float | None]]]:
+        types = await ctx.deps.repo.get_node_types(ctx.deps.agent_id, target_schema=ctx.deps.target_schema)
+        type_names = {item.id: item.name for item in types}
+
+        def filtered(nodes: list[Any]) -> list[tuple[Any, float | None]]:
+            return [
+                (node, None)
+                for node in nodes
+                if type_names.get(node.type_id, "").casefold() == expected_type.casefold()
+            ]
+
+        exact_all = [
+            node
+            for node in await ctx.deps.repo.find_nodes_by_name(
+                ctx.deps.agent_id, name, target_schema=ctx.deps.target_schema
+            )
+            if not node.forgotten
+        ]
+        exact = filtered(exact_all)
+        if exact_all:
+            if len(exact) == 1:
+                return "exact", exact
+            return ("ambiguous" if exact else "ambiguous_homonym"), exact
+
+        alias_all = [
+            node
+            for node in await ctx.deps.repo.resolve_alias(ctx.deps.agent_id, name, target_schema=ctx.deps.target_schema)
+            if not node.forgotten
+        ]
+        alias = filtered(alias_all)
+        if alias_all:
+            if len(alias) == 1:
+                return "alias", alias
+            return ("ambiguous" if alias else "ambiguous_homonym"), alias
+
+        fuzzy_all = await ctx.deps.repo.find_nodes_fuzzy(
+            ctx.deps.agent_id,
+            name,
+            threshold=0.3,
+            limit=3,
+            target_schema=ctx.deps.target_schema,
+            expected_type=expected_type,
+        )
+        fuzzy = [
+            (node, float(score))
+            for node, score in fuzzy_all
+            if type_names.get(node.type_id, "").casefold() == expected_type.casefold()
+        ]
+        fuzzy.sort(key=lambda item: (-item[1], item[0].id))
+        if fuzzy:
+            if len(fuzzy) == 1 or fuzzy[0][1] - fuzzy[1][1] >= 0.10:
+                return "fuzzy", fuzzy[:3]  # ty: ignore[invalid-return-type]
+            return "ambiguous", fuzzy[:3]  # ty: ignore[invalid-return-type]
+
+        if ctx.deps.embeddings:
+            embedding = await ctx.deps.embeddings.embed(name)
+            semantic_all = await ctx.deps.repo.search_nodes(
+                ctx.deps.agent_id,
+                name,
+                limit=3,
+                query_embedding=embedding,
+                target_schema=ctx.deps.target_schema,
+                expected_type=expected_type,
+            )
+            semantic = [
+                (node, float(score))
+                for node, score in semantic_all
+                if score > 0.5 and type_names.get(node.type_id, "").casefold() == expected_type.casefold()
+            ]
+            semantic.sort(key=lambda item: (-item[1], item[0].id))
+            if semantic:
+                if len(semantic) == 1 or semantic[0][1] - semantic[1][1] >= 0.10:
+                    return "semantic", semantic[:3]  # ty: ignore[invalid-return-type]
+                return "ambiguous", semantic[:3]  # ty: ignore[invalid-return-type]
+        return "none", []
+
+    @agent.tool
+    async def resolve_entities(ctx: RunContext[LibrarianAgentDeps], entity_indices: list[int]) -> EntityResolutionBatch:
+        """Resolve up to 16 unique ascending entity indices exactly once."""
+        tracker = _trajectory_tracker(ctx)
+        tracker.validate_indices(entity_indices, len(tracker.entities), 16)
+        duplicates = tracker.begin_call("resolve_entities", entity_indices, read=True)
+        items: list[EntityResolution] = []
+        for index in entity_indices:
+            if index in duplicates:
+                items.append(
+                    EntityResolution(
+                        status="noop",
+                        reason="duplicate_call",
+                        item_kind="entity",
+                        item_index=index,
+                        match="none",
+                        candidates=[],
+                        detail_required=False,
+                    )
+                )
+                continue
+            tracker.consume_entity_read(index)
+            entity = tracker.entities[index]
+            match, matches = await typed_resolution(ctx, entity.name, entity.type_name)
+            candidates = [_node_candidate(node, entity.type_name, score) for node, score in matches]
+            tracker.entity_candidates[index] = {node.id: node for node, _score in matches}
+            tracker.resolved_entities.add(index)
+            tracker.entity_resolution_reason[index] = match
+            if len(matches) == 1 and match not in {"ambiguous", "ambiguous_homonym"}:
+                tracker.selected_nodes[index] = matches[0][0].id
+            temporal: list[TemporalPredecessorCandidate] = []
+            if entity.supersedes:
+                predecessor_match, predecessors = await typed_resolution(ctx, entity.supersedes, entity.type_name)
+                if predecessor_match in {"exact", "alias"} and len(predecessors) == 1:
+                    predecessor = predecessors[0][0]
+                    tracker.temporal_predecessors[index] = predecessor.id
+                    temporal.append(TemporalPredecessorCandidate(node_id=predecessor.id, name=predecessor.name))
+            reason = (
+                "no_match"
+                if match == "none"
+                else (
+                    "ambiguous_homonym"
+                    if match == "ambiguous_homonym"
+                    else "ambiguous" if match == "ambiguous" else "resolved"
+                )
+            )
+            items.append(
+                EntityResolution(
+                    status="ok",
+                    reason=reason,
+                    item_kind="entity",
+                    item_index=index,
+                    match=(
+                        "ambiguous" if match in {"ambiguous", "ambiguous_homonym"} else match
+                    ),  # ty: ignore[invalid-argument-type]
+                    candidates=candidates,
+                    detail_required=len(matches) == 1,
+                    temporal_predecessor_candidates=temporal,
+                )
+            )
+        if len(duplicates) < len(entity_indices):
+            tracker.record_progress()
+        return EntityResolutionBatch(items=items, budget_warning=bool(tracker.soft_reasons))
+
+    @agent.tool
+    async def read_entity_details(
+        ctx: RunContext[LibrarianAgentDeps], requests: list[EntityDetailRequest]
+    ) -> EntityDetailBatch:
+        """Read bounded details for up to eight resolver-selected candidates."""
+        tracker = _trajectory_tracker(ctx)
+        indices = [item.entity_index for item in requests]
+        tracker.validate_indices(indices, len(tracker.entities), 8)
+        if len(tracker.resolved_entities) != len(tracker.entities):
+            raise ValueError("entity details are out of phase")
+        duplicates = tracker.begin_call("read_entity_details", indices, read=True)
+        items: list[EntityDetail] = []
+        for request in requests:
+            index, node_id = request.entity_index, request.node_id
+            if index in duplicates:
+                items.append(
+                    EntityDetail(
+                        status="noop",
+                        reason="duplicate_call",
+                        item_kind="entity",
+                        item_index=index,
+                        node_id=node_id,
+                        content="",
+                        truncated=False,
+                        importance=0.0,
+                        properties={},
+                        properties_truncated=False,
+                    )
+                )
+                continue
+            if node_id not in tracker.entity_candidates.get(index, {}) or tracker.selected_nodes.get(index) != node_id:
+                raise ValueError("detail node was not the resolver-selected candidate")
+            tracker.consume_entity_read(index)
+            node = tracker.entity_candidates[index][node_id]
+            content = node.content or ""
+            truncated = len(content) > 4000
+            scalar_props: dict[str, str | int | float | bool | None] = {}
+            omitted = False
+            for key, value in sorted((node.properties or {}).items(), key=lambda pair: str(pair[0])):
+                if key == "_source_episode" or isinstance(value, (dict, list, tuple, set)) or len(scalar_props) >= 16:
+                    omitted = True
+                    continue
+                safe_key = str(key)[:64]
+                safe_value = value[:256] if isinstance(value, str) else value
+                omitted = omitted or safe_key != str(key) or safe_value != value
+                scalar_props[safe_key] = safe_value
+            tracker.detailed_entities.add(index)
+            if truncated:
+                tracker.truncated_entities.add(index)
+            items.append(
+                EntityDetail(
+                    status="ok",
+                    reason="resolved",
+                    item_kind="entity",
+                    item_index=index,
+                    node_id=node_id,
+                    content=content[:4000],
+                    truncated=truncated,
+                    importance=node.importance,
+                    properties=scalar_props,
+                    properties_truncated=omitted,
+                )
+            )
+        if len(duplicates) < len(requests):
+            tracker.record_progress()
+        return EntityDetailBatch(items=items, budget_warning=bool(tracker.soft_reasons))
+
+    @agent.tool
+    async def apply_entity_decisions(
+        ctx: RunContext[LibrarianAgentDeps], decisions: list[EntityDecision]
+    ) -> DecisionOutcomeBatch:
+        """Apply up to eight terminal entity decisions in ascending order."""
+        from neocortex.normalization import canonicalize_name
+
+        tracker = _trajectory_tracker(ctx)
+        indices = [item.entity_index for item in decisions]
+        tracker.validate_indices(indices, len(tracker.entities), 8)
+        if len(tracker.resolved_entities) != len(tracker.entities):
+            raise ValueError("entity decisions are out of phase")
+        duplicates = tracker.begin_call("apply_entity_decisions", indices, read=False)
+        outcomes: list[ToolOutcome] = []
+        for decision in decisions:
+            index = decision.entity_index
+            if index in duplicates:
+                outcomes.append(
+                    ToolOutcome(status="noop", reason="duplicate_call", item_kind="entity", item_index=index)
+                )
+                continue
+            entity = tracker.entities[index]
+            selected = tracker.selected_nodes.get(index)
+            if decision.decision in {"update", "unchanged", "archive_then_create"}:
+                if decision.selected_node_id != selected or selected is None:
+                    raise ValueError("decision identity differs from the selected resolver candidate")
+                if index not in tracker.detailed_entities:
+                    raise ValueError("existing candidates must be inspected before a decision")
+            if decision.decision in {"create", "update", "archive_then_create"} and not decision.content:
+                raise ValueError("create and update decisions require content")
+            if decision.decision == "update" and index in tracker.truncated_entities:
+                raise ValueError("truncated details cannot be updated")
+            if (
+                decision.decision == "unresolved"
+                and tracker.entity_resolution_reason.get(index) not in {"ambiguous", "ambiguous_homonym"}
+                and index not in tracker.truncated_entities
+            ):
+                raise ValueError("unresolved requires ambiguity or truncated details")
+            if decision.decision == "archive_then_create" and not (entity.supersedes and entity.temporal_signal):
+                raise ValueError("archive_then_create requires explicit temporal evidence")
+
+            if decision.decision in {"unchanged", "unresolved"}:
+                if decision.decision == "unchanged" and selected is not None:
+                    tracker.bound_node_ids[index] = selected
+                tracker.entity_states[index] = decision.decision
+                outcomes.append(
+                    ToolOutcome(
+                        status="noop" if decision.decision == "unchanged" else "unresolved",
+                        reason="unchanged" if decision.decision == "unchanged" else "ambiguous",
+                        item_kind="entity",
+                        item_index=index,
+                    )
+                )
+                tracker.record_progress()
+                continue
+
+            tracker.mutations_attempted += 1
+            if decision.decision == "archive_then_create":
+                assert selected is not None
+                archived = await ctx.deps.repo.mark_forgotten(
+                    ctx.deps.agent_id, [selected], target_schema=ctx.deps.target_schema
+                )
+                tracker.record_archive(archived > 0)
+
+            canonical_name, aliases = canonicalize_name(entity.name)
+            canonical_name = canonical_name or entity.name
+            if decision.decision == "update":
+                assert selected is not None
+                candidate = tracker.entity_candidates[index][selected]
+                canonical_name = candidate.name
+                node_type_id = candidate.type_id
+            else:
+                node_type = await ctx.deps.repo.get_or_create_node_type(
+                    ctx.deps.agent_id, entity.type_name, target_schema=ctx.deps.target_schema
+                )
+                if node_type is None:
+                    raise ValueError("invalid extracted entity type")
+                node_type_id = node_type.id
+            props = dict(decision.properties or {})
+            if ctx.deps.episode_id is not None:
+                props["_source_episode"] = ctx.deps.episode_id
+            assert decision.content is not None
+            embedding = await ctx.deps.embeddings.embed(decision.content) if ctx.deps.embeddings else None
+            node = await ctx.deps.repo.upsert_node(
+                agent_id=ctx.deps.agent_id,
+                name=canonical_name,
+                type_id=node_type_id,
+                content=decision.content,
+                properties=props,
+                embedding=embedding,
+                target_schema=ctx.deps.target_schema,
+                importance=decision.importance if decision.importance is not None else entity.importance,
+            )
+            if decision.decision == "update" and node.id != selected:
+                raise LibrarianIdentityMismatch("repository returned a different node id for a bound update")
+            for alias in aliases:
+                await ctx.deps.repo.register_alias(
+                    ctx.deps.agent_id, node.id, alias, source="librarian", target_schema=ctx.deps.target_schema
+                )
+            state = "updated" if decision.decision == "update" else "created"
+            tracker.entity_states[index] = state
+            tracker.bound_node_ids[index] = node.id
+            tracker.successful_node_ids.add(node.id)
+            tracker.record_node(state)
+            tracker.mutations_succeeded += 1
+            tracker.record_progress()
+            outcomes.append(ToolOutcome(status="ok", reason=state, item_kind="entity", item_index=index))
+        return DecisionOutcomeBatch(items=outcomes, budget_warning=bool(tracker.soft_reasons))
+
+    def endpoint_id(tracker: LibrarianTrajectoryTracker, relation: ExtractedRelation, source: bool) -> int | None:
+        wanted = relation.source_name if source else relation.target_name
+        for index, entity in enumerate(tracker.entities):
+            if entity.name.casefold() == wanted.casefold():
+                return tracker.bound_node_ids.get(index)
+            if (
+                not source
+                and entity.name.casefold() == relation.source_name.casefold()
+                and entity.supersedes
+                and entity.supersedes.casefold() == wanted.casefold()
+            ):
+                return tracker.temporal_predecessors.get(index)
+        return None
+
+    @agent.tool
+    async def check_relations(ctx: RunContext[LibrarianAgentDeps], relation_indices: list[int]) -> RelationCheckBatch:
+        """Check up to 16 relations with one target-scoped BFS per source node."""
+        tracker = _trajectory_tracker(ctx)
+        tracker.validate_indices(relation_indices, len(tracker.relations), 16)
+        if not tracker.all_entities_terminal:
+            raise ValueError("relation checks are out of phase")
+        duplicates = tracker.begin_call("check_relations", relation_indices, read=True)
+        edge_types = await ctx.deps.repo.get_edge_types(ctx.deps.agent_id, target_schema=ctx.deps.target_schema)
+        edge_type_names = {item.id: item.name for item in edge_types}
+        cache: dict[int, list[dict]] = {}
+        items: list[RelationCheck] = []
+        for index in relation_indices:
+            if index in duplicates:
+                items.append(
+                    RelationCheck(
+                        status="noop",
+                        reason="duplicate_call",
+                        item_kind="relation",
+                        item_index=index,
+                        source_node_id=None,
+                        target_node_id=None,
+                        edges=[],
+                        truncated=False,
+                    )
+                )
+                continue
+            tracker.consume_relation_read(index)
+            relation = tracker.relations[index]
+            source_id, target_id = endpoint_id(tracker, relation, True), endpoint_id(tracker, relation, False)
+            if source_id is None or target_id is None:
+                tracker.checked_edges[index] = set()
+                items.append(
+                    RelationCheck(
+                        status="unresolved",
+                        reason="endpoint_missing",
+                        item_kind="relation",
+                        item_index=index,
+                        source_node_id=source_id,
+                        target_node_id=target_id,
+                        edges=[],
+                        truncated=False,
+                    )
+                )
+                continue
+            if source_id not in cache:
+                cache[source_id] = await ctx.deps.repo.get_node_neighborhood(
+                    ctx.deps.agent_id, source_id, depth=1, target_schema=ctx.deps.target_schema
+                )
+            edges = []
+            for entry in cache[source_id]:
+                for edge in entry["edges"]:
+                    if {edge.source_id, edge.target_id} == {source_id, target_id}:
+                        edges.append(
+                            {
+                                "edge_id": edge.id,
+                                "type": edge_type_names.get(edge.type_id, "Unknown"),
+                                "weight": edge.weight,
+                            }
+                        )
+            edges.sort(key=lambda item: int(item["edge_id"]))
+            tracker.checked_edges[index] = {int(item["edge_id"]) for item in edges}
+            items.append(
+                RelationCheck(
+                    status="ok",
+                    reason="resolved" if edges else "no_match",
+                    item_kind="relation",
+                    item_index=index,
+                    source_node_id=source_id,
+                    target_node_id=target_id,
+                    edges=edges[:5],
+                    truncated=len(edges) > 5,
+                )
+            )
+        if len(duplicates) < len(relation_indices):
+            tracker.record_progress()
+        return RelationCheckBatch(items=items, budget_warning=bool(tracker.soft_reasons))
+
+    @agent.tool
+    async def apply_relation_decisions(
+        ctx: RunContext[LibrarianAgentDeps], decisions: list[RelationDecision]
+    ) -> DecisionOutcomeBatch:
+        """Apply up to eight checked relation decisions in ascending order."""
+        tracker = _trajectory_tracker(ctx)
+        indices = [item.relation_index for item in decisions]
+        tracker.validate_indices(indices, len(tracker.relations), 8)
+        if any(index not in tracker.checked_edges for index in indices):
+            raise ValueError("relation decisions require a prior check")
+        duplicates = tracker.begin_call("apply_relation_decisions", indices, read=False)
+        outcomes: list[ToolOutcome] = []
+        for decision in decisions:
+            index = decision.relation_index
+            if index in duplicates:
+                outcomes.append(
+                    ToolOutcome(status="noop", reason="duplicate_call", item_kind="relation", item_index=index)
+                )
+                continue
+            relation = tracker.relations[index]
+            source_id, target_id = endpoint_id(tracker, relation, True), endpoint_id(tracker, relation, False)
+            checked = tracker.checked_edges[index]
+            if decision.decision == "existing_equivalent" and not checked:
+                raise ValueError("existing_equivalent requires a checked edge")
+            if decision.decision == "replace" and decision.replace_edge_id not in checked:
+                raise ValueError("replace edge was not returned for this relation")
+            if decision.decision == "unresolved" and source_id is not None and target_id is not None:
+                raise ValueError("unresolved requires a missing endpoint or ambiguity")
+            if decision.decision in {"existing_equivalent", "unresolved"}:
+                state = "unchanged" if decision.decision == "existing_equivalent" else "unresolved"
+                tracker.relation_states[index] = state
+                tracker.record_progress()
+                outcomes.append(
+                    ToolOutcome(
+                        status="noop" if state == "unchanged" else "unresolved",
+                        reason="existing_equivalent" if state == "unchanged" else "endpoint_missing",
+                        item_kind="relation",
+                        item_index=index,
+                    )
+                )
+                continue
+            if source_id is None or target_id is None:
+                raise ValueError("relation mutation endpoints are missing")
+            tracker.mutations_attempted += 1
+            if decision.decision == "replace":
+                assert decision.replace_edge_id is not None
+                removed = await ctx.deps.repo.delete_edge(
+                    ctx.deps.agent_id, decision.replace_edge_id, target_schema=ctx.deps.target_schema
+                )
+                tracker.record_edge_removal(removed)
+                if removed:
+                    tracker.removed_edge_ids.add(decision.replace_edge_id)
+            edge_type = await ctx.deps.repo.get_or_create_edge_type(
+                ctx.deps.agent_id, relation.relation_type, target_schema=ctx.deps.target_schema
+            )
+            if edge_type is None:
+                raise ValueError("invalid extracted relation type")
+            props = dict(relation.properties)
+            if ctx.deps.episode_id is not None:
+                props["_source_episode"] = ctx.deps.episode_id
+            edge = await ctx.deps.repo.upsert_edge(
+                ctx.deps.agent_id,
+                source_id,
+                target_id,
+                edge_type.id,
+                weight=relation.weight,
+                properties=props,
+                target_schema=ctx.deps.target_schema,
+            )
+            if edge is None:
+                raise RuntimeError("repository failed to upsert a relation")
+            tracker.relation_states[index] = "created"
+            tracker.successful_edge_ids.add(edge.id)
+            tracker.successful_edge_signatures[edge.id] = (edge.source_id, edge.target_id, edge.type_id)
+            tracker.record_edge_upsert()
+            tracker.mutations_succeeded += 1
+            tracker.record_progress()
+            outcomes.append(ToolOutcome(status="ok", reason="created", item_kind="relation", item_index=index))
+        return DecisionOutcomeBatch(items=outcomes, budget_warning=bool(tracker.soft_reasons))
 
 
 def build_librarian_agent(
     config: AgentInferenceConfig | None = None,
     use_tools: bool = True,
     retries: int = DEFAULT_LIBRARIAN_RETRIES,
-) -> Agent[LibrarianAgentDeps, CurationSummary] | Agent[LibrarianAgentDeps, LibrarianPayload]:
+    *,
+    profile: LibrarianProfile | None = None,
+) -> Agent[LibrarianAgentDeps, Any]:
     """Build the librarian agent.
 
     When use_tools=True (default), the agent gets mutation tools and returns
@@ -712,11 +1450,41 @@ def build_librarian_agent(
     """
     cfg = config or AgentInferenceConfig()
     model = _build_model(cfg)
+    selected_profile: LibrarianProfile = profile or ("qwen_bounded" if is_qwen_model(cfg.model_name) else "hosted")
+    if not use_tools:
+        selected_profile = "hosted"
 
-    output_type = CurationSummary if use_tools else LibrarianPayload
+    output_type = (
+        LibrarianTerminal
+        if use_tools and selected_profile == "qwen_bounded"
+        else (CurationSummary if use_tools else LibrarianPayload)
+    )
 
     system_prompt: tuple[str, ...]
-    if use_tools:
+    if use_tools and selected_profile in {"qwen_finite", "qwen_bounded"}:
+        finish_rule = (
+            'Return exactly {"status":"done"} only after every indexed item has a terminal decision.'
+            if selected_profile == "qwen_bounded"
+            else "Stop calling tools after all items are handled and return the CurationSummary."
+        )
+        system_prompt = (
+            "You curate extracted knowledge in three finite phases. Process stable indices in ascending order.",
+            "Entity phase: resolve each entity once; update only for added or corrected information, "
+            "otherwise keep it unchanged; create missing entities. A superseding entity stays distinct "
+            "and needs its temporal relation.",
+            "Relation phase starts only after every entity decision. Keep equivalent edges, replace "
+            "only provably stale edges, and create missing edges. Neighborhood exploration is unnecessary.",
+            "Comprehensive merges, quantitative changes, contradictions, temporal edges, valid types, "
+            "shared contributions, and deduplication remain mandatory.",
+            "Only explicit supersedes, temporal_signal, or source correction language justifies temporal work.",
+            (
+                "Batch resolver results are final for their indices. Never repeat an index or call a legacy read tool."
+                if selected_profile == "qwen_bounded"
+                else "Call find_similar_nodes and get_edges_between at most once for each input item."
+            ),
+            finish_rule,
+        )
+    elif use_tools:
         system_prompt = (
             "You are a knowledge graph curator. You receive extracted entities and relations "
             "from a text, and your job is to integrate them into the existing knowledge graph "
@@ -814,6 +1582,35 @@ def build_librarian_agent(
         system_prompt=system_prompt,
     )
 
+    if use_tools and selected_profile == "qwen_bounded":
+        _register_bounded_librarian_tools(agent, cfg)
+
+        @agent.instructions  # ty: ignore[no-matching-overload]
+        async def inject_bounded_context(ctx: RunContext[LibrarianAgentDeps]) -> str:
+            tracker = _trajectory_tracker(ctx)
+            entity_lines = [
+                f"{index}: type={entity.type_name}; description={entity.description or ''}; "
+                f"properties={entity.properties}; importance={entity.importance}; "
+                f"supersedes={entity.supersedes or ''}; temporal_signal={entity.temporal_signal or ''}"
+                for index, entity in enumerate(ctx.deps.extracted_entities)
+            ]
+            relation_lines = [
+                f"{index}: source={relation.source_name}; target={relation.target_name}; "
+                f"type={relation.relation_type}; weight={relation.weight}; properties={relation.properties}"
+                for index, relation in enumerate(tracker.relations)
+            ]
+            return "\n".join(
+                [
+                    "ENTITIES",
+                    *entity_lines,
+                    "RELATIONS",
+                    *relation_lines,
+                    f"HOST STATUS entities_terminal=0/{len(entity_lines)} relations_terminal=0/{len(relation_lines)}",
+                ]
+            )
+
+        return agent  # ty: ignore[invalid-return-type]
+
     # ── Read-only retrieval tools ──
 
     @agent.tool
@@ -841,6 +1638,7 @@ def build_librarian_agent(
             query,
             limit=limit,
             query_embedding=embedding,
+            target_schema=ctx.deps.target_schema,
         )
         types = await ctx.deps.repo.get_node_types(ctx.deps.agent_id, target_schema=ctx.deps.target_schema)
         type_names = {t.id: t.name for t in types}
@@ -975,6 +1773,7 @@ def build_librarian_agent(
                 name,
                 limit=limit,
                 query_embedding=embedding,
+                target_schema=ctx.deps.target_schema,
             )
             for node, score in semantic:
                 if score > 0.5:
@@ -1013,6 +1812,7 @@ def build_librarian_agent(
             agent_id=ctx.deps.agent_id,
             node_id=node_id,
             depth=min(depth, 2),
+            target_schema=ctx.deps.target_schema,
         )
         types = await ctx.deps.repo.get_node_types(ctx.deps.agent_id, target_schema=ctx.deps.target_schema)
         edge_types = await ctx.deps.repo.get_edge_types(ctx.deps.agent_id, target_schema=ctx.deps.target_schema)
@@ -1082,6 +1882,7 @@ def build_librarian_agent(
             agent_id=ctx.deps.agent_id,
             node_id=src.id,
             depth=1,
+            target_schema=ctx.deps.target_schema,
         )
         result = []
         for entry in neighborhood:

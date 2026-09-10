@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "kind": "neocortex-qwen-librarian-fixture",
+  "source": {
+    "path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+    "sha256": "2394bcacfc4fcff6d8ee1f280f8642f8eaf864797cfcd4b333d57b4b9da296d3"
+  },
+  "episodes": [
+    {
+      "episode_key": "E04",
+      "heading": "Episode 4",
+      "source_block_lines": [20, 22],
+      "cardinality": {"entities": 16, "relations": 13},
+      "expectations": [
+        {
+          "preimage": {"episode_key": "E04", "kind": "node_fact", "subject": "Stage 1", "predicate": "normalized_table_count", "object": "~15"},
+          "sha256": "455bd19ac29840d2dad29d67c7e1089b9575e8118532f4d51e8fc2753a59d1de"
+        },
+        {
+          "preimage": {"episode_key": "E04", "kind": "edge_signature", "subject": "person_normalized_data", "predicate": "USES", "object": "ParseHumanName"},
+          "sha256": "26dccb3946236589d8d92de05c0e44b35d7d84266ecea74c6aa807d9df335dfa"
+        }
+      ]
+    },
+    {
+      "episode_key": "E05",
+      "heading": "Episode 5",
+      "source_block_lines": [28, 30],
+      "cardinality": {"entities": 26, "relations": 28},
+      "expectations": [
+        {
+          "preimage": {"episode_key": "E05", "kind": "quantitative_update", "subject": "person atomic features", "predicate": "count", "object": "39"},
+          "sha256": "718c323d42ffce06f80ca627c61eb45b0cbd046c2a7b163919ab2b1aed271f8c"
+        },
+        {
+          "preimage": {"episode_key": "E05", "kind": "quantitative_update", "subject": "organization atomic features", "predicate": "count", "object": "27"},
+          "sha256": "dba2d76e71792dc7d6129dfffd40dfbefd65887c79bff5b4f6a9ec948ec2abf5"
+        }
+      ]
+    }
+  ]
+}

@@ -140,6 +140,10 @@ def fake_bakeoff_project(tmp_path: Path) -> tuple[Path, dict[str, str], Path]:
 
     (bin_dir / "uv").write_text("""#!/usr/bin/env bash
 set -euo pipefail
+if [[ "$*" == *.diagnostics.tsv* ]]; then
+  shift 2
+  exec python3 "$@"
+fi
 if [[ "$*" == *recall_scorer.py* && "${FAKE_RECALL_STATUS:-0}" != 0 ]]; then
   exit "${FAKE_RECALL_STATUS}"
 fi
@@ -151,8 +155,14 @@ if [[ "$*" == *compute_metrics.py* && "$*" =~ --phase[[:space:]]e2e ]]; then
     exit 91
   fi
 fi
-if [[ "$*" == *"e2e_manifest.py merge"* ]]; then
-  printf 'offline_merge=yes\\n' >>"${FAKE_COMMAND_LOG:?}"
+if [[ "$*" == *"e2e_manifest.py build"* ]]; then
+  printf 'manifest_build=yes\\n' >>"${FAKE_COMMAND_LOG:?}"
+fi
+if [[ "$*" == *"e2e_manifest.py validate"* ]]; then
+  printf 'manifest_validate=yes\\n' >>"${FAKE_COMMAND_LOG:?}"
+  if [[ "${FAKE_MANIFEST_VALIDATE_STATUS:-0}" != 0 ]]; then
+    exit "${FAKE_MANIFEST_VALIDATE_STATUS}"
+  fi
 fi
 if [[ "$*" == *'x["total"]'* ]]; then
   cat | python3 -c 'import json,sys
@@ -390,7 +400,7 @@ def test_e2e_lifecycle_uses_test_token_map_without_corpus_credentials(
     assert "mcp-secret" not in command_log
 
 
-def test_e2e_metrics_are_merged_offline_after_e2e(
+def test_e2e_manifest_is_built_and_validated_without_metrics_merge(
     fake_bakeoff_project: tuple[Path, dict[str, str], Path],
 ) -> None:
     project, env, log_path = fake_bakeoff_project
@@ -399,7 +409,9 @@ def test_e2e_metrics_are_merged_offline_after_e2e(
     completed = _run_fake(project, env)
 
     assert completed.returncode == 0, completed.stderr
-    assert log_path.read_text().count("offline_merge=yes") == 1
+    assert log_path.read_text().count("manifest_build=yes") == 1
+    assert log_path.read_text().count("manifest_validate=yes") == 1
+    assert "offline_merge=yes" not in log_path.read_text()
     assert "e2e_metrics_pg_ready=yes" not in log_path.read_text()
     assert "e2e_metrics_pg_ready=no" not in log_path.read_text()
 
@@ -414,6 +426,34 @@ def test_recall_failure_is_not_reported_as_a_passing_harness(
 
     assert completed.returncode == 9
     assert len([line for line in log_path.read_text().splitlines() if line.startswith("e2e ")]) == 5
+
+
+def test_retained_diagnostics_index_uses_resolvable_relative_paths_even_on_later_failure(
+    fake_bakeoff_project: tuple[Path, dict[str, str], Path],
+    tmp_path: Path,
+) -> None:
+    project, env, _log_path = fake_bakeoff_project
+    private_parent = tmp_path / "private"
+    private_parent.mkdir(mode=0o700)
+    env.update(
+        {
+            "FAKE_INITIAL_PG_READY": "1",
+            "FAKE_RECALL_STATUS": "9",
+            "FAKE_MANIFEST_VALIDATE_STATUS": "23",
+            "NEOCORTEX_BAKEOFF_PRIVATE_DIR": str(private_parent),
+        }
+    )
+
+    completed = _run_fake(project, env)
+
+    assert completed.returncode == 23
+    run_dir = next(private_parent.glob("neocortex-bakeoff.test-run.*"))
+    index = json.loads((run_dir / "diagnostics-index.json").read_text())
+    recall = next(row for row in index["diagnostics"] if row["script"] == "recall_scorer.py")
+    assert recall["stdout"]["file"] == "e2e/recall.stdout"
+    assert recall["stderr"]["file"] == "e2e/recall.stderr"
+    assert (run_dir / recall["stdout"]["file"]).is_file()
+    assert (run_dir / recall["stderr"]["file"]).is_file()
 
 
 def test_post_e2e_failure_restores_snapshot_while_postgres_is_running(

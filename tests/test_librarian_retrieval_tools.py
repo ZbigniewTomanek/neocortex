@@ -9,6 +9,8 @@ Tests verify:
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from neocortex.db.mock import InMemoryRepository
@@ -18,6 +20,7 @@ from neocortex.extraction.agents import (
     build_librarian_agent,
 )
 from neocortex.extraction.schemas import ExtractedEntity
+from neocortex.models import Edge
 
 AGENT = "test-agent"
 _TEST_CONFIG = AgentInferenceConfig(use_test_model=True)
@@ -70,6 +73,17 @@ def test_librarian_agent_has_five_tools_in_fallback_mode() -> None:
     assert len(agent._function_toolset.tools) == 5
 
 
+def test_qwen_bounded_agent_has_only_five_batch_tools() -> None:
+    agent = build_librarian_agent(_TEST_CONFIG, profile="qwen_bounded")
+    assert set(agent._function_toolset.tools) == {
+        "resolve_entities",
+        "read_entity_details",
+        "apply_entity_decisions",
+        "check_relations",
+        "apply_relation_decisions",
+    }
+
+
 # ── Tool functionality tests via direct mock repo ──
 
 
@@ -112,6 +126,21 @@ async def test_find_node_by_name_no_match(repo: InMemoryRepository) -> None:
 
 
 @pytest.mark.asyncio
+async def test_expected_type_filter_is_applied_before_search_limit(repo: InMemoryRepository) -> None:
+    wrong = await repo.get_or_create_node_type(AGENT, "Organization")
+    expected = await repo.get_or_create_node_type(AGENT, "Person")
+    for index in range(3):
+        await repo.upsert_node(AGENT, f"Alpha Person Wrong {index}", wrong.id, content="Alpha Person")
+    wanted = await repo.upsert_node(AGENT, "Alpha Person", expected.id, content="Alpha")
+
+    fuzzy = await repo.find_nodes_fuzzy(AGENT, "Alpha Person", limit=1, expected_type="Person")
+    semantic = await repo.search_nodes(AGENT, "Alpha Person", limit=1, expected_type="Person")
+
+    assert [node.id for node, _score in fuzzy] == [wanted.id]
+    assert [node.id for node, _score in semantic] == [wanted.id]
+
+
+@pytest.mark.asyncio
 async def test_find_node_by_name_excludes_forgotten(repo: InMemoryRepository) -> None:
     """find_node_by_name excludes forgotten nodes."""
     nt = await repo.get_or_create_node_type(AGENT, "Person")
@@ -137,6 +166,33 @@ async def test_inspect_node_neighborhood(repo: InMemoryRepository) -> None:
     assert len(neighborhood) == 1
     assert neighborhood[0]["node"].name == "Billing"
     assert len(neighborhood[0]["edges"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_neighborhood_returns_all_parallel_edges_for_discovered_neighbor(
+    repo: InMemoryRepository,
+) -> None:
+    node_type = await repo.get_or_create_node_type(AGENT, "Concept")
+    first_type = await repo.get_or_create_edge_type(AGENT, "FIRST")
+    second_type = await repo.get_or_create_edge_type(AGENT, "SECOND")
+    source = await repo.upsert_node(AGENT, "Source", node_type.id)
+    target = await repo.upsert_node(AGENT, "Target", node_type.id)
+    first = await repo.upsert_edge(AGENT, source.id, target.id, first_type.id)
+    assert first is not None
+    second = Edge(
+        id=repo._next_edge_id,
+        source_id=source.id,
+        target_id=target.id,
+        type_id=second_type.id,
+        created_at=datetime.now(UTC),
+    )
+    repo._edges[second.id] = second
+    repo._next_edge_id += 1
+
+    neighborhood = await repo.get_node_neighborhood(AGENT, source.id, depth=1)
+
+    assert len(neighborhood) == 1
+    assert {edge.id for edge in neighborhood[0]["edges"]} == {first.id, second.id}
 
 
 @pytest.mark.asyncio

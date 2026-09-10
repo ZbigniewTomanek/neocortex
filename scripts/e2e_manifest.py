@@ -10,6 +10,7 @@ import json
 import math
 import os
 import re
+import stat
 import sys
 import tempfile
 from collections import Counter
@@ -75,6 +76,21 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _validated_reference_file(reference: object, label: str) -> Path:
+    value = _require_object(reference, label)
+    if set(value) != {"path", "sha256"}:
+        raise EvidenceError(f"{label} reference is invalid")
+    path = ROOT / _safe_relative_path(value["path"], f"{label} path")
+    digest = _require_string(value["sha256"], f"{label} digest", pattern=SHA256)
+    try:
+        mode = path.lstat().st_mode
+    except OSError as exc:
+        raise EvidenceError(f"{label} reference file or digest is invalid") from exc
+    if not stat.S_ISREG(mode) or path.is_symlink() or sha256_file(path) != digest:
+        raise EvidenceError(f"{label} reference file or digest is invalid")
+    return path
 
 
 def relative_path(path: Path) -> str:
@@ -472,6 +488,8 @@ def build_manifest(
     if not metrics_path.is_file() or not snapshot_path.is_file() or not recall_path.is_file():
         raise EvidenceError("manifest input is missing")
     metrics = _require_object(json.loads(metrics_path.read_text(encoding="utf-8")), "corpus metrics")
+    if "e2e_manifest" in metrics or "phases" in metrics:
+        raise EvidenceError("corpus metrics contain a legacy embedded manifest")
     metadata = _require_object(metrics.get("run_metadata"), "corpus run metadata")
     if metadata.get("run_id") != run_id or metrics.get("phase") != "corpus" or metrics.get("arm") != arm:
         raise EvidenceError("corpus metrics run identity is inconsistent")
@@ -520,6 +538,11 @@ def build_manifest(
                 "child_run_id": child_run_id,
                 "exit_code": exit_code,
                 "result": safe_result,
+                "diagnostics": (
+                    {"availability": "NONE"}
+                    if exit_code == 0
+                    else {"availability": "PRIVATE", "child_run_id": child_run_id, "exit_code": exit_code}
+                ),
             }
         )
     passed = sum(1 for item in children if item["exit_code"] == 0)
@@ -528,7 +551,7 @@ def build_manifest(
     if recall_summary["status"] != "MEASURED" or any(child["result"]["status"] == "NOT_MEASURED" for child in children):
         status = "NOT_MEASURED"
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "kind": "neocortex-bakeoff-e2e-manifest",
         "status": status,
         "arm": arm,
@@ -546,7 +569,7 @@ def _validate_published_manifest(manifest: dict[str, Any], *, run_id: str) -> No
     required = {"schema_version", "kind", "status", "arm", "run_id", "corpus_metrics", "post_snapshot", "recall", "e2e"}
     if (
         set(manifest) != required
-        or manifest.get("schema_version") != 1
+        or manifest.get("schema_version") not in {1, 2}
         or manifest.get("kind") != "neocortex-bakeoff-e2e-manifest"
     ):
         raise EvidenceError("E2E manifest schema is invalid")
@@ -555,12 +578,23 @@ def _validate_published_manifest(manifest: dict[str, Any], *, run_id: str) -> No
     if manifest.get("run_id") != run_id:
         raise EvidenceError("E2E manifest run identity is invalid")
     _require_string(manifest.get("arm"), "E2E arm", pattern=SAFE_RUN_ID)
-    for key in ("corpus_metrics", "post_snapshot"):
-        value = _require_object(manifest[key], key)
-        if set(value) != {"path", "sha256"}:
-            raise EvidenceError(f"{key} reference is invalid")
-        _safe_relative_path(value["path"], f"{key} path")
-        _require_string(value["sha256"], f"{key} digest", pattern=SHA256)
+    metrics_path = _validated_reference_file(manifest["corpus_metrics"], "corpus_metrics")
+    snapshot_path = _validated_reference_file(manifest["post_snapshot"], "post_snapshot")
+    metrics = _require_object(json.loads(metrics_path.read_text(encoding="utf-8")), "corpus metrics")
+    metadata = _require_object(metrics.get("run_metadata"), "corpus run metadata")
+    if (
+        metrics.get("phase") != "corpus"
+        or metrics.get("arm") != manifest.get("arm")
+        or metadata.get("run_id") != run_id
+        or "e2e_manifest" in metrics
+        or "phases" in metrics
+    ):
+        raise EvidenceError("corpus metrics run identity is inconsistent")
+    snapshot_ref = _require_object(manifest["post_snapshot"], "post_snapshot")
+    if metadata.get("snapshot_sha256") != snapshot_ref["sha256"] or _require_object(
+        metrics.get("input_paths"), "corpus input paths"
+    ).get("graph_snapshot") != relative_path(snapshot_path):
+        raise EvidenceError("corpus metrics snapshot identity is inconsistent")
     recall = _require_object(manifest["recall"], "recall reference")
     recall_result = _validate_recall_reference(recall, run_id=run_id)
     e2e = _require_object(manifest["e2e"], "E2E summary")
@@ -577,7 +611,10 @@ def _validate_published_manifest(manifest: dict[str, Any], *, run_id: str) -> No
     seen: set[str] = set()
     for position, child in enumerate(children, 1):
         item = _require_object(child, "E2E child")
-        if set(item) != {"script", "script_sha256", "child_run_id", "exit_code", "result"}:
+        required_child = {"script", "script_sha256", "child_run_id", "exit_code", "result"}
+        if manifest["schema_version"] == 2:
+            required_child.add("diagnostics")
+        if set(item) != required_child:
             raise EvidenceError("E2E child contains unsafe fields")
         script = _require_string(item["script"], "E2E script")
         child_run_id = f"{run_id}.e2e.{position:02d}"
@@ -589,6 +626,15 @@ def _validate_published_manifest(manifest: dict[str, Any], *, run_id: str) -> No
         exit_code = _require_nonnegative_int(item["exit_code"], "E2E exit code")
         if exit_code > 255:
             raise EvidenceError("E2E exit code is out of range")
+        if manifest["schema_version"] == 2:
+            diagnostics = _require_object(item["diagnostics"], "E2E diagnostics")
+            expected_diagnostics = (
+                {"availability": "NONE"}
+                if exit_code == 0
+                else {"availability": "PRIVATE", "child_run_id": child_run_id, "exit_code": exit_code}
+            )
+            if diagnostics != expected_diagnostics:
+                raise EvidenceError("E2E diagnostics reference is invalid")
         result = _require_object(item["result"], "E2E safe result")
         if script in SCENARIO_GATES:
             if set(result) != {"status", "exit_code", "counts", "gate", "scenarios"}:
@@ -641,7 +687,7 @@ def _validate_published_manifest(manifest: dict[str, Any], *, run_id: str) -> No
 def merge_manifest(
     *, manifest_path: Path, metrics_path: Path, run_id: str, snapshot_path: Path, snapshot_sha256: str
 ) -> dict[str, Any]:
-    """Attach a validated manifest to corpus metrics with cross-run/hash checks."""
+    """Validate legacy merge inputs without mutating immutable peer artifacts."""
     manifest = _require_object(json.loads(manifest_path.read_text(encoding="utf-8")), "E2E manifest")
     _validate_published_manifest(manifest, run_id=run_id)
     metrics = _require_object(json.loads(metrics_path.read_text(encoding="utf-8")), "corpus metrics")
@@ -650,8 +696,6 @@ def merge_manifest(
         raise EvidenceError("offline merge run identity is inconsistent")
     if metrics.get("arm") != manifest.get("arm"):
         raise EvidenceError("offline merge arm identity is inconsistent")
-    if "e2e_manifest" in metrics or "phases" in metrics:
-        raise EvidenceError("corpus metrics already have an E2E attachment")
     if not snapshot_path.is_file() or sha256_file(snapshot_path) != snapshot_sha256:
         raise EvidenceError("offline merge snapshot digest is invalid")
     if manifest.get("post_snapshot") != {"path": relative_path(snapshot_path), "sha256": snapshot_sha256}:
@@ -661,9 +705,13 @@ def merge_manifest(
     expected_metrics = {"path": relative_path(metrics_path), "sha256": sha256_file(metrics_path)}
     if manifest.get("corpus_metrics") != expected_metrics:
         raise EvidenceError("offline merge corpus metrics hash is inconsistent")
-    metrics["e2e_manifest"] = manifest
-    atomic_write_json(metrics_path, metrics)
     return metrics
+
+
+def validate_manifest(*, manifest_path: Path, run_id: str) -> dict[str, Any]:
+    manifest = _require_object(json.loads(manifest_path.read_text(encoding="utf-8")), "E2E manifest")
+    _validate_published_manifest(manifest, run_id=run_id)
+    return manifest
 
 
 def _cli() -> int:
@@ -698,6 +746,9 @@ def _cli() -> int:
     merge.add_argument("--run-id", required=True)
     merge.add_argument("--snapshot-path", type=Path, required=True)
     merge.add_argument("--snapshot-sha256", required=True)
+    validate = subparsers.add_parser("validate")
+    validate.add_argument("--manifest-path", type=Path, required=True)
+    validate.add_argument("--run-id", required=True)
     args = parser.parse_args()
     try:
         if args.command == "write-exit-result":
@@ -719,7 +770,7 @@ def _cli() -> int:
                 statuses_path=args.statuses_path,
                 output_path=args.output_path,
             )
-        else:
+        elif args.command == "merge":
             merge_manifest(
                 manifest_path=args.manifest_path,
                 metrics_path=args.metrics_path,
@@ -727,6 +778,9 @@ def _cli() -> int:
                 snapshot_path=args.snapshot_path,
                 snapshot_sha256=args.snapshot_sha256,
             )
+            print("merge is deprecated; manifest validated without modifying metrics")
+        else:
+            validate_manifest(manifest_path=args.manifest_path, run_id=args.run_id)
     except (EvidenceError, OSError, json.JSONDecodeError) as exc:
         print(f"evidence validation failed: {exc}", file=sys.stderr)
         return 2

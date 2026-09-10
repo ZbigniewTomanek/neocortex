@@ -6,6 +6,7 @@ import procrastinate
 from loguru import logger
 from procrastinate.testing import InMemoryConnector
 
+from neocortex.extraction.agents import LibrarianBudgetConfig
 from neocortex.jobs.correlation import normalize_extraction_correlation_id
 
 # Placeholder app for task registration — replaced at runtime with real conninfo.
@@ -97,6 +98,15 @@ async def extract_episode(
         ),
         librarian_use_tools=settings.librarian_use_tools,
         tool_calls_limit=settings.extraction_tool_calls_limit,
+        librarian_budget=LibrarianBudgetConfig(
+            entity_read_limit=getattr(settings, "librarian_entity_read_limit", 2),
+            relation_read_limit=getattr(settings, "librarian_relation_read_limit", 1),
+            soft_read_streak=getattr(settings, "librarian_soft_read_streak", 6),
+            hard_read_streak=getattr(settings, "librarian_hard_read_streak", 10),
+            soft_no_progress_calls=getattr(settings, "librarian_soft_no_progress_calls", 8),
+            hard_no_progress_calls=getattr(settings, "librarian_hard_no_progress_calls", 14),
+            max_duplicate_calls=getattr(settings, "librarian_max_duplicate_calls", 2),
+        ),
         ontology_tool_calls_limit=settings.ontology_tool_calls_limit,
         ontology_max_new_types=settings.ontology_max_new_types,
         domain_hint=domain_hint,

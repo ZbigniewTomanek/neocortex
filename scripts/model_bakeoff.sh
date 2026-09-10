@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 ARM=""
@@ -25,6 +26,11 @@ POST_SNAPSHOT=""
 POST_SNAPSHOT_NAME=""
 POST_SNAPSHOT_SHA256=""
 E2E_WORKDIR=""
+PRIVATE_RUN_DIR=""
+DIAGNOSTIC_ROWS_PATH=""
+DIAGNOSTIC_ROWS_FD=""
+PRIVATE_DIAGNOSTICS_RETAIN=0
+DIAGNOSTICS_INDEX_PUBLISHED=0
 E2E_STATUS_PATH=""
 E2E_MANIFEST_PATH=""
 RECALL_EVIDENCE_PATH=""
@@ -47,6 +53,69 @@ is_positive_int() { [[ "$1" =~ ^[1-9][0-9]*$ ]]; }
 is_positive_number() { [[ "$1" =~ ^[1-9][0-9]*(\.[0-9]+)?$|^0\.[0-9]+$ ]]; }
 is_safe_run_id() { [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$ ]]; }
 sha256_file() { shasum -a 256 "$1" | awk '{print $1}'; }
+validate_private_directory() {
+  uv run python - "$1" "$ROOT" <<'PY'
+import os, stat, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+root = Path(sys.argv[2]).resolve()
+if not p.is_absolute():
+    raise SystemExit("private diagnostics directory must be absolute")
+current = Path(p.anchor)
+for part in p.parts[1:]:
+    current /= part
+    if stat.S_ISLNK(os.lstat(current).st_mode):
+        raise SystemExit("private diagnostics path contains a symlink")
+resolved = p.resolve(strict=True)
+if resolved == root or root in resolved.parents:
+    raise SystemExit("private diagnostics directory must be outside repository")
+st = os.lstat(resolved)
+if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.getuid() or stat.S_IMODE(st.st_mode) != 0o700:
+    raise SystemExit("private diagnostics directory must be owner-only mode 0700")
+PY
+}
+secure_create_file() {
+  local path="$1" fd_variable="$2" created_fd
+  [[ ! -e "$path" && ! -L "$path" ]] || die "private diagnostic path already exists"
+  set -C
+  exec {created_fd}>"$path" || die "failed to exclusively create private diagnostic file"
+  set +C
+  chmod 0600 "$path"
+  [[ -f "$path" && ! -L "$path" && "$(stat -f '%u:%Lp' "$path")" == "$(id -u):600" ]] \
+    || die "private diagnostic file ownership or mode is invalid"
+  printf -v "$fd_variable" '%s' "$created_fd"
+}
+record_private_diagnostic() {
+  local script="$1" child_run_id="$2" exit_code="$3" stdout_path="$4" stderr_path="$5"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$script" "$child_run_id" "$exit_code" "${stdout_path#"$PRIVATE_RUN_DIR/"}" "${stderr_path#"$PRIVATE_RUN_DIR/"}" \
+    "$(stat -f '%z' "$stdout_path")" "$(sha256_file "$stdout_path")" \
+    "$(stat -f '%z' "$stderr_path")" "$(sha256_file "$stderr_path")" >&"$DIAGNOSTIC_ROWS_FD"
+}
+publish_diagnostics_index() {
+  (( DIAGNOSTICS_INDEX_PUBLISHED == 0 )) || return 0
+  DIAGNOSTICS_INDEX_PUBLISHED=1
+  if [[ -n "$DIAGNOSTIC_ROWS_FD" ]]; then
+    exec {DIAGNOSTIC_ROWS_FD}>&-
+    DIAGNOSTIC_ROWS_FD=""
+  fi
+  [[ -n "$DIAGNOSTIC_ROWS_PATH" && -s "$DIAGNOSTIC_ROWS_PATH" ]] || return 0
+  local index_path="$PRIVATE_RUN_DIR/diagnostics-index.json" index_fd
+  secure_create_file "$index_path" index_fd
+  uv run python - "$DIAGNOSTIC_ROWS_PATH" >&"$index_fd" <<'PY'
+import json, sys
+rows=[]
+for line in open(sys.argv[1], encoding="utf-8"):
+    s, child, code, out, err, out_bytes, out_sha, err_bytes, err_sha = line.rstrip("\n").split("\t")
+    rows.append({"child_run_id": child, "script": s, "exit_code": int(code),
+                 "stdout": {"file": out, "bytes": int(out_bytes), "sha256": out_sha},
+                 "stderr": {"file": err, "bytes": int(err_bytes), "sha256": err_sha}})
+json.dump({"diagnostics": rows}, sys.stdout, sort_keys=True, separators=(",", ":"))
+sys.stdout.write("\n")
+PY
+  exec {index_fd}>&-
+  rm -f "$DIAGNOSTIC_ROWS_PATH"
+}
 is_safe_run_id "$ARM" || die "bake-off arm has an invalid safe format"
 is_positive_int "$WORKER_CONCURRENCY" || die "NEOCORTEX_WORKER_CONCURRENCY must be a positive integer"
 is_positive_number "$PER_CALL_TIMEOUT" || die "NEOCORTEX_LOCAL_MODEL_TIMEOUT_S must be a positive number"
@@ -253,8 +322,11 @@ run_e2e_with_test_tokens() {
   local stdout_path="$E2E_WORKDIR/stdout-$(printf '%02d' "$index")"
   local stderr_path="$E2E_WORKDIR/stderr-$(printf '%02d' "$index")"
   local status
+  local stdout_fd stderr_fd
   printf '+ e2e index=%s test=%q child_run_id=%s dev_tokens_file=dev_tokens_test.json\n' "$index" "$test_script" "$child_run_id"
   (( DRY_RUN )) && return 0
+  secure_create_file "$stdout_path" stdout_fd
+  secure_create_file "$stderr_path" stderr_fd
   if (
     # The corpus arm uses the role-based admin map.  E2E scripts intentionally
     # exercise Alice/Bob/Eve isolation and therefore require their test map.
@@ -266,13 +338,19 @@ run_e2e_with_test_tokens() {
     unset NEOCORTEX_TOKEN NEOCORTEX_DEV_TOKEN
     unset NEOCORTEX_ALICE_TOKEN NEOCORTEX_BOB_TOKEN NEOCORTEX_EVE_TOKEN
     "$ROOT/scripts/run_e2e.sh" "$ROOT/scripts/$test_script"
-  ) >"$stdout_path" 2>"$stderr_path"; then
+  ) >&"$stdout_fd" 2>&"$stderr_fd"; then
     status=0
   else
     status=$?
   fi
-  # Raw E2E output is diagnostic only and never becomes evidence.
-  rm -f "$stdout_path" "$stderr_path"
+  exec {stdout_fd}>&-
+  exec {stderr_fd}>&-
+  if (( status == 0 )); then
+    rm -f "$stdout_path" "$stderr_path"
+  else
+    PRIVATE_DIAGNOSTICS_RETAIN=1
+    record_private_diagnostic "$test_script" "$child_run_id" "$status" "$stdout_path" "$stderr_path"
+  fi
   if [[ -f "$result_path" ]] && ! result_matches_child "$result_path" "$test_script" "$child_run_id" "$status"; then
     rm -f "$result_path"
   fi
@@ -345,12 +423,18 @@ quarantine_canonical_metrics() {
 
 RESTORE_FAILURE_STATUS=3
 cleanup_e2e_workdir() {
-  if [[ -n "$E2E_WORKDIR" && -d "$E2E_WORKDIR" ]]; then
-    rm -rf "$E2E_WORKDIR"
+  if [[ "$PRIVATE_DIAGNOSTICS_RETAIN" -eq 0 && -n "$PRIVATE_RUN_DIR" && -d "$PRIVATE_RUN_DIR" ]]; then
+    rm -rf "$PRIVATE_RUN_DIR"
   fi
 }
 restore_preserved_snapshot() {
   local exit_code=$?
+  if (( PRIVATE_DIAGNOSTICS_RETAIN != 0 )); then
+    if ! publish_diagnostics_index; then
+      echo "model bake-off: failed to finalize retained diagnostics index" >&2
+      (( exit_code == 0 )) && exit_code=2
+    fi
+  fi
   if [[ -n "$PRE_SNAPSHOT" && "$DRY_RUN" -eq 0 ]]; then
     local snapshot_load_name="$PRE_SNAPSHOT"
     if [[ -n "$PRE_SNAPSHOT_FILE" ]]; then
@@ -388,7 +472,25 @@ else
     <<<"$NEOCORTEX_ADMIN_TOKEN" >/dev/null \
     || die "NEOCORTEX_ADMIN_TOKEN is not present in NEOCORTEX_DEV_TOKENS_FILE"
   [[ -n "${GOOGLE_API_KEY:-}" ]] || die "GOOGLE_API_KEY is required for embedding health; recall metrics are NOT MEASURED"
-  E2E_WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/neocortex-bakeoff.XXXXXX")"
+  if [[ -n "${NEOCORTEX_BAKEOFF_PRIVATE_DIR:-}" ]]; then
+    PRIVATE_PARENT_CANDIDATE="$NEOCORTEX_BAKEOFF_PRIVATE_DIR"
+    [[ "$PRIVATE_PARENT_CANDIDATE" == /* ]] || PRIVATE_PARENT_CANDIDATE="$PWD/$PRIVATE_PARENT_CANDIDATE"
+    validate_private_directory "$PRIVATE_PARENT_CANDIDATE" \
+      || die "private diagnostics parent failed validation"
+    PRIVATE_PARENT="$(cd "$PRIVATE_PARENT_CANDIDATE" && pwd -P)"
+  else
+    PRIVATE_PARENT_CANDIDATE="$(mktemp -d "${TMPDIR:-/tmp}/neocortex-bakeoff-parent.XXXXXX")"
+    PRIVATE_PARENT="$(cd "$PRIVATE_PARENT_CANDIDATE" && pwd -P)"
+  fi
+  validate_private_directory "$PRIVATE_PARENT" || die "private diagnostics parent failed validation"
+  PRIVATE_RUN_DIR="$(mktemp -d "$PRIVATE_PARENT/neocortex-bakeoff.${RUN_ID}.XXXXXX")"
+  validate_private_directory "$PRIVATE_RUN_DIR" || die "private diagnostics run directory failed validation"
+  E2E_WORKDIR="$PRIVATE_RUN_DIR/e2e"
+  [[ ! -e "$E2E_WORKDIR" && ! -L "$E2E_WORKDIR" ]] || die "private e2e directory already exists"
+  mkdir -m 0700 "$E2E_WORKDIR"
+  validate_private_directory "$E2E_WORKDIR" || die "private e2e directory failed validation"
+  DIAGNOSTIC_ROWS_PATH="$PRIVATE_RUN_DIR/.diagnostics.tsv"
+  secure_create_file "$DIAGNOSTIC_ROWS_PATH" DIAGNOSTIC_ROWS_FD
   E2E_STATUS_PATH="$E2E_WORKDIR/status.tsv"
   E2E_MANIFEST_PATH="$ROOT/docs/plans/33-local-qwen-migration/resources/e2e-manifest-${ARM}-${RUN_ID}.json"
   RECALL_EVIDENCE_PATH="$ROOT/docs/plans/33-local-qwen-migration/resources/recall-results-${ARM}-${RUN_ID}.json"
@@ -456,18 +558,31 @@ if (( DRY_RUN )); then
     run_e2e_with_test_tokens "$index" "$test"
   done
   run uv run python "$ROOT/scripts/e2e_manifest.py" build --arm "$ARM" --run-id "$RUN_ID"
-  run uv run python "$ROOT/scripts/e2e_manifest.py" merge --run-id "$RUN_ID"
+  run uv run python "$ROOT/scripts/e2e_manifest.py" validate --run-id "$RUN_ID"
 else
 RECALL_STATUS=0
+recall_stdout="$E2E_WORKDIR/recall.stdout"
+recall_stderr="$E2E_WORKDIR/recall.stderr"
+recall_stdout_fd=""
+recall_stderr_fd=""
+secure_create_file "$recall_stdout" recall_stdout_fd
+secure_create_file "$recall_stderr" recall_stderr_fd
 if uv run python "$ROOT/scripts/recall_scorer.py" --corpus-profile "$CORPUS_PROFILE" --output "$RECALL_EVIDENCE_PATH" \
-  >"$E2E_WORKDIR/recall.stdout" 2>"$E2E_WORKDIR/recall.stderr"; then
+  >&"$recall_stdout_fd" 2>&"$recall_stderr_fd"; then
   RECALL_STATUS=0
 else
   RECALL_STATUS=$?
   uv run python "$ROOT/scripts/e2e_manifest.py" write-not-measured-recall \
     --path "$RECALL_EVIDENCE_PATH" --run-id "$RUN_ID" --reason "recall_scorer_exit_${RECALL_STATUS}"
 fi
-rm -f "$E2E_WORKDIR/recall.stdout" "$E2E_WORKDIR/recall.stderr"
+exec {recall_stdout_fd}>&-
+exec {recall_stderr_fd}>&-
+if (( RECALL_STATUS == 0 )); then
+  rm -f "$recall_stdout" "$recall_stderr"
+else
+  PRIVATE_DIAGNOSTICS_RETAIN=1
+  record_private_diagnostic "recall_scorer.py" "${RUN_ID}.recall" "$RECALL_STATUS" "$recall_stdout" "$recall_stderr"
+fi
 if (( RECALL_STATUS != 0 )); then
   printf 'recall completed run_id=%s status=NOT_MEASURED exit_code=%s\n' "$RUN_ID" "$RECALL_STATUS"
 else
@@ -492,10 +607,12 @@ run uv run python "$ROOT/scripts/e2e_manifest.py" build \
   --metrics-path "$ROOT/docs/plans/33-local-qwen-migration/resources/metrics-${ARM}.json" \
   --snapshot-path "$POST_SNAPSHOT" --snapshot-sha256 "$POST_SNAPSHOT_SHA256" \
   --recall-path "$RECALL_EVIDENCE_PATH" --statuses-path "$E2E_STATUS_PATH" --output-path "$E2E_MANIFEST_PATH"
-run uv run python "$ROOT/scripts/e2e_manifest.py" merge \
-  --manifest-path "$E2E_MANIFEST_PATH" \
-  --metrics-path "$ROOT/docs/plans/33-local-qwen-migration/resources/metrics-${ARM}.json" \
-  --run-id "$RUN_ID" --snapshot-path "$POST_SNAPSHOT" --snapshot-sha256 "$POST_SNAPSHOT_SHA256"
+run uv run python "$ROOT/scripts/e2e_manifest.py" validate \
+  --manifest-path "$E2E_MANIFEST_PATH" --run-id "$RUN_ID"
+publish_diagnostics_index
+if (( PRIVATE_DIAGNOSTICS_RETAIN != 0 )); then
+  printf 'private_diagnostics_path=%s\n' "$PRIVATE_RUN_DIR"
+fi
 if (( E2E_FAILURE_STATUS != 0 )); then
   exit "$E2E_FAILURE_STATUS"
 fi

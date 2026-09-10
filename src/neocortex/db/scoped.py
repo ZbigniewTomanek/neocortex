@@ -1,5 +1,6 @@
 import re
 from contextlib import asynccontextmanager
+from typing import Literal
 
 import asyncpg
 
@@ -35,7 +36,12 @@ async def schema_scoped_connection(pool: asyncpg.Pool, schema_name: str):
 
 
 @asynccontextmanager
-async def graph_scoped_connection(pool: asyncpg.Pool, schema_name: str, agent_id: str | None = None):
+async def graph_scoped_connection(
+    pool: asyncpg.Pool,
+    schema_name: str,
+    agent_id: str | None = None,
+    required_permission: Literal["read"] | None = None,
+):
     """Run queries scoped to a graph schema.
 
     For shared graphs, agent_id is validated but no SET LOCAL ROLE is applied —
@@ -53,8 +59,21 @@ async def graph_scoped_connection(pool: asyncpg.Pool, schema_name: str, agent_id
 
         if is_shared and agent_id is None:
             raise ValueError("agent_id is required for shared graph access")
+        if is_shared and required_permission == "read":
+            permitted = await conn.fetchval(
+                """SELECT EXISTS (
+                       SELECT 1 FROM agent_registry WHERE agent_id = $1 AND is_admin = TRUE
+                   ) OR EXISTS (
+                       SELECT 1 FROM graph_permissions
+                       WHERE agent_id = $1 AND schema_name = $2 AND can_read = TRUE
+                   )""",
+                agent_id,
+                schema_name,
+            )
+            if not permitted:
+                raise PermissionError(f"Agent {agent_id!r} cannot read shared graph {schema_name!r}")
         # For shared graphs: no SET LOCAL ROLE — shared graphs don't use RLS.
-        # owner_role is set by the application layer for provenance.
+        # owner_role is set by the application layer for provenance tracking.
 
         await conn.execute(f"SET LOCAL search_path TO {schema_name}, public")
         yield conn

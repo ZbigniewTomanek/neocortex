@@ -593,8 +593,17 @@ class InMemoryRepository:
         threshold: float = 0.3,
         limit: int = 5,
         target_schema: str | None = None,
+        expected_type: str | None = None,
     ) -> list[tuple[Node, float]]:
         del target_schema, threshold
+        expected_type_id = None
+        if expected_type is not None:
+            node_type = next(
+                (item for item in self._node_types.values() if item.name.casefold() == expected_type.casefold()), None
+            )
+            if node_type is None:
+                return []
+            expected_type_id = node_type.id
         results: list[tuple[Node, float]] = []
         # Check alias table first
         alias_key = name.lower()
@@ -602,12 +611,21 @@ class InMemoryRepository:
         seen_ids: set[int] = set()
         for nid in alias_node_ids:
             node = self._nodes.get(nid)
-            if node and not node.forgotten and nid not in seen_ids:
+            if (
+                node
+                and not node.forgotten
+                and nid not in seen_ids
+                and (expected_type_id is None or node.type_id == expected_type_id)
+            ):
                 results.append((node, 1.0))  # Alias match gets perfect score
                 seen_ids.add(nid)
         # Then check fuzzy name similarity
         for node in self._nodes.values():
-            if node.forgotten or node.id in seen_ids:
+            if (
+                node.forgotten
+                or node.id in seen_ids
+                or (expected_type_id is not None and node.type_id != expected_type_id)
+            ):
                 continue
             if names_are_similar(name, node.name):
                 results.append((node, 0.5))
@@ -732,11 +750,23 @@ class InMemoryRepository:
         query: str,
         limit: int = 5,
         query_embedding: list[float] | None = None,
+        target_schema: str | None = None,
+        expected_type: str | None = None,
     ) -> list[tuple[Node, float]]:
+        # The in-memory repository has one global graph and cannot enforce schema isolation.
+        del agent_id, query_embedding, target_schema
+        expected_type_id = None
+        if expected_type is not None:
+            node_type = next(
+                (item for item in self._node_types.values() if item.name.casefold() == expected_type.casefold()), None
+            )
+            if node_type is None:
+                return []
+            expected_type_id = node_type.id
         query_lower = query.lower()
         matches: list[tuple[Node, float]] = []
         for node in self._nodes.values():
-            if node.forgotten:
+            if node.forgotten or (expected_type_id is not None and node.type_id != expected_type_id):
                 continue
             name_match = query_lower in node.name.lower()
             content_match = node.content and query_lower in node.content.lower()
@@ -751,7 +781,11 @@ class InMemoryRepository:
 
     # ── Graph Traversal ──
 
-    async def get_node_neighborhood(self, agent_id: str, node_id: int, depth: int = 2) -> list[dict]:
+    async def get_node_neighborhood(
+        self, agent_id: str, node_id: int, depth: int = 2, target_schema: str | None = None
+    ) -> list[dict]:
+        # Compatibility only: this repository does not model PostgreSQL schemas.
+        del agent_id, target_schema
         visited: set[int] = {node_id}
         results: list[dict] = []
         current_frontier = [node_id]
@@ -759,27 +793,21 @@ class InMemoryRepository:
         for dist in range(1, depth + 1):
             next_frontier: list[int] = []
             for nid in current_frontier:
+                edges_by_neighbor: dict[int, list[Edge]] = {}
                 for edge in self._edges.values():
                     neighbor_id: int | None = None
-                    if edge.source_id == nid and edge.target_id not in visited:
+                    if edge.source_id == nid:
                         neighbor_id = edge.target_id
-                    elif edge.target_id == nid and edge.source_id not in visited:
+                    elif edge.target_id == nid:
                         neighbor_id = edge.source_id
-
-                    if (
-                        neighbor_id is not None
-                        and neighbor_id in self._nodes
-                        and not self._nodes[neighbor_id].forgotten
-                    ):
-                        visited.add(neighbor_id)
-                        next_frontier.append(neighbor_id)
-                        results.append(
-                            {
-                                "node": self._nodes[neighbor_id],
-                                "edges": [edge],
-                                "distance": dist,
-                            }
-                        )
+                    if neighbor_id is not None:
+                        edges_by_neighbor.setdefault(neighbor_id, []).append(edge)
+                for neighbor_id, edges in edges_by_neighbor.items():
+                    if neighbor_id in visited or neighbor_id not in self._nodes or self._nodes[neighbor_id].forgotten:
+                        continue
+                    visited.add(neighbor_id)
+                    next_frontier.append(neighbor_id)
+                    results.append({"node": self._nodes[neighbor_id], "edges": edges, "distance": dist})
             current_frontier = next_frontier
             if not current_frontier:
                 break

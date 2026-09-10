@@ -140,6 +140,13 @@ async def test_extract_episode_calls_run_extraction(provided_correlation_id: str
     mock_settings.librarian_thinking_effort = "low"
     mock_settings.librarian_use_tools = True
     mock_settings.extraction_tool_calls_limit = 150
+    mock_settings.librarian_entity_read_limit = 2
+    mock_settings.librarian_relation_read_limit = 1
+    mock_settings.librarian_soft_read_streak = 6
+    mock_settings.librarian_hard_read_streak = 10
+    mock_settings.librarian_soft_no_progress_calls = 8
+    mock_settings.librarian_hard_no_progress_calls = 14
+    mock_settings.librarian_max_duplicate_calls = 2
     mock_settings.ontology_tool_calls_limit = 30
     mock_settings.ontology_max_new_types = 3
 
@@ -161,11 +168,14 @@ async def test_extract_episode_calls_run_extraction(provided_correlation_id: str
     fake_extraction = types.ModuleType("neocortex.extraction")
 
     # AgentInferenceConfig must be importable from the agents module
-    from neocortex.extraction.agents import AgentInferenceConfig
+    from neocortex.extraction.agents import AgentInferenceConfig, LibrarianBudgetConfig
 
     fake_agents = types.ModuleType("neocortex.extraction.agents")
     fake_agents.AgentInferenceConfig = (  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
         AgentInferenceConfig
+    )
+    fake_agents.LibrarianBudgetConfig = (  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
+        LibrarianBudgetConfig
     )
 
     original_modules = {
@@ -209,6 +219,7 @@ async def test_extract_episode_calls_run_extraction(provided_correlation_id: str
             ),
             librarian_use_tools=True,
             tool_calls_limit=150,
+            librarian_budget=LibrarianBudgetConfig(),
             ontology_tool_calls_limit=30,
             ontology_max_new_types=3,
             domain_hint="PRIVATE_DOMAIN_HINT",
@@ -272,7 +283,7 @@ def test_extraction_settings_defaults():
     """MCPSettings has per-agent extraction settings with correct defaults."""
     from neocortex.mcp_settings import MCPSettings
 
-    s = MCPSettings()
+    s = MCPSettings(_env_file=None)  # ty: ignore[unknown-argument]
     assert s.extraction_enabled is True
     for prefix in ("ontology", "extractor", "librarian"):
         assert getattr(s, f"{prefix}_model") == "openai-responses:gpt-5.4-mini"
@@ -280,7 +291,24 @@ def test_extraction_settings_defaults():
     assert s.ontology_thinking_effort == "medium"
     assert s.extractor_thinking_effort == "low"
     assert s.librarian_thinking_effort == "low"
+    assert s.librarian_entity_read_limit == 2
+    assert s.librarian_relation_read_limit == 1
+    assert s.librarian_soft_read_streak == 6
+    assert s.librarian_hard_read_streak == 10
+    assert s.librarian_soft_no_progress_calls == 8
+    assert s.librarian_hard_no_progress_calls == 14
+    assert s.librarian_max_duplicate_calls == 2
     assert s.domain_classifier_model == "openai-responses:gpt-5.4-mini"
+
+
+def test_qwen_family_detection_is_exact() -> None:
+    from neocortex.model_factory import is_qwen_model
+
+    assert is_qwen_model("local:qwen3.8-flash-next")
+    assert is_qwen_model("openai:qwen3.5")
+    assert is_qwen_model("openai:org/qwen3.5")
+    assert not is_qwen_model("local:llama-3")
+    assert not is_qwen_model("openai-responses:gpt-5.4-mini")
 
 
 # ── ServiceContext includes job_app ──

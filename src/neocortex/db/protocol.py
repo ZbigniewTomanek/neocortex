@@ -159,6 +159,7 @@ class MemoryRepository(Protocol):
         threshold: float = 0.3,
         limit: int = 5,
         target_schema: str | None = None,
+        expected_type: str | None = None,
     ) -> list[tuple[Node, float]]:
         """Find nodes by trigram similarity to name.
         Returns (node, similarity_score) pairs sorted by score descending.
@@ -199,6 +200,8 @@ class MemoryRepository(Protocol):
         query: str,
         limit: int = 5,
         query_embedding: list[float] | None = None,
+        target_schema: str | None = None,
+        expected_type: str | None = None,
     ) -> list[tuple[Node, float]]:
         """Search nodes by text and/or vector similarity.
 
@@ -208,7 +211,9 @@ class MemoryRepository(Protocol):
 
     # ── Graph Traversal ──
 
-    async def get_node_neighborhood(self, agent_id: str, node_id: int, depth: int = 2) -> list[dict]:
+    async def get_node_neighborhood(
+        self, agent_id: str, node_id: int, depth: int = 2, target_schema: str | None = None
+    ) -> list[dict]:
         """BFS traversal up to ``depth`` hops.
 
         Returns list of ``{node: Node, edges: list[Edge], distance: int}``.

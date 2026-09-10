@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 
+from neocortex.db.adapter import GraphServiceAdapter
 from neocortex.db.mock import InMemoryRepository
 from neocortex.extraction.pipeline import _persist_payload
 from neocortex.extraction.schemas import (
@@ -18,8 +19,13 @@ from neocortex.extraction.schemas import (
     ProposedEdgeType,
     ProposedNodeType,
 )
+from neocortex.graph_router import GraphRouter
+from neocortex.graph_service import GraphService
 from neocortex.ingestion.episode_processor import EpisodeProcessor
+from neocortex.mcp_settings import MCPSettings
 from neocortex.permissions.memory_service import InMemoryPermissionService
+from neocortex.permissions.pg_service import PostgresPermissionService
+from neocortex.schema_manager import SchemaManager
 
 BOOTSTRAP_ADMIN = "admin"
 SHARED_SCHEMA = "ncx_shared__research"
@@ -240,3 +246,52 @@ async def test_extraction_creates_edges_in_shared_schema(repo: InMemoryRepositor
     assert "Warsaw" in sigs[0]
     assert "Poland" in sigs[0]
     assert "CAPITAL_OF" in sigs[0]
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_adapter_target_search_and_bfs_are_shared_scoped_and_permission_checked(pg_service) -> None:
+    """A real shared graph returns only its rows and rejects an unpermitted agent."""
+    manager = SchemaManager(pg_service)
+    permissions = PostgresPermissionService(pg_service, BOOTSTRAP_ADMIN)
+    await permissions.ensure_admin(BOOTSTRAP_ADMIN)
+    personal_agent = "test_qwen_scope"
+    denied_agent = "test_qwen_denied"
+    personal = await manager.create_graph(personal_agent, "personal")
+    shared = await manager.create_graph("shared", "test_qwen_scope", is_shared=True)
+    await permissions.grant(personal_agent, shared, can_read=True, can_write=True, granted_by=BOOTSTRAP_ADMIN)
+    adapter = GraphServiceAdapter(
+        GraphService(pg_service),
+        router=GraphRouter(manager, pg_service.pool, permissions),
+        pool=pg_service.pool,
+        pg=pg_service,
+        settings=MCPSettings(_env_file=None),  # ty: ignore[unknown-argument]
+    )
+    try:
+        personal_type = await adapter.get_or_create_node_type(personal_agent, "Test_Scoped", target_schema=None)
+        shared_type = await adapter.get_or_create_node_type(personal_agent, "Test_Scoped", target_schema=shared)
+        edge_type = await adapter.get_or_create_edge_type(personal_agent, "TEST_SCOPED", target_schema=shared)
+        assert personal_type and shared_type and edge_type
+        await adapter.upsert_node(personal_agent, "Collision", personal_type.id, "personal-only")
+        shared_center = await adapter.upsert_node(
+            personal_agent, "Collision", shared_type.id, "shared-only", target_schema=shared
+        )
+        shared_neighbor = await adapter.upsert_node(
+            personal_agent, "Shared Neighbor", shared_type.id, "shared-neighbor", target_schema=shared
+        )
+        await adapter.upsert_edge(
+            personal_agent, shared_center.id, shared_neighbor.id, edge_type.id, target_schema=shared
+        )
+
+        matches = await adapter.search_nodes(personal_agent, "Collision", target_schema=shared)
+        assert [(node.content, node.id) for node, _score in matches] == [("shared-only", shared_center.id)]
+        neighborhood = await adapter.get_node_neighborhood(
+            personal_agent, shared_center.id, depth=1, target_schema=shared
+        )
+        assert [entry["node"].name for entry in neighborhood] == ["Shared Neighbor"]
+        with pytest.raises(PermissionError):
+            await adapter.search_nodes(denied_agent, "Collision", target_schema=shared)
+        with pytest.raises(PermissionError):
+            await adapter.get_node_neighborhood(denied_agent, shared_center.id, target_schema=shared)
+    finally:
+        await manager.drop_graph(shared)
+        await manager.drop_graph(personal)

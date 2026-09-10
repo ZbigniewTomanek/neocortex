@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from neocortex.extraction.schemas import ExtractedEntity, ProposedNodeType
+from neocortex.extraction.schemas import CurationAction, ExtractedEntity, LibrarianTerminal, ProposedNodeType
 
 # --- ProposedNodeType validators ---
 
@@ -53,3 +53,16 @@ def test_extracted_entity_rejects_long_type_name() -> None:
 def test_extracted_entity_rejects_lowercase_type_name() -> None:
     with pytest.raises(ValidationError):
         ExtractedEntity(name="Foo", type_name="lowercase")
+
+
+def test_librarian_terminal_is_strict() -> None:
+    assert LibrarianTerminal(status="done").status == "done"
+    with pytest.raises(ValidationError):
+        LibrarianTerminal.model_validate({"status": "done", "actions": []})
+
+
+def test_legacy_curation_action_is_bounded() -> None:
+    with pytest.raises(ValidationError):
+        CurationAction(action="invented")  # ty: ignore[invalid-argument-type]
+    with pytest.raises(ValidationError):
+        CurationAction(action="created_node", entity_name="x" * 257)

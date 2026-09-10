@@ -46,6 +46,12 @@ def is_local_model(model_name: str) -> bool:
     return model_name.startswith(LOCAL_PREFIX)
 
 
+def is_qwen_model(model_name: str) -> bool:
+    """Return whether the provider-stripped identifier names the Qwen family."""
+    identifier = model_name.split(":", 1)[-1].lower()
+    return identifier.startswith("qwen") or "/qwen" in identifier
+
+
 class LocalOpenAIChatModel(OpenAIChatModel):
     """OpenAI chat model adapter for strict local OpenAI-compatible servers.
 

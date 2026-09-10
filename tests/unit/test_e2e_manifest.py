@@ -249,7 +249,7 @@ def _manifest_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Manife
     }
 
 
-def test_build_and_offline_merge_are_run_scoped_atomic_and_private(
+def test_build_validate_and_validation_only_merge_are_run_scoped_atomic_and_private(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture = _manifest_fixture(tmp_path, monkeypatch)
@@ -263,6 +263,7 @@ def test_build_and_offline_merge_are_run_scoped_atomic_and_private(
         statuses_path=fixture["statuses"],
         output_path=fixture["output"],
     )
+    assert manifest["schema_version"] == 2
     assert manifest["status"] == "MEASURED"
     assert manifest["recall"]["result"] == {
         "status": "MEASURED",
@@ -291,6 +292,7 @@ def test_build_and_offline_merge_are_run_scoped_atomic_and_private(
             snapshot_path=fixture["snapshot"],
             snapshot_sha256=fixture["snapshot_digest"],
         )
+    before = fixture["metrics"].read_bytes()
     merged = evidence.merge_manifest(
         manifest_path=fixture["output"],
         metrics_path=fixture["metrics"],
@@ -298,9 +300,34 @@ def test_build_and_offline_merge_are_run_scoped_atomic_and_private(
         snapshot_path=fixture["snapshot"],
         snapshot_sha256=fixture["snapshot_digest"],
     )
-    assert merged["e2e_manifest"]["run_id"] == fixture["run_id"]
-    assert "e2e_manifest" in json.loads(fixture["metrics"].read_text())
+    assert merged["run_metadata"]["run_id"] == fixture["run_id"]
+    assert fixture["metrics"].read_bytes() == before
+    assert "e2e_manifest" not in json.loads(fixture["metrics"].read_text())
     assert not list(fixture["metrics"].parent.glob(".metrics-arm.json.*.tmp"))
+
+
+def test_validation_detects_each_referenced_file_tamper(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    fixture = _manifest_fixture(tmp_path, monkeypatch)
+    evidence.build_manifest(
+        arm="arm",
+        run_id=fixture["run_id"],
+        metrics_path=fixture["metrics"],
+        snapshot_path=fixture["snapshot"],
+        snapshot_sha256=fixture["snapshot_digest"],
+        recall_path=fixture["recall"],
+        statuses_path=fixture["statuses"],
+        output_path=fixture["output"],
+    )
+    originals = {key: fixture[key].read_bytes() for key in ("metrics", "snapshot", "recall")}
+    for key, message in (
+        ("metrics", "corpus_metrics reference file or digest is invalid"),
+        ("snapshot", "post_snapshot reference file or digest is invalid"),
+        ("recall", "recall reference file or digest is invalid"),
+    ):
+        fixture[key].write_bytes(originals[key] + b"x")
+        with pytest.raises(evidence.EvidenceError, match=message):
+            evidence.validate_manifest(manifest_path=fixture["output"], run_id=fixture["run_id"])
+        fixture[key].write_bytes(originals[key])
 
 
 def test_offline_merge_rejects_forged_recall_summary_with_genuine_source_digest(

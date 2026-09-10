@@ -5,7 +5,7 @@ import hashlib
 import json
 from collections.abc import Iterable
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import asyncpg
 from loguru import logger
@@ -936,6 +936,7 @@ class GraphServiceAdapter:
         threshold: float = 0.3,
         limit: int = 5,
         target_schema: str | None = None,
+        expected_type: str | None = None,
     ) -> list[tuple[Node, float]]:
         schema_name = await self._resolve_schema(agent_id, target_schema)
         async with self._scoped_conn(schema_name, agent_id, target_schema) as conn:
@@ -945,8 +946,9 @@ class GraphServiceAdapter:
                 "CASE WHEN n.id IN (SELECT node_id FROM node_alias WHERE lower(alias) = lower($1)) "
                 "     THEN GREATEST(similarity(n.name, $1), 1.0) "
                 "     ELSE similarity(n.name, $1) END AS sim "
-                "FROM node n "
+                "FROM node n JOIN node_type nt ON nt.id = n.type_id "
                 "WHERE n.forgotten = false "
+                "AND ($4::text IS NULL OR lower(nt.name) = lower($4)) "
                 "AND (similarity(n.name, $1) >= $2 "
                 "     OR n.id IN (SELECT node_id FROM node_alias WHERE lower(alias) = lower($1))) "
                 "ORDER BY sim DESC "
@@ -954,6 +956,7 @@ class GraphServiceAdapter:
                 name,
                 threshold,
                 limit,
+                expected_type,
             )
         results: list[tuple[Node, float]] = []
         for row in rows:
@@ -1174,10 +1177,16 @@ class GraphServiceAdapter:
         query: str,
         limit: int = 5,
         query_embedding: list[float] | None = None,
+        target_schema: str | None = None,
+        expected_type: str | None = None,
     ) -> list[tuple[Node, float]]:
         if self._pool is None or self._router is None:
-            # Fallback: simple text matching via GraphService
+            # GraphService has no multi-schema router, so target_schema is accepted
+            # for protocol compatibility but cannot be enforced in this fallback.
             nodes = await self._graph.list_nodes(limit=10000)
+            if expected_type is not None:
+                node_type = await self._graph.get_node_type_by_name(expected_type)
+                nodes = [] if node_type is None else [node for node in nodes if node.type_id == node_type.id]
             query_lower = query.lower()
             matches: list[tuple[Node, float]] = []
             for n in nodes:
@@ -1189,10 +1198,23 @@ class GraphServiceAdapter:
             matches.sort(key=lambda x: x[1], reverse=True)
             return matches[:limit]
 
+        if target_schema is not None:
+            return await self._search_nodes_in_schema(
+                target_schema,
+                query,
+                agent_id,
+                limit,
+                query_embedding,
+                required_permission="read",
+                expected_type=expected_type,
+            )
+
         schemas = await self._router.route_recall(agent_id)
         all_results: list[tuple[Node, float]] = []
         for schema_name in schemas:
-            results = await self._search_nodes_in_schema(schema_name, query, agent_id, limit, query_embedding)
+            results = await self._search_nodes_in_schema(
+                schema_name, query, agent_id, limit, query_embedding, expected_type=expected_type
+            )
             all_results.extend(results)
         # Deduplicate by (name, type_id) keeping highest-scoring occurrence
         seen: dict[tuple[str, int], int] = {}
@@ -1214,30 +1236,35 @@ class GraphServiceAdapter:
         agent_id: str,
         limit: int,
         query_embedding: list[float] | None = None,
+        required_permission: Literal["read"] | None = None,
+        expected_type: str | None = None,
     ) -> list[tuple[Node, float]]:
         if self._pool is None:
             raise RuntimeError("Connection pool required")
 
-        async with graph_scoped_connection(self._pool, schema_name, agent_id=agent_id) as conn:
+        async with graph_scoped_connection(
+            self._pool, schema_name, agent_id=agent_id, required_permission=required_permission
+        ) as conn:
             if query_embedding is not None:
                 emb_str = str(query_embedding)
                 rows = await conn.fetch(
-                    """SELECT id, type_id, name, content, properties, source,
-                              created_at, updated_at,
-                              ts_rank(tsv, plainto_tsquery('english', $1)) AS text_rank,
-                              CASE WHEN embedding IS NOT NULL
-                                   THEN 1 - (embedding <=> $2::vector)
+                    """SELECT n.id, n.type_id, n.name, n.content, n.properties, n.source,
+                              n.created_at, n.updated_at,
+                              ts_rank(n.tsv, plainto_tsquery('english', $1)) AS text_rank,
+                              CASE WHEN n.embedding IS NOT NULL
+                                   THEN 1 - (n.embedding <=> $2::vector)
                                    ELSE 0
                               END AS vector_sim
-                       FROM node
-                       WHERE forgotten = false
-                         AND (tsv @@ plainto_tsquery('english', $1)
-                          OR (embedding IS NOT NULL AND (embedding <=> $2::vector) < $3)
-                          OR lower(name) ILIKE '%' || $4 || '%' ESCAPE '\\')
+                       FROM node n JOIN node_type nt ON nt.id = n.type_id
+                       WHERE n.forgotten = false
+                         AND ($6::text IS NULL OR lower(nt.name) = lower($6))
+                         AND (n.tsv @@ plainto_tsquery('english', $1)
+                          OR (n.embedding IS NOT NULL AND (n.embedding <=> $2::vector) < $3)
+                          OR lower(n.name) ILIKE '%' || $4 || '%' ESCAPE '\\')
                        ORDER BY GREATEST(
-                           COALESCE(ts_rank(tsv, plainto_tsquery('english', $1)), 0),
-                           CASE WHEN embedding IS NOT NULL
-                                THEN 1 - (embedding <=> $2::vector)
+                           COALESCE(ts_rank(n.tsv, plainto_tsquery('english', $1)), 0),
+                           CASE WHEN n.embedding IS NOT NULL
+                                THEN 1 - (n.embedding <=> $2::vector)
                                 ELSE 0
                            END
                        ) DESC
@@ -1247,21 +1274,24 @@ class GraphServiceAdapter:
                     self._settings.recall_vector_distance_threshold,
                     _escape_ilike(query).lower(),
                     limit,
+                    expected_type,
                 )
             else:
                 rows = await conn.fetch(
-                    """SELECT id, type_id, name, content, properties, source,
-                              created_at, updated_at,
-                              ts_rank(tsv, plainto_tsquery('english', $1)) AS text_rank
-                       FROM node
-                       WHERE forgotten = false
-                         AND (tsv @@ plainto_tsquery('english', $1)
-                          OR lower(name) ILIKE '%' || $2 || '%' ESCAPE '\\')
-                       ORDER BY ts_rank(tsv, plainto_tsquery('english', $1)) DESC
+                    """SELECT n.id, n.type_id, n.name, n.content, n.properties, n.source,
+                              n.created_at, n.updated_at,
+                              ts_rank(n.tsv, plainto_tsquery('english', $1)) AS text_rank
+                       FROM node n JOIN node_type nt ON nt.id = n.type_id
+                       WHERE n.forgotten = false
+                         AND ($4::text IS NULL OR lower(nt.name) = lower($4))
+                         AND (n.tsv @@ plainto_tsquery('english', $1)
+                          OR lower(n.name) ILIKE '%' || $2 || '%' ESCAPE '\\')
+                       ORDER BY ts_rank(n.tsv, plainto_tsquery('english', $1)) DESC
                        LIMIT $3""",
                     query,
                     _escape_ilike(query).lower(),
                     limit,
+                    expected_type,
                 )
 
         results: list[tuple[Node, float]] = []
@@ -1323,12 +1353,17 @@ class GraphServiceAdapter:
 
     # ── Graph Traversal ──
 
-    async def get_node_neighborhood(self, agent_id: str, node_id: int, depth: int = 2) -> list[dict]:
+    async def get_node_neighborhood(
+        self, agent_id: str, node_id: int, depth: int = 2, target_schema: str | None = None
+    ) -> list[dict]:
         if self._pool is None or self._router is None:
+            # GraphService cannot enforce target_schema; retained as a compatibility fallback.
             return await self._bfs_via_graph_service(node_id, depth)
 
+        if target_schema is not None:
+            return await self._bfs_in_schema(target_schema, agent_id, node_id, depth)
         schema_name = await self._router.route_store(agent_id)
-        return await self._bfs_in_schema(schema_name, node_id, depth)
+        return await self._bfs_in_personal_schema(schema_name, node_id, depth)
 
     async def _bfs_via_graph_service(self, node_id: int, depth: int) -> list[dict]:
         visited: set[int] = {node_id}
@@ -1361,7 +1396,23 @@ class GraphServiceAdapter:
 
         return results
 
-    async def _bfs_in_schema(self, schema_name: str, node_id: int, depth: int) -> list[dict]:
+    async def _bfs_in_schema(self, schema_name: str, agent_id: str, node_id: int, depth: int) -> list[dict]:
+        pool = self._pool
+        if pool is None:
+            raise RuntimeError("Connection pool required")
+        return await self._bfs_with_connection(
+            lambda: graph_scoped_connection(pool, schema_name, agent_id=agent_id, required_permission="read"),
+            node_id,
+            depth,
+        )
+
+    async def _bfs_in_personal_schema(self, schema_name: str, node_id: int, depth: int) -> list[dict]:
+        pool = self._pool
+        if pool is None:
+            raise RuntimeError("Connection pool required")
+        return await self._bfs_with_connection(lambda: schema_scoped_connection(pool, schema_name), node_id, depth)
+
+    async def _bfs_with_connection(self, connection_context_factory: Any, node_id: int, depth: int) -> list[dict]:
         if self._pool is None:
             raise RuntimeError("Connection pool required")
 
@@ -1373,7 +1424,7 @@ class GraphServiceAdapter:
             if not current_frontier:
                 break
             next_frontier: list[int] = []
-            async with schema_scoped_connection(self._pool, schema_name) as conn:
+            async with connection_context_factory() as conn:
                 for nid in current_frontier:
                     # Get all edges connected to this node
                     edge_rows = await conn.fetch(
@@ -1384,19 +1435,20 @@ class GraphServiceAdapter:
                            FROM edge e WHERE e.target_id = $1""",
                         nid,
                     )
+                    edges_by_neighbor: dict[int, list[Edge]] = {}
                     for erow in edge_rows:
                         ed = dict(erow)
                         direction = ed.pop("direction")
                         neighbor_id = int(ed["target_id"]) if direction == "outgoing" else int(ed["source_id"])
+                        if isinstance(ed.get("properties"), str):
+                            ed["properties"] = json.loads(ed["properties"])
+                        edges_by_neighbor.setdefault(neighbor_id, []).append(Edge(**ed))
+
+                    for neighbor_id, neighbor_edges in edges_by_neighbor.items():
                         if neighbor_id in visited:
                             continue
                         visited.add(neighbor_id)
                         next_frontier.append(neighbor_id)
-
-                        if isinstance(ed.get("properties"), str):
-                            ed["properties"] = json.loads(ed["properties"])
-                        edge_obj = Edge(**ed)
-
                         node_row = await conn.fetchrow(
                             "SELECT id, type_id, name, content, properties, source, "
                             "created_at, updated_at FROM node WHERE id = $1 AND forgotten = false",
@@ -1410,7 +1462,7 @@ class GraphServiceAdapter:
                             results.append(
                                 {
                                     "node": node_obj,
-                                    "edges": [edge_obj],
+                                    "edges": neighbor_edges,
                                     "distance": dist,
                                 }
                             )

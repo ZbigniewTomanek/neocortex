@@ -31,14 +31,21 @@ from neocortex.extraction.agents import (
     AgentInferenceConfig,
     CurationActionTracker,
     LibrarianAgentDeps,
+    LibrarianBudgetConfig,
+    LibrarianTrajectoryLimitExceeded,
+    LibrarianTrajectoryTracker,
     build_librarian_agent,
+    build_librarian_relation_items,
 )
 from neocortex.extraction.schemas import (
     CurationAction,
     CurationSummary,
+    EntityDecision,
+    EntityDetailRequest,
     ExtractedEntity,
     ExtractedRelation,
     LibrarianPayload,
+    RelationDecision,
 )
 from neocortex.model_factory import LocalEndpoint
 
@@ -434,6 +441,115 @@ async def test_librarian_mutation_audit_is_opaque_and_tracker_counts_actions(
     assert tracker.edges_created == 1
     assert tracker.entities_archived == 1
     assert tracker.edges_removed == 1
+
+
+@pytest.mark.asyncio
+async def test_bounded_batches_terminalize_from_repository_results(repo: InMemoryRepository) -> None:
+    entities = [
+        ExtractedEntity(name="Alpha", type_name="Concept", description="Alpha content"),
+        ExtractedEntity(name="Beta", type_name="Concept", description="Beta content"),
+    ]
+    relations = build_librarian_relation_items(
+        entities, [ExtractedRelation(source_name="Alpha", target_name="Beta", relation_type="RELATED_TO")]
+    )
+    await repo.get_or_create_node_type(AGENT, "Concept")
+    await repo.get_or_create_edge_type(AGENT, "RELATED_TO")
+    tracker = LibrarianTrajectoryTracker(entities=entities, relations=relations)
+    deps = LibrarianAgentDeps(
+        episode_text="private source",
+        node_types=["Concept"],
+        edge_types=["RELATED_TO"],
+        extracted_entities=entities,
+        extracted_relations=relations,
+        repo=repo,
+        embeddings=None,
+        agent_id=AGENT,
+        episode_id=7,
+        action_tracker=tracker,
+    )
+    ctx = SimpleNamespace(deps=deps, run_id="bounded", retry=0)
+    tools = build_librarian_agent(_TEST_CONFIG, profile="qwen_bounded")._function_toolset.tools
+    resolved = await tools["resolve_entities"].function(ctx, entity_indices=[0, 1])
+    assert [item.reason for item in resolved.items] == ["no_match", "no_match"]
+    outcomes = await tools["apply_entity_decisions"].function(
+        ctx,
+        decisions=[
+            EntityDecision(entity_index=0, decision="create", content="Alpha content"),
+            EntityDecision(entity_index=1, decision="create", content="Beta content"),
+        ],
+    )
+    assert [item.reason for item in outcomes.items] == ["created", "created"]
+    checked = await tools["check_relations"].function(ctx, relation_indices=[0])
+    assert checked.items[0].reason == "no_match"
+    await tools["apply_relation_decisions"].function(
+        ctx, decisions=[RelationDecision(relation_index=0, decision="create")]
+    )
+    report = tracker.build_report()
+    assert report.status == "completed"
+    assert (report.entities_created, report.edges_created, report.result_source) == (2, 1, "host_tracker")
+    assert tracker.successful_node_ids == set(tracker.bound_node_ids.values())
+    assert tracker.successful_edge_ids == set(tracker.successful_edge_signatures)
+    assert all(node.properties["_source_episode"] == 7 for node in repo._nodes.values())
+
+
+def test_duplicate_budget_is_enforced_per_tool_item_across_mixed_batches() -> None:
+    entities = [ExtractedEntity(name=str(index), type_name="Concept", description="x") for index in range(3)]
+    tracker = LibrarianTrajectoryTracker(
+        entities=entities, relations=[], budget=LibrarianBudgetConfig(max_duplicate_calls=2)
+    )
+    assert tracker.begin_call("resolve_entities", [0, 1], read=True) == set()
+    tracker.record_progress()
+    assert tracker.begin_call("resolve_entities", [0, 2], read=True) == {0}
+    tracker.record_progress()
+    with pytest.raises(LibrarianTrajectoryLimitExceeded, match="duplicate_calls"):
+        tracker.begin_call("resolve_entities", [1, 2], read=True)
+    assert tracker.duplicate_calls == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("tool_name", "kwargs"),
+    [
+        ("resolve_entities", {"entity_indices": [-1]}),
+        (
+            "read_entity_details",
+            {"requests": [EntityDetailRequest.model_construct(entity_index=-1, node_id=1)]},
+        ),
+        (
+            "apply_entity_decisions",
+            {"decisions": [EntityDecision.model_construct(entity_index=-1, decision="create", content="x")]},
+        ),
+        ("check_relations", {"relation_indices": [-1]}),
+        (
+            "apply_relation_decisions",
+            {"decisions": [RelationDecision.model_construct(relation_index=-1, decision="create")]},
+        ),
+    ],
+)
+async def test_bounded_tools_reject_negative_indices_before_repository_access(
+    repo: InMemoryRepository, tool_name: str, kwargs: dict[str, Any]
+) -> None:
+    entities = [ExtractedEntity(name="Alpha", type_name="Concept", description="x")]
+    relations = [ExtractedRelation(source_name="Alpha", target_name="Alpha", relation_type="RELATED_TO")]
+    tracker = LibrarianTrajectoryTracker(entities=entities, relations=relations)
+    deps = LibrarianAgentDeps(
+        episode_text="private",
+        node_types=["Concept"],
+        edge_types=["RELATED_TO"],
+        extracted_entities=entities,
+        extracted_relations=relations,
+        repo=repo,
+        embeddings=None,
+        agent_id=AGENT,
+        action_tracker=tracker,
+    )
+    ctx = SimpleNamespace(deps=deps, run_id="negative", retry=0)
+    tool = build_librarian_agent(_TEST_CONFIG, profile="qwen_bounded")._function_toolset.tools[tool_name]
+    with pytest.raises(ValueError, match="indices"):
+        await tool.function(ctx, **kwargs)
+    assert tracker.provider_batch_calls == 0
+    assert tracker.repository_item_reads == 0
+    assert not repo._nodes and not repo._edges
 
 
 @pytest.mark.asyncio

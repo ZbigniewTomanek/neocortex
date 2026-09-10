@@ -6,7 +6,9 @@ persisted to the knowledge graph.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # ── LLM Output Schemas (what agents produce) ──
 
@@ -134,11 +136,11 @@ class LibrarianPayload(BaseModel):
 class CurationAction(BaseModel):
     """A single action taken by the librarian during graph curation."""
 
-    action: str  # "created_node", "updated_node", "archived_node", "created_edge", "removed_edge"
-    entity_name: str | None = None
-    edge_source: str | None = None
-    edge_target: str | None = None
-    details: str = ""
+    action: Literal["created_node", "updated_node", "archived_node", "created_edge", "removed_edge"]
+    entity_name: str | None = Field(default=None, max_length=256)
+    edge_source: str | None = Field(default=None, max_length=256)
+    edge_target: str | None = Field(default=None, max_length=256)
+    details: str = Field(default="", max_length=512)
 
 
 class CurationSummary(BaseModel):
@@ -169,3 +171,144 @@ class CurationSummary(BaseModel):
         self.edges_created = sum(1 for a in self.actions if a.action == "created_edge")
         self.edges_removed = sum(1 for a in self.actions if a.action == "removed_edge")
         return self
+
+
+class StrictToolModel(BaseModel):
+    """Strict base for every provider-controlled bounded-tool schema."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+ToolStatus = Literal["ok", "noop", "unresolved", "rejected", "stop_required"]
+ToolReason = Literal[
+    "resolved",
+    "created",
+    "updated",
+    "existing_equivalent",
+    "unchanged",
+    "no_match",
+    "ambiguous",
+    "ambiguous_homonym",
+    "endpoint_missing",
+    "invalid_type",
+    "not_found",
+    "duplicate_call",
+    "phase_violation",
+    "soft_budget",
+    "hard_budget",
+    "repository_failure",
+]
+
+
+class ToolOutcome(StrictToolModel):
+    status: ToolStatus
+    reason: ToolReason
+    item_kind: Literal["entity", "relation"]
+    item_index: int = Field(ge=0)
+
+
+class EntityCandidate(StrictToolModel):
+    node_id: int
+    name: str = Field(max_length=256)
+    type_name: str = Field(max_length=60)
+    score: float | None = None
+    content_digest: str = Field(pattern=r"^[0-9a-f]{16}$")
+    content_preview: str | None = Field(default=None, max_length=240)
+
+
+class TemporalPredecessorCandidate(StrictToolModel):
+    node_id: int
+    name: str = Field(max_length=256)
+
+
+class EntityResolution(ToolOutcome):
+    match: Literal["exact", "alias", "fuzzy", "semantic", "none", "ambiguous"]
+    candidates: list[EntityCandidate] = Field(max_length=3)
+    detail_required: bool
+    temporal_predecessor_candidates: list[TemporalPredecessorCandidate] = Field(default_factory=list, max_length=3)
+
+
+class EntityResolutionBatch(StrictToolModel):
+    items: list[EntityResolution] = Field(max_length=16)
+    budget_warning: bool = False
+
+
+class EntityDetailRequest(StrictToolModel):
+    entity_index: int = Field(ge=0)
+    node_id: int
+
+
+class EntityDetail(ToolOutcome):
+    node_id: int
+    content: str = Field(max_length=4000)
+    truncated: bool
+    importance: float = Field(ge=0.0, le=1.0)
+    properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=16)
+    properties_truncated: bool
+
+
+class EntityDetailBatch(StrictToolModel):
+    items: list[EntityDetail] = Field(max_length=8)
+    budget_warning: bool = False
+
+
+class EntityDecision(StrictToolModel):
+    entity_index: int = Field(ge=0)
+    decision: Literal["create", "update", "unchanged", "unresolved", "archive_then_create"]
+    selected_node_id: int | None = None
+    content: str | None = Field(default=None, max_length=8000)
+    properties: dict[str, str | int | float | bool | None] | None = Field(default=None, max_length=32)
+    importance: float | None = Field(default=None, ge=0.0, le=1.0)
+
+    @field_validator("properties")
+    @classmethod
+    def bound_properties(cls, value: dict | None) -> dict | None:
+        if value is not None and any(
+            len(str(key)) > 64 or (isinstance(item, str) and len(item) > 512) for key, item in value.items()
+        ):
+            raise ValueError("property key/value exceeds bounded librarian limits")
+        return value
+
+
+class RelationCheck(ToolOutcome):
+    source_node_id: int | None
+    target_node_id: int | None
+    edges: list[dict[str, int | str | float]] = Field(max_length=5)
+    truncated: bool
+
+
+class RelationCheckBatch(StrictToolModel):
+    items: list[RelationCheck] = Field(max_length=16)
+    budget_warning: bool = False
+
+
+class RelationDecision(StrictToolModel):
+    relation_index: int = Field(ge=0)
+    decision: Literal["create", "replace", "existing_equivalent", "unresolved"]
+    replace_edge_id: int | None = None
+
+
+class DecisionOutcomeBatch(StrictToolModel):
+    items: list[ToolOutcome] = Field(max_length=8)
+    budget_warning: bool = False
+
+
+class LibrarianTerminal(BaseModel):
+    status: Literal["done"]
+    model_config = ConfigDict(extra="forbid")
+
+
+class CurationReport(BaseModel):
+    status: Literal["completed", "completed_with_unresolved", "failed"]
+    entities_created: int
+    entities_updated: int
+    entities_unchanged: int
+    entities_unresolved: int
+    entities_archived: int
+    edges_created: int
+    edges_unchanged: int
+    edges_unresolved: int
+    edges_removed: int
+    pending_entities: int
+    pending_relations: int
+    result_source: Literal["host_tracker"] = "host_tracker"

@@ -1,5 +1,6 @@
 from typing import Literal
 
+from pydantic import Field
 from pydantic_ai.settings import ThinkingLevel
 from pydantic_settings import BaseSettings
 
@@ -138,6 +139,13 @@ class MCPSettings(BaseSettings):
     local_model_top_p_nothink: float = 0.9
     local_model_timeout_s: float = 600.0
     extraction_tool_calls_limit: int = 150
+    librarian_entity_read_limit: int = Field(default=2, ge=1)
+    librarian_relation_read_limit: int = Field(default=1, ge=1)
+    librarian_soft_read_streak: int = Field(default=6, ge=1)
+    librarian_hard_read_streak: int = Field(default=10, ge=1)
+    librarian_soft_no_progress_calls: int = Field(default=8, ge=1)
+    librarian_hard_no_progress_calls: int = Field(default=14, ge=1)
+    librarian_max_duplicate_calls: int = Field(default=2, ge=1)
     ontology_tool_calls_limit: int = 30
     ontology_max_new_types: int = 3
 
