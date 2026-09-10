@@ -20,10 +20,14 @@ class PostgresService:
     async def connect(self) -> None:
         """Create connection pool."""
         logger.info("Connecting to PostgreSQL at {}:{}", self._config.host, self._config.port)
+        # statement_cache_size=0: scoped connections switch `search_path` per transaction on
+        # pooled connections, so a plan cached under one graph schema would be invalid under another
+        # ("cached plan must not change result type" — asyncpg cannot auto-retry inside a transaction).
         self._pool = await asyncpg.create_pool(
             dsn=self._config.dsn,
             min_size=self._config.min_pool_size,
             max_size=self._config.max_pool_size,
+            statement_cache_size=0,
         )
         logger.info("Connection pool created (min={}, max={})", self._config.min_pool_size, self._config.max_pool_size)
 

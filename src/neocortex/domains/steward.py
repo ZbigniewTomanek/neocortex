@@ -397,7 +397,9 @@ class TaxonomySteward:
 async def _run(output: str | None) -> None:
     """Run the steward against a live PostgreSQL database."""
     pg_config = PostgresConfig()
-    pool = await asyncpg.create_pool(dsn=pg_config.dsn, min_size=1, max_size=3)
+    # statement_cache_size=0: scoped connections switch `search_path` per transaction on pooled
+    # connections, so a plan cached under one graph schema would be invalid under another.
+    pool = await asyncpg.create_pool(dsn=pg_config.dsn, min_size=1, max_size=3, statement_cache_size=0)
     assert pool is not None
 
     try:

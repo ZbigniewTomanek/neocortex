@@ -1054,12 +1054,16 @@ def build_extractor_agent(
     cfg = config or AgentInferenceConfig()
     model = _build_model(cfg)
     qwen_mode = is_qwen_model(cfg.model_name)
+    # Qwen occasionally exhausts the default single output-validation retry and raises
+    # UnexpectedModelBehavior; one extra retry recovers it in-process instead of failing the job.
+    extra: dict[str, int] = {"retries": 2} if qwen_mode else {}
     agent = Agent(  # ty: ignore[no-matching-overload]
         model,
         output_type=ExtractionResult,
         deps_type=ExtractorAgentDeps,
         capabilities=[build_audit_hooks("extractor", cfg)],
         model_settings=_qwen_output_cap_settings(cfg, "extractor"),
+        **extra,
         system_prompt=(
             QWEN_EXTRACTOR_PROMPT
             if qwen_mode

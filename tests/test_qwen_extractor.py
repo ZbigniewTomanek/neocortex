@@ -156,6 +156,20 @@ def test_config_overrides_the_output_ceiling() -> None:
     assert agent.model_settings == {"max_tokens": 999}
 
 
+# ── Retries ──
+
+
+def test_qwen_extractor_allows_an_extra_output_retry_and_hosted_keeps_the_default() -> None:
+    """Qwen exhausted the single default output-validation retry and raised UnexpectedModelBehavior.
+
+    One extra retry recovers the attempt in-process; the hosted agent keeps pydantic-ai's default.
+    """
+    assert build_extractor_agent(QWEN_CONFIG)._max_result_retries == 2
+    assert build_extractor_agent(QWEN_CONFIG)._max_tool_retries == 2
+    assert build_extractor_agent(HOSTED_CONFIG)._max_result_retries == 1
+    assert build_extractor_agent(HOSTED_CONFIG)._max_tool_retries == 1
+
+
 # ── Instructions ──
 
 
