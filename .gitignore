@@ -223,6 +223,9 @@ backups/
 # process pids
 *.pid
 
+# Local goal execution ledgers
+.tmp/
+
 # Auth0 secrets
 .env.auth0
 auth0.md
