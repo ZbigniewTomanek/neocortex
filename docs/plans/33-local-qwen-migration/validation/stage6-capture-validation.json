@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-09-09T18:14:48.920524+00:00",
+  "status": "PASS",
+  "scope": "collector smoke and privacy checks only; no extraction quality verdict",
+  "collector_sha256": "sha256:463b093bcd26aa789a50054b8fe80bd4e63a5382e368196ec0aff38de1b7075c",
+  "checks": [
+    "synthetic sensitive argument redaction",
+    "numeric episode and opaque correlation preservation",
+    "invalid marker type rejection",
+    "valid normalized type acceptance",
+    "actual captures fixed corpus key count and metadata match",
+    "actual captures dynamic schema value scan",
+    "exact run audit filtering and nonempty aggregate",
+    "admin argument allowlist",
+    "ruff check",
+    "terminal watcher captures and verifies current run corpus",
+    "terminal watcher rejects replaced corpus and stops"
+  ],
+  "capture_count": 10,
+  "latest_capture_path": "docs/plans/33-local-qwen-migration/validation/stage6-capture-20260909T180657Z-compact-20260909T181446231856Z.json",
+  "latest_capture_sha256": "sha256:2553f2a6bf958fc2cf6a68aa31dc549172f79173d2f4c8fbf83926425c15c725",
+  "latest_audit_records": 108
+}

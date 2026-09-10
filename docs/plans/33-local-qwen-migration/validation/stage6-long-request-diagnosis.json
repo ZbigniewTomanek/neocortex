@@ -1,0 +1,32 @@
+{
+  "run_id": "20260909T180657Z-compact",
+  "as_of_utc": "2026-09-09T20:22:09Z",
+  "episode_key": "E27",
+  "episode_id": 8,
+  "job_id": 15,
+  "phase": "extractor",
+  "request_started_at_utc": "2026-09-09T19:55:08.870Z",
+  "request_outstanding_minutes_approx": 27,
+  "completion_or_error_observed": false,
+  "configured_timeout_s": 600,
+  "timeout_kind": "HTTP transport operation/read inactivity; not extractor wall-clock deadline",
+  "sdk_default_transport_retries": 2,
+  "actual_transport_retries": "NOT MEASURED",
+  "delay_root_cause": "NOT MEASURED",
+  "other_active_job": {
+    "episode_key": "E26",
+    "job_id": 13,
+    "phase": "librarian",
+    "requests_started": 62,
+    "requests_completed": 61,
+    "tools_completed": 60
+  },
+  "source_capture": "validation/stage6-capture-20260909T180657Z-compact-20260909T202209710014Z.json",
+  "capture_sha256": "fc2ee8170c826e1373fbcd2ae8a8e37828807e819a55f7dc9d810c6b5098b81f",
+  "audit_prefix_bytes": 4208045,
+  "audit_prefix_sha256": "a51d0ed4bedec9867c97f7ad4faafe19d0b198ba1c28df695a9bad55edad3b6b",
+  "audit_start_lines": [
+    4021,
+    4022
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "run_id": "20260909T180657Z-compact",
+  "pid": 89663,
+  "private_log_path": "/tmp/neocortex-stage6-20260909T180657Z-compact.log",
+  "source_revision": "8f443e90b188445355ae0564d16e090ef9e9e374",
+  "start_utc": "2026-09-09T18:06:57.614466+00:00",
+  "status": "RUNNING",
+  "harness_process_start": "Wed Sep  9 20:06:57 2026",
+  "detached_monitor_pid": 28801,
+  "detached_monitor_log": "/tmp/neocortex-stage6-20260909T180657Z-compact-detached-monitor.log",
+  "idle_sleep_inhibitor_pid": 28802,
+  "detached": true
+}

@@ -197,6 +197,16 @@ ToolReason = Literal[
     "soft_budget",
     "hard_budget",
     "repository_failure",
+    "selected_candidate_exists",
+    "selected_candidate_missing",
+    "detail_required",
+    "content_missing",
+    "truncated_detail",
+    "unresolved_not_allowed",
+    "temporal_evidence_missing",
+    "edge_not_checked",
+    "replacement_edge_not_checked",
+    "decision_incompatible",
 ]
 
 
@@ -221,10 +231,15 @@ class TemporalPredecessorCandidate(StrictToolModel):
     name: str = Field(max_length=256)
 
 
+EntityDecisionKind = Literal["create", "update", "unchanged", "unresolved", "archive_then_create"]
+RelationDecisionKind = Literal["create", "replace", "existing_equivalent", "unresolved"]
+
+
 class EntityResolution(ToolOutcome):
     match: Literal["exact", "alias", "fuzzy", "semantic", "none", "ambiguous"]
     candidates: list[EntityCandidate] = Field(max_length=3)
     detail_required: bool
+    allowed_decisions: list[EntityDecisionKind] = Field(max_length=4)
     temporal_predecessor_candidates: list[TemporalPredecessorCandidate] = Field(default_factory=list, max_length=3)
 
 
@@ -235,16 +250,16 @@ class EntityResolutionBatch(StrictToolModel):
 
 class EntityDetailRequest(StrictToolModel):
     entity_index: int = Field(ge=0)
-    node_id: int
 
 
 class EntityDetail(ToolOutcome):
-    node_id: int
+    node_id: int | None
     content: str = Field(max_length=4000)
     truncated: bool
     importance: float = Field(ge=0.0, le=1.0)
     properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=16)
     properties_truncated: bool
+    allowed_decisions: list[EntityDecisionKind] = Field(max_length=4)
 
 
 class EntityDetailBatch(StrictToolModel):
@@ -254,8 +269,7 @@ class EntityDetailBatch(StrictToolModel):
 
 class EntityDecision(StrictToolModel):
     entity_index: int = Field(ge=0)
-    decision: Literal["create", "update", "unchanged", "unresolved", "archive_then_create"]
-    selected_node_id: int | None = None
+    decision: EntityDecisionKind
     content: str | None = Field(default=None, max_length=8000)
     properties: dict[str, str | int | float | bool | None] | None = Field(default=None, max_length=32)
     importance: float | None = Field(default=None, ge=0.0, le=1.0)
@@ -275,6 +289,7 @@ class RelationCheck(ToolOutcome):
     target_node_id: int | None
     edges: list[dict[str, int | str | float]] = Field(max_length=5)
     truncated: bool
+    allowed_decisions: list[RelationDecisionKind] = Field(max_length=2)
 
 
 class RelationCheckBatch(StrictToolModel):
@@ -284,7 +299,7 @@ class RelationCheckBatch(StrictToolModel):
 
 class RelationDecision(StrictToolModel):
     relation_index: int = Field(ge=0)
-    decision: Literal["create", "replace", "existing_equivalent", "unresolved"]
+    decision: RelationDecisionKind
     replace_edge_id: int | None = None
 
 

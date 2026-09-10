@@ -1,0 +1,34 @@
+{
+  "run_id": "20260909T180657Z-compact",
+  "episode_key": "E18",
+  "episode_id": 5,
+  "routing_job_id": 10,
+  "observed_at_utc": "2026-09-09T19:13:01.443464Z",
+  "failure_category": "structured_output_validation_retry_exhaustion",
+  "model_requests_completed": 2,
+  "validation_rejections": 2,
+  "output_retries": [
+    0,
+    1
+  ],
+  "output_max_retries": 1,
+  "error_type": "UnexpectedModelBehavior",
+  "specific_constraint": "NOT MEASURED",
+  "routing_effect": {
+    "exception_caught": true,
+    "routed_domain_count": 0,
+    "routing_job_status": "succeeded",
+    "routing_job_attempts": 1,
+    "shared_extraction_job_observed": false
+  },
+  "source_capture": "validation/stage6-capture-20260909T180657Z-compact-20260909T191906519762Z.json",
+  "capture_sha256": "e720be28977b35d979ed44115fb3665c14f8f429ded69c29dd79ee733facd3ff",
+  "audit_line_range": [
+    2869,
+    2878
+  ],
+  "audit_prefix_bytes": 2916108,
+  "audit_prefix_sha256": "1fa7f976baa35bc2721bf16bee0a5a31715619638f6f96172ccc9739929cf22e",
+  "gate": "Stage 6 integrity scan: unexplained rejection; handled exception is not asserted to be unhandled",
+  "review_kind": "focused_read_only_diagnosis_not_stage_acceptance"
+}

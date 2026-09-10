@@ -414,3 +414,73 @@ new live result. Historical full-profile evidence and the full loader default re
 **Validation**: Implementation validation remains the preceding 1100-pass, 7-skip full suite; this
 follow-up changes plan documentation/state only. Plan lint, diff checks, and commit hooks are run
 before delivery. No model or ingestion run is started.
+
+## 2026-09-09 — Compact benchmark execution resumed
+User requests the local benchmark and an upgrade feasibility recommendation. Stage 6 resumes
+with compact revision 1 and the existing integrity and quality thresholds. The plan protocol
+and stage briefs remain the contract. Added durable review/repair ledger fields for this fresh
+stage attempt; historical accepted stages are unchanged. Dedicated executor owns the live arm;
+coordinator owns state and the subsequent independent evidence audit. No result is yet claimed.
+
+### Live arm launch — 20260909T180657Z-compact
+Authenticated exact-model preflight returned HTTP 200 in 0.082 seconds. User authorized
+process-only GEMINI_API_KEY to GOOGLE_API_KEY alias; embedding health returned 768 dimensions
+in 0.757 seconds. Full regression suite: 1100 passed, 7 skipped in 29.31 seconds.
+Dedicated Luna executor returned no status or artifacts after repeated prompts; interrupted
+and reassigned execution to coordinator to keep progress. No concurrent writer remains.
+Harness PID and private log path are in validation/stage6-active-run.json. All four roles use
+local Flash Next, low effort, concurrency 2, timeout 600, compact revision 1. Results pending.
+
+### Compact arm progress checkpoint
+Run 20260909T180657Z-compact remains IN_PROGRESS. The live admin queue reached
+5 succeeded, 2 doing, 15 todo, 0 failed/cancelled (22 total after routing).
+One dense librarian completed at 141 tool calls; no model/agent failure events recorded
+at this checkpoint. Intermediate graph capture: 56 nodes, 64 edges. These are live
+progress observations, not terminal quality certification. validation/capture_stage6.py
+saves immutable sanitized captures and runs a separate one-second terminal watcher.
+Snapshot-derived sample, recall, E2Es, complete integrity verdict and recommendation remain NOT MEASURED.
+
+### Live classifier defect — E18
+Focused read-only diagnosis confirms two completed classifier requests and two ValidationError
+output rejections, followed by UnexpectedModelBehavior at 19:13:01Z. Router catches the error
+and returns an empty list; routing job10 succeeds without shared extraction for E18 (DB episode5).
+Thus zero failed queue jobs does not establish classifier success. The exact rejected field is
+NOT MEASURED because detailed exception output is unavailable. Safe provenance and the affected
+integrity criterion are in validation/stage6-classifier-diagnosis.json. The arm continues without
+prompt, threshold, or configuration changes so the remaining evidence is comparable.
+
+### Long-request observation — E27
+At20:22:09Z, E27 extractor job15 had one request outstanding since19:55:08.870Z
+(approximately27minutes), without a completion/error. E26 librarian continues progressing.
+The configured600s timeout is transport operation/read inactivity, not pipeline wall time;
+SDK default2 transport retries can extend duration, but actual retry occurrence and delay
+cause are NOT MEASURED. Safe provenance: validation/stage6-long-request-diagnosis.json.
+No configuration changes or additional live probes were made during the measured arm.
+
+## 2026-09-10 — Qwen librarian harness repair saved with validation incomplete
+
+The compact run `20260909T180657Z-compact` finished after about 7.7 hours. All 31
+ingestion jobs succeeded, but recall was not measured and all five E2E checks failed.
+The evidence review found that the librarian was the main cost: 23 runs made 1,837
+model requests and 1,793 tool calls. Some trajectories repeated reads without reaching
+a useful mutation or a final result.
+
+The repair adds a Qwen-specific bounded workflow. It uses five batch tools, indexed
+entity and relation state, duplicate detection, fixed budgets, host-bound database
+identities, code-owned allowed decisions, recoverable item errors, and end-to-end
+micro-batches of at most eight items. Hosted-model behavior is unchanged. The live
+probe now uses PostgreSQL target schemas, the configured embedding service, private raw
+output, immutable input caching, partial timeout counters, and exact graph checks.
+
+Deterministic validation passes: 1,162 tests passed and 7 were skipped. In the last
+complete A2-only probe, E04 and E05 both completed their primary and idempotence passes.
+Every graph assertion category was zero, no unknown tool was called, and the one
+representable E04 fixture fact was preserved. The primary passes still took about 558
+and 653 seconds, so performance acceptance is not complete.
+
+The full A0/A1/A2 comparison was stopped cleanly when the user requested session close.
+Both A0 cases and both A1 cases had timed out. A2/E04 was active and healthy but had not
+finished, and A2/E05 had not started. No probe process or temporary graph schema remains.
+The material reduction gate and independent Stage 4 review are not measured. No new
+compact benchmark was launched. On resume, finish the cached six-row comparison, run the
+independent review, and launch the benchmark detached only if those gates pass.

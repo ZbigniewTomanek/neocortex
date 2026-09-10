@@ -1,0 +1,85 @@
+{
+  "arm": "qwen-flash-next-compact",
+  "corpus_metrics": {
+    "path": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+    "sha256": "de65002f037d1d730a1e86b23cc10a28bc7338d7da55742d53b1c4586223ac2e"
+  },
+  "e2e": {
+    "children": [
+      {
+        "child_run_id": "20260909T180657Z-compact.e2e.01",
+        "exit_code": 1,
+        "result": {
+          "exit_code": 1,
+          "reason": "exit_status_only",
+          "status": "FAIL"
+        },
+        "script": "e2e_extraction_pipeline_test.py",
+        "script_sha256": "d1d2463e08661af2966f10737219c9eda3e8cee1814cd4e5f43df8a0ee80ad95"
+      },
+      {
+        "child_run_id": "20260909T180657Z-compact.e2e.02",
+        "exit_code": 1,
+        "result": {
+          "exit_code": 1,
+          "reason": "scenario_result_missing",
+          "status": "NOT_MEASURED"
+        },
+        "script": "e2e_plan15_scenarios_test.py",
+        "script_sha256": "9f77a18a2f5036ab0de64e5b638a1e3e14030e8865ef5bdeffd7ff7000aee274"
+      },
+      {
+        "child_run_id": "20260909T180657Z-compact.e2e.03",
+        "exit_code": 1,
+        "result": {
+          "exit_code": 1,
+          "reason": "scenario_result_missing",
+          "status": "NOT_MEASURED"
+        },
+        "script": "e2e_plan17_validation.py",
+        "script_sha256": "e215e3478b335ff328d444b9c0c2b078782bf2749defb2462ecdf565bddb2e58"
+      },
+      {
+        "child_run_id": "20260909T180657Z-compact.e2e.04",
+        "exit_code": 1,
+        "result": {
+          "exit_code": 1,
+          "reason": "exit_status_only",
+          "status": "FAIL"
+        },
+        "script": "e2e_episodic_memory_test.py",
+        "script_sha256": "6c20dd6e1e473d85fddb6266685e1a23a56331028c32b353b960812ddc60985d"
+      },
+      {
+        "child_run_id": "20260909T180657Z-compact.e2e.05",
+        "exit_code": 1,
+        "result": {
+          "exit_code": 1,
+          "reason": "exit_status_only",
+          "status": "FAIL"
+        },
+        "script": "e2e_cognitive_recall_test.py",
+        "script_sha256": "5531166c256b20cca99ed19c41beac7a052496ad9199a12b7576e41f7490604f"
+      }
+    ],
+    "failed": 5,
+    "passed": 0,
+    "total": 5
+  },
+  "kind": "neocortex-bakeoff-e2e-manifest",
+  "post_snapshot": {
+    "path": "backups/qwen-flash-next-compact-20260909T180657Z-compact-20260910-031025.tar.gz",
+    "sha256": "c187d105d3eb73ee0b6307913a0e21e6df4fd7a82b412fa9830640b20a410934"
+  },
+  "recall": {
+    "path": "docs/plans/33-local-qwen-migration/resources/recall-results-qwen-flash-next-compact-20260909T180657Z-compact.json",
+    "result": {
+      "reason": "recall_scorer_exit_1",
+      "status": "NOT_MEASURED"
+    },
+    "sha256": "5b3b876900ba7f495f792b2098a7b942a6dd49b253c69601bf33982a816046fd"
+  },
+  "run_id": "20260909T180657Z-compact",
+  "schema_version": 1,
+  "status": "NOT_MEASURED"
+}

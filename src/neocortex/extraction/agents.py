@@ -34,6 +34,7 @@ from neocortex.extraction.schemas import (
     DecisionOutcomeBatch,
     EntityCandidate,
     EntityDecision,
+    EntityDecisionKind,
     EntityDetail,
     EntityDetailBatch,
     EntityDetailRequest,
@@ -48,8 +49,10 @@ from neocortex.extraction.schemas import (
     RelationCheck,
     RelationCheckBatch,
     RelationDecision,
+    RelationDecisionKind,
     TemporalPredecessorCandidate,
     ToolOutcome,
+    ToolReason,
 )
 
 # Plan 33 introduces an opt-in local: model route; Stage 9 changes defaults after the gate.
@@ -190,6 +193,7 @@ class LibrarianTrajectoryTracker(CurationActionTracker):
     mutations_succeeded: int = 0
     duplicate_calls: int = 0
     validation_rejections: int = 0
+    host_normalization_count: int = 0
     read_streak: int = 0
     max_read_streak: int = 0
     calls_since_progress: int = 0
@@ -205,12 +209,17 @@ class LibrarianTrajectoryTracker(CurationActionTracker):
         self.entity_states = {index: "pending" for index in range(len(self.entities))}
         self.relation_states = {index: "pending" for index in range(len(self.relations))}
 
-    @staticmethod
-    def validate_indices(indices: list[int], count: int, limit: int) -> None:
-        if not indices or len(indices) > limit or indices != sorted(set(indices)) or indices[0] < 0:
-            raise ValueError("indices must be non-empty, unique, ascending, and within the batch limit")
-        if indices[-1] >= count:
+    def normalize_indices(self, indices: list[int], count: int, limit: int) -> list[int]:
+        if not indices or any(index < 0 for index in indices):
+            raise ValueError("indices must be non-empty and non-negative")
+        normalized = sorted(set(indices))
+        if len(normalized) > limit:
+            raise ValueError("unique index count exceeds the batch limit")
+        if normalized[-1] >= count:
             raise ValueError("item index out of range")
+        if normalized != indices:
+            self.host_normalization_count += 1
+        return normalized
 
     def _record_duplicate(self) -> None:
         self.duplicate_calls += 1
@@ -262,6 +271,11 @@ class LibrarianTrajectoryTracker(CurationActionTracker):
 
     def record_progress(self) -> None:
         self.calls_since_progress = 0
+
+    def record_rejection(self, tool: str, index: int) -> None:
+        """Leave recoverable work pending so a corrected decision can be retried."""
+        self.validation_rejections += 1
+        self.seen_item_calls.discard((tool, index))
 
     def consume_entity_read(self, index: int) -> None:
         count = self.entity_reads.get(index, 0)
@@ -330,6 +344,27 @@ def build_librarian_relation_items(
             )
             existing.add(key)
     return result
+
+
+def _entity_allowed_decisions(
+    tracker: LibrarianTrajectoryTracker, index: int, *, after_detail: bool
+) -> list[EntityDecisionKind]:
+    """Return the decisions accepted by the host for one entity at this phase."""
+    selected = tracker.selected_nodes.get(index)
+    reason = tracker.entity_resolution_reason.get(index)
+    if selected is None:
+        return ["unresolved"] if reason in {"ambiguous", "ambiguous_homonym"} else ["create"]
+    if not after_detail or index not in tracker.detailed_entities:
+        return []
+    allowed: list[EntityDecisionKind] = ["unchanged"]
+    if index in tracker.truncated_entities:
+        allowed.append("unresolved")
+    else:
+        allowed.insert(0, "update")
+    entity = tracker.entities[index]
+    if entity.supersedes and entity.temporal_signal:
+        allowed.append("archive_then_create")
+    return allowed
 
 
 @dataclass
@@ -1024,9 +1059,9 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
 
     @agent.tool
     async def resolve_entities(ctx: RunContext[LibrarianAgentDeps], entity_indices: list[int]) -> EntityResolutionBatch:
-        """Resolve up to 16 unique ascending entity indices exactly once."""
+        """Resolve up to 16 entity indices exactly once; the host sorts and deduplicates them."""
         tracker = _trajectory_tracker(ctx)
-        tracker.validate_indices(entity_indices, len(tracker.entities), 16)
+        entity_indices = tracker.normalize_indices(entity_indices, len(tracker.entities), 16)
         duplicates = tracker.begin_call("resolve_entities", entity_indices, read=True)
         items: list[EntityResolution] = []
         for index in entity_indices:
@@ -1040,6 +1075,7 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                         match="none",
                         candidates=[],
                         detail_required=False,
+                        allowed_decisions=[],
                     )
                 )
                 continue
@@ -1079,6 +1115,7 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                     ),  # ty: ignore[invalid-argument-type]
                     candidates=candidates,
                     detail_required=len(matches) == 1,
+                    allowed_decisions=_entity_allowed_decisions(tracker, index, after_detail=False),
                     temporal_predecessor_candidates=temporal,
                 )
             )
@@ -1090,16 +1127,36 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
     async def read_entity_details(
         ctx: RunContext[LibrarianAgentDeps], requests: list[EntityDetailRequest]
     ) -> EntityDetailBatch:
-        """Read bounded details for up to eight resolver-selected candidates."""
+        """Read details for up to eight entities; the host uses each resolver-selected node id."""
         tracker = _trajectory_tracker(ctx)
-        indices = [item.entity_index for item in requests]
-        tracker.validate_indices(indices, len(tracker.entities), 8)
-        if len(tracker.resolved_entities) != len(tracker.entities):
+        indices = tracker.normalize_indices([item.entity_index for item in requests], len(tracker.entities), 8)
+        request_by_index = {request.entity_index: request for request in reversed(requests)}
+        requests = [request_by_index[index] for index in indices]
+        if any(index not in tracker.resolved_entities for index in indices):
             raise ValueError("entity details are out of phase")
         duplicates = tracker.begin_call("read_entity_details", indices, read=True)
         items: list[EntityDetail] = []
         for request in requests:
-            index, node_id = request.entity_index, request.node_id
+            index = request.entity_index
+            node_id = tracker.selected_nodes.get(index)
+            if node_id is None:
+                reason = tracker.entity_resolution_reason.get(index)
+                items.append(
+                    EntityDetail(
+                        status="unresolved",
+                        reason="ambiguous" if reason in {"ambiguous", "ambiguous_homonym"} else "not_found",
+                        item_kind="entity",
+                        item_index=index,
+                        node_id=None,
+                        content="",
+                        truncated=False,
+                        importance=0.0,
+                        properties={},
+                        properties_truncated=False,
+                        allowed_decisions=_entity_allowed_decisions(tracker, index, after_detail=True),
+                    )
+                )
+                continue
             if index in duplicates:
                 items.append(
                     EntityDetail(
@@ -1113,11 +1170,12 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                         importance=0.0,
                         properties={},
                         properties_truncated=False,
+                        allowed_decisions=[],
                     )
                 )
                 continue
-            if node_id not in tracker.entity_candidates.get(index, {}) or tracker.selected_nodes.get(index) != node_id:
-                raise ValueError("detail node was not the resolver-selected candidate")
+            if node_id not in tracker.entity_candidates.get(index, {}):
+                raise ValueError("resolver-selected detail candidate is unavailable")
             tracker.consume_entity_read(index)
             node = tracker.entity_candidates[index][node_id]
             content = node.content or ""
@@ -1147,6 +1205,7 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                     importance=node.importance,
                     properties=scalar_props,
                     properties_truncated=omitted,
+                    allowed_decisions=_entity_allowed_decisions(tracker, index, after_detail=True),
                 )
             )
         if len(duplicates) < len(requests):
@@ -1161,12 +1220,16 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
         from neocortex.normalization import canonicalize_name
 
         tracker = _trajectory_tracker(ctx)
-        indices = [item.entity_index for item in decisions]
-        tracker.validate_indices(indices, len(tracker.entities), 8)
-        if len(tracker.resolved_entities) != len(tracker.entities):
-            raise ValueError("entity decisions are out of phase")
+        indices = tracker.normalize_indices([item.entity_index for item in decisions], len(tracker.entities), 8)
+        decision_by_index = {decision.entity_index: decision for decision in reversed(decisions)}
+        decisions = [decision_by_index[index] for index in indices]
         duplicates = tracker.begin_call("apply_entity_decisions", indices, read=False)
         outcomes: list[ToolOutcome] = []
+
+        def reject(index: int, reason: ToolReason) -> None:
+            tracker.record_rejection("apply_entity_decisions", index)
+            outcomes.append(ToolOutcome(status="rejected", reason=reason, item_kind="entity", item_index=index))
+
         for decision in decisions:
             index = decision.entity_index
             if index in duplicates:
@@ -1176,23 +1239,29 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                 continue
             entity = tracker.entities[index]
             selected = tracker.selected_nodes.get(index)
-            if decision.decision in {"update", "unchanged", "archive_then_create"}:
-                if decision.selected_node_id != selected or selected is None:
-                    raise ValueError("decision identity differs from the selected resolver candidate")
-                if index not in tracker.detailed_entities:
-                    raise ValueError("existing candidates must be inspected before a decision")
+            if index not in tracker.resolved_entities:
+                reject(index, "phase_violation")
+                continue
+            allowed = _entity_allowed_decisions(tracker, index, after_detail=True)
+            if decision.decision not in allowed:
+                if decision.decision == "create" and selected is not None:
+                    reject(index, "selected_candidate_exists")
+                elif decision.decision in {"update", "unchanged", "archive_then_create"} and selected is None:
+                    reject(index, "selected_candidate_missing")
+                elif selected is not None and index not in tracker.detailed_entities:
+                    reject(index, "detail_required")
+                elif decision.decision == "update" and index in tracker.truncated_entities:
+                    reject(index, "truncated_detail")
+                elif decision.decision == "unresolved":
+                    reject(index, "unresolved_not_allowed")
+                elif decision.decision == "archive_then_create":
+                    reject(index, "temporal_evidence_missing")
+                else:
+                    reject(index, "decision_incompatible")
+                continue
             if decision.decision in {"create", "update", "archive_then_create"} and not decision.content:
-                raise ValueError("create and update decisions require content")
-            if decision.decision == "update" and index in tracker.truncated_entities:
-                raise ValueError("truncated details cannot be updated")
-            if (
-                decision.decision == "unresolved"
-                and tracker.entity_resolution_reason.get(index) not in {"ambiguous", "ambiguous_homonym"}
-                and index not in tracker.truncated_entities
-            ):
-                raise ValueError("unresolved requires ambiguity or truncated details")
-            if decision.decision == "archive_then_create" and not (entity.supersedes and entity.temporal_signal):
-                raise ValueError("archive_then_create requires explicit temporal evidence")
+                reject(index, "content_missing")
+                continue
 
             if decision.decision in {"unchanged", "unresolved"}:
                 if decision.decision == "unchanged" and selected is not None:
@@ -1209,6 +1278,16 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                 tracker.record_progress()
                 continue
 
+            node_type_id: int | None = None
+            if decision.decision != "update":
+                node_type = await ctx.deps.repo.get_or_create_node_type(
+                    ctx.deps.agent_id, entity.type_name, target_schema=ctx.deps.target_schema
+                )
+                if node_type is None:
+                    reject(index, "invalid_type")
+                    continue
+                node_type_id = node_type.id
+
             tracker.mutations_attempted += 1
             if decision.decision == "archive_then_create":
                 assert selected is not None
@@ -1224,14 +1303,11 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                 candidate = tracker.entity_candidates[index][selected]
                 canonical_name = candidate.name
                 node_type_id = candidate.type_id
-            else:
-                node_type = await ctx.deps.repo.get_or_create_node_type(
-                    ctx.deps.agent_id, entity.type_name, target_schema=ctx.deps.target_schema
-                )
-                if node_type is None:
-                    raise ValueError("invalid extracted entity type")
-                node_type_id = node_type.id
+            assert node_type_id is not None
             props = dict(decision.properties or {})
+            # Extractor facts are accepted source material. Model-authored curation
+            # metadata may add keys, but it cannot silently remove or rewrite them.
+            props.update(entity.properties)
             if ctx.deps.episode_id is not None:
                 props["_source_episode"] = ctx.deps.episode_id
             assert decision.content is not None
@@ -1276,11 +1352,20 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                 return tracker.temporal_predecessors.get(index)
         return None
 
+    def relation_allowed_decisions(
+        tracker: LibrarianTrajectoryTracker, index: int, source_id: int | None, target_id: int | None
+    ) -> list[RelationDecisionKind]:
+        if source_id is None or target_id is None:
+            return ["unresolved"]
+        if tracker.checked_edges.get(index):
+            return ["existing_equivalent", "replace"]
+        return ["create"]
+
     @agent.tool
     async def check_relations(ctx: RunContext[LibrarianAgentDeps], relation_indices: list[int]) -> RelationCheckBatch:
-        """Check up to 16 relations with one target-scoped BFS per source node."""
+        """Check up to 16 relations; the host sorts and deduplicates their indices."""
         tracker = _trajectory_tracker(ctx)
-        tracker.validate_indices(relation_indices, len(tracker.relations), 16)
+        relation_indices = tracker.normalize_indices(relation_indices, len(tracker.relations), 16)
         if not tracker.all_entities_terminal:
             raise ValueError("relation checks are out of phase")
         duplicates = tracker.begin_call("check_relations", relation_indices, read=True)
@@ -1300,6 +1385,7 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                         target_node_id=None,
                         edges=[],
                         truncated=False,
+                        allowed_decisions=[],
                     )
                 )
                 continue
@@ -1318,6 +1404,7 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                         target_node_id=target_id,
                         edges=[],
                         truncated=False,
+                        allowed_decisions=["unresolved"],
                     )
                 )
                 continue
@@ -1348,6 +1435,7 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                     target_node_id=target_id,
                     edges=edges[:5],
                     truncated=len(edges) > 5,
+                    allowed_decisions=relation_allowed_decisions(tracker, index, source_id, target_id),
                 )
             )
         if len(duplicates) < len(relation_indices):
@@ -1360,12 +1448,16 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
     ) -> DecisionOutcomeBatch:
         """Apply up to eight checked relation decisions in ascending order."""
         tracker = _trajectory_tracker(ctx)
-        indices = [item.relation_index for item in decisions]
-        tracker.validate_indices(indices, len(tracker.relations), 8)
-        if any(index not in tracker.checked_edges for index in indices):
-            raise ValueError("relation decisions require a prior check")
+        indices = tracker.normalize_indices([item.relation_index for item in decisions], len(tracker.relations), 8)
+        decision_by_index = {decision.relation_index: decision for decision in reversed(decisions)}
+        decisions = [decision_by_index[index] for index in indices]
         duplicates = tracker.begin_call("apply_relation_decisions", indices, read=False)
         outcomes: list[ToolOutcome] = []
+
+        def reject(index: int, reason: ToolReason) -> None:
+            tracker.record_rejection("apply_relation_decisions", index)
+            outcomes.append(ToolOutcome(status="rejected", reason=reason, item_kind="relation", item_index=index))
+
         for decision in decisions:
             index = decision.relation_index
             if index in duplicates:
@@ -1373,15 +1465,32 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                     ToolOutcome(status="noop", reason="duplicate_call", item_kind="relation", item_index=index)
                 )
                 continue
+            if index not in tracker.checked_edges:
+                reject(index, "edge_not_checked")
+                continue
             relation = tracker.relations[index]
             source_id, target_id = endpoint_id(tracker, relation, True), endpoint_id(tracker, relation, False)
             checked = tracker.checked_edges[index]
+            allowed = relation_allowed_decisions(tracker, index, source_id, target_id)
+            if decision.decision not in allowed:
+                if decision.decision == "unresolved":
+                    reject(index, "unresolved_not_allowed")
+                elif decision.decision == "replace":
+                    reject(index, "replacement_edge_not_checked")
+                elif decision.decision == "existing_equivalent":
+                    reject(index, "edge_not_checked")
+                else:
+                    reject(index, "decision_incompatible")
+                continue
             if decision.decision == "existing_equivalent" and not checked:
-                raise ValueError("existing_equivalent requires a checked edge")
+                reject(index, "edge_not_checked")
+                continue
             if decision.decision == "replace" and decision.replace_edge_id not in checked:
-                raise ValueError("replace edge was not returned for this relation")
+                reject(index, "replacement_edge_not_checked")
+                continue
             if decision.decision == "unresolved" and source_id is not None and target_id is not None:
-                raise ValueError("unresolved requires a missing endpoint or ambiguity")
+                reject(index, "unresolved_not_allowed")
+                continue
             if decision.decision in {"existing_equivalent", "unresolved"}:
                 state = "unchanged" if decision.decision == "existing_equivalent" else "unresolved"
                 tracker.relation_states[index] = state
@@ -1396,7 +1505,14 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                 )
                 continue
             if source_id is None or target_id is None:
-                raise ValueError("relation mutation endpoints are missing")
+                reject(index, "endpoint_missing")
+                continue
+            edge_type = await ctx.deps.repo.get_or_create_edge_type(
+                ctx.deps.agent_id, relation.relation_type, target_schema=ctx.deps.target_schema
+            )
+            if edge_type is None:
+                reject(index, "invalid_type")
+                continue
             tracker.mutations_attempted += 1
             if decision.decision == "replace":
                 assert decision.replace_edge_id is not None
@@ -1406,11 +1522,6 @@ def _register_bounded_librarian_tools(agent: Agent, cfg: AgentInferenceConfig) -
                 tracker.record_edge_removal(removed)
                 if removed:
                     tracker.removed_edge_ids.add(decision.replace_edge_id)
-            edge_type = await ctx.deps.repo.get_or_create_edge_type(
-                ctx.deps.agent_id, relation.relation_type, target_schema=ctx.deps.target_schema
-            )
-            if edge_type is None:
-                raise ValueError("invalid extracted relation type")
             props = dict(relation.properties)
             if ctx.deps.episode_id is not None:
                 props["_source_episode"] = ctx.deps.episode_id
@@ -1467,18 +1578,32 @@ def build_librarian_agent(
             if selected_profile == "qwen_bounded"
             else "Stop calling tools after all items are handled and return the CurationSummary."
         )
+        workflow_rule = (
+            "Process entity micro-batches of at most 8 indices end to end: resolve the next batch, read only "
+            "details marked detail_required, then immediately decide every index using its allowed_decisions. "
+            "Do not resolve the next entity batch until the current batch is terminal. After all entities are "
+            "terminal, process relation micro-batches of at most 8 by checking and immediately deciding each batch."
+            if selected_profile == "qwen_bounded"
+            else "Process stable indices in ascending order across the three finite phases."
+        )
         system_prompt = (
-            "You curate extracted knowledge in three finite phases. Process stable indices in ascending order.",
+            f"You curate extracted knowledge in three finite phases. {workflow_rule}",
             "Entity phase: resolve each entity once; update only for added or corrected information, "
             "otherwise keep it unchanged; create missing entities. A superseding entity stays distinct "
-            "and needs its temporal relation.",
+            "and needs its temporal relation. Entity decisions supply only the entity index; the host "
+            "derives any resolver-selected node identity.",
             "Relation phase starts only after every entity decision. Keep equivalent edges, replace "
-            "only provably stale edges, and create missing edges. Neighborhood exploration is unnecessary.",
+            "only provably stale edges, and create missing edges. Use unresolved only when an endpoint is "
+            "missing or ambiguous. Neighborhood exploration is unnecessary.",
             "Comprehensive merges, quantitative changes, contradictions, temporal edges, valid types, "
             "shared contributions, and deduplication remain mandatory.",
             "Only explicit supersedes, temporal_signal, or source correction language justifies temporal work.",
             (
-                "Batch resolver results are final for their indices. Never repeat an index or call a legacy read tool."
+                "The host sorts and deduplicates index batches. Batch resolver results are final for their indices. "
+                "For detail reads, supply only entity_index; the host derives the resolver-selected node id. "
+                "The allowed_decisions field is code-owned; choose only a listed category. "
+                "A rejected decision stays pending: correct only those rejected indices in a later call. "
+                "Never repeat an accepted index across calls or call a legacy read tool."
                 if selected_profile == "qwen_bounded"
                 else "Call find_similar_nodes and get_edges_between at most once for each input item."
             ),
@@ -1567,7 +1692,7 @@ def build_librarian_agent(
         )
     else:
         system_prompt = (
-            "You are a knowledge graph librarian. " "Your job is to normalize and deduplicate extracted knowledge.",
+            "You are a knowledge graph librarian. Your job is to normalize and deduplicate extracted knowledge.",
             "Normalize entity names to canonical forms.",
             "Preserve importance scores from extractor (max semantics if merging).",
             "ALWAYS provide a description for every entity.",

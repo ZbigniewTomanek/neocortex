@@ -1,0 +1,23 @@
+{
+  "date": "2026-09-09",
+  "source_revision": "8f443e9",
+  "endpoint": "http://127.0.0.1:24000/v1",
+  "models_request": {
+    "http_status": 200,
+    "exact_model_match": true,
+    "model_count": 1,
+    "model": "qwen3.8-flash-next",
+    "elapsed_s": 0.082
+  },
+  "embedding_health": {
+    "status": "PASS",
+    "model": "gemini-embedding-001",
+    "dimensions": 768,
+    "elapsed_s": 0.757,
+    "credential_source": "GEMINI_API_KEY",
+    "process_alias": "GOOGLE_API_KEY",
+    "user_authorized": true
+  },
+  "chat_and_pydanticai": "NOT MEASURED",
+  "corpus_arm": "NOT MEASURED"
+}

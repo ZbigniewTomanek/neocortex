@@ -226,6 +226,9 @@ backups/
 # Local goal execution ledgers
 .tmp/
 
+# High-frequency local benchmark captures; commit only canonical summaries
+docs/plans/33-local-qwen-migration/validation/stage6-capture-20*.json
+
 # Auth0 secrets
 .env.auth0
 auth0.md

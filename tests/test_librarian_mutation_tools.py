@@ -79,6 +79,23 @@ def test_local_librarian_settings_disable_parallel_calls_without_changing_hosted
     assert _librarian_model_settings(hosted) == hosted.model_settings
 
 
+def test_bounded_prompt_states_host_identity_and_recoverable_decision_contracts() -> None:
+    agent = build_librarian_agent(_TEST_CONFIG, profile="qwen_bounded")
+    prompt = "\n".join(agent._system_prompts)
+
+    assert "host derives any resolver-selected node identity" in prompt
+    assert "Use unresolved only when an endpoint is missing or ambiguous" in prompt
+    assert "Process entity micro-batches of at most 8 indices end to end" in prompt
+    assert "allowed_decisions field is code-owned" in prompt
+    assert "A rejected decision stays pending" in prompt
+
+
+def test_bounded_entity_decision_schema_has_no_model_supplied_identity() -> None:
+    assert "selected_node_id" not in EntityDecision.model_json_schema()["properties"]
+    with pytest.raises(ValueError):
+        EntityDecision.model_validate({"entity_index": 0, "decision": "unchanged", "selected_node_id": 7})
+
+
 @pytest.fixture
 def repo() -> InMemoryRepository:
     return InMemoryRepository()
@@ -446,7 +463,12 @@ async def test_librarian_mutation_audit_is_opaque_and_tracker_counts_actions(
 @pytest.mark.asyncio
 async def test_bounded_batches_terminalize_from_repository_results(repo: InMemoryRepository) -> None:
     entities = [
-        ExtractedEntity(name="Alpha", type_name="Concept", description="Alpha content"),
+        ExtractedEntity(
+            name="Alpha",
+            type_name="Concept",
+            description="Alpha content",
+            properties={"reviewed_count": 15},
+        ),
         ExtractedEntity(name="Beta", type_name="Concept", description="Beta content"),
     ]
     relations = build_librarian_relation_items(
@@ -474,7 +496,12 @@ async def test_bounded_batches_terminalize_from_repository_results(repo: InMemor
     outcomes = await tools["apply_entity_decisions"].function(
         ctx,
         decisions=[
-            EntityDecision(entity_index=0, decision="create", content="Alpha content"),
+            EntityDecision(
+                entity_index=0,
+                decision="create",
+                content="Alpha content",
+                properties={"reviewed_count": 999, "model_note": "kept"},
+            ),
             EntityDecision(entity_index=1, decision="create", content="Beta content"),
         ],
     )
@@ -490,6 +517,9 @@ async def test_bounded_batches_terminalize_from_repository_results(repo: InMemor
     assert tracker.successful_node_ids == set(tracker.bound_node_ids.values())
     assert tracker.successful_edge_ids == set(tracker.successful_edge_signatures)
     assert all(node.properties["_source_episode"] == 7 for node in repo._nodes.values())
+    alpha = next(node for node in repo._nodes.values() if node.name == "Alpha")
+    assert alpha.properties["reviewed_count"] == 15
+    assert alpha.properties["model_note"] == "kept"
 
 
 def test_duplicate_budget_is_enforced_per_tool_item_across_mixed_batches() -> None:
@@ -513,7 +543,7 @@ def test_duplicate_budget_is_enforced_per_tool_item_across_mixed_batches() -> No
         ("resolve_entities", {"entity_indices": [-1]}),
         (
             "read_entity_details",
-            {"requests": [EntityDetailRequest.model_construct(entity_index=-1, node_id=1)]},
+            {"requests": [EntityDetailRequest.model_construct(entity_index=-1)]},
         ),
         (
             "apply_entity_decisions",
@@ -550,6 +580,287 @@ async def test_bounded_tools_reject_negative_indices_before_repository_access(
     assert tracker.provider_batch_calls == 0
     assert tracker.repository_item_reads == 0
     assert not repo._nodes and not repo._edges
+
+
+def test_bounded_tracker_normalizes_order_and_duplicates_but_rejects_invalid_unique_batches() -> None:
+    tracker = LibrarianTrajectoryTracker(
+        entities=[ExtractedEntity(name=str(index), type_name="Concept") for index in range(17)]
+    )
+    assert tracker.normalize_indices([2, 0, 2, 1], 17, 16) == [0, 1, 2]
+    assert tracker.host_normalization_count == 1
+    assert tracker.normalize_indices([0, 1], 17, 16) == [0, 1]
+    assert tracker.host_normalization_count == 1
+    with pytest.raises(ValueError, match="non-negative"):
+        tracker.normalize_indices([-1, 0], 17, 16)
+    with pytest.raises(ValueError, match="out of range"):
+        tracker.normalize_indices([17], 17, 16)
+    with pytest.raises(ValueError, match="batch limit"):
+        tracker.normalize_indices(list(range(17)), 17, 16)
+    with pytest.raises(ValueError, match="non-empty"):
+        tracker.normalize_indices([], 17, 16)
+    assert tracker.host_normalization_count == 1
+
+
+@pytest.mark.asyncio
+async def test_bounded_detail_read_derives_resolver_selected_node_id(repo: InMemoryRepository) -> None:
+    node_type = await repo.get_or_create_node_type(AGENT, "Concept")
+    assert node_type is not None
+    node = await repo.upsert_node(agent_id=AGENT, name="Alpha", type_id=node_type.id, content="existing")
+    entity = ExtractedEntity(name="Alpha", type_name="Concept", description="new")
+    tracker = LibrarianTrajectoryTracker(entities=[entity])
+    deps = LibrarianAgentDeps(
+        episode_text="private",
+        node_types=["Concept"],
+        edge_types=[],
+        extracted_entities=[entity],
+        extracted_relations=[],
+        repo=repo,
+        embeddings=None,
+        agent_id=AGENT,
+        action_tracker=tracker,
+    )
+    ctx = SimpleNamespace(deps=deps, run_id="host-bound-detail", retry=0)
+    tools = build_librarian_agent(_TEST_CONFIG, profile="qwen_bounded")._function_toolset.tools
+    await tools["resolve_entities"].function(ctx, entity_indices=[0])
+    detail = await tools["read_entity_details"].function(ctx, requests=[EntityDetailRequest(entity_index=0)])
+    assert detail.items[0].node_id == node.id
+    assert detail.items[0].allowed_decisions == ["update", "unchanged"]
+    assert EntityDetailRequest.model_json_schema()["properties"] == {
+        "entity_index": {"minimum": 0, "title": "Entity Index", "type": "integer"}
+    }
+
+
+@pytest.mark.asyncio
+async def test_bounded_detail_read_safely_rejects_index_without_selected_candidate(
+    repo: InMemoryRepository,
+) -> None:
+    entity = ExtractedEntity(name="Missing", type_name="Concept")
+    tracker = LibrarianTrajectoryTracker(entities=[entity])
+    tracker.resolved_entities.add(0)
+    tracker.entity_resolution_reason[0] = "none"
+    deps = LibrarianAgentDeps(
+        episode_text="private",
+        node_types=["Concept"],
+        edge_types=[],
+        extracted_entities=[entity],
+        extracted_relations=[],
+        repo=repo,
+        embeddings=None,
+        agent_id=AGENT,
+        action_tracker=tracker,
+    )
+    ctx = SimpleNamespace(deps=deps, run_id="missing-detail", retry=0)
+    tool = build_librarian_agent(_TEST_CONFIG, profile="qwen_bounded")._function_toolset.tools["read_entity_details"]
+    result = await tool.function(ctx, requests=[EntityDetailRequest(entity_index=0)])
+    assert result.items[0].reason == "not_found"
+    assert result.items[0].node_id is None
+    assert result.items[0].allowed_decisions == ["create"]
+    assert tracker.repository_item_reads == 0
+
+
+@pytest.mark.asyncio
+async def test_bounded_tools_normalize_model_batches_before_repository_work(repo: InMemoryRepository) -> None:
+    entities = [ExtractedEntity(name=name, type_name="Concept") for name in ("Alpha", "Beta", "Gamma")]
+    await repo.get_or_create_node_type(AGENT, "Concept")
+    tracker = LibrarianTrajectoryTracker(entities=entities)
+    deps = LibrarianAgentDeps(
+        episode_text="private",
+        node_types=["Concept"],
+        edge_types=[],
+        extracted_entities=entities,
+        extracted_relations=[],
+        repo=repo,
+        embeddings=None,
+        agent_id=AGENT,
+        action_tracker=tracker,
+    )
+    ctx = SimpleNamespace(deps=deps, run_id="normalized-batch", retry=0)
+    tools = build_librarian_agent(_TEST_CONFIG, profile="qwen_bounded")._function_toolset.tools
+    resolved = await tools["resolve_entities"].function(ctx, entity_indices=[2, 0, 2, 1])
+    assert [item.item_index for item in resolved.items] == [0, 1, 2]
+    assert all(item.allowed_decisions == ["create"] for item in resolved.items)
+    assert tracker.repository_item_reads == 3
+    assert tracker.host_normalization_count == 1
+
+
+@pytest.mark.asyncio
+async def test_bounded_entity_micro_batches_can_resolve_and_decide_end_to_end(
+    repo: InMemoryRepository,
+) -> None:
+    entities = [ExtractedEntity(name=name, type_name="Concept") for name in ("Alpha", "Beta")]
+    await repo.get_or_create_node_type(AGENT, "Concept")
+    tracker = LibrarianTrajectoryTracker(entities=entities)
+    deps = LibrarianAgentDeps(
+        episode_text="private",
+        node_types=["Concept"],
+        edge_types=[],
+        extracted_entities=entities,
+        extracted_relations=[],
+        repo=repo,
+        embeddings=None,
+        agent_id=AGENT,
+        action_tracker=tracker,
+    )
+    ctx = SimpleNamespace(deps=deps, run_id="entity-micro-batch", retry=0)
+    tools = build_librarian_agent(_TEST_CONFIG, profile="qwen_bounded")._function_toolset.tools
+
+    first = await tools["resolve_entities"].function(ctx, entity_indices=[0])
+    assert first.items[0].allowed_decisions == ["create"]
+    applied = await tools["apply_entity_decisions"].function(
+        ctx, decisions=[EntityDecision(entity_index=0, decision="create", content="Alpha")]
+    )
+    assert applied.items[0].status == "ok"
+    assert tracker.entity_states == {0: "created", 1: "pending"}
+
+    await tools["resolve_entities"].function(ctx, entity_indices=[1])
+    await tools["apply_entity_decisions"].function(
+        ctx, decisions=[EntityDecision(entity_index=1, decision="create", content="Beta")]
+    )
+    assert tracker.build_report().status == "completed"
+
+
+@pytest.mark.asyncio
+async def test_bounded_entity_batch_applies_valid_items_and_allows_rejected_retry(
+    repo: InMemoryRepository,
+) -> None:
+    node_type = await repo.get_or_create_node_type(AGENT, "Concept")
+    assert node_type is not None
+    existing = await repo.upsert_node(agent_id=AGENT, name="Alpha", type_id=node_type.id, content="existing")
+    entities = [
+        ExtractedEntity(name="Alpha", type_name="Concept", description="existing"),
+        ExtractedEntity(name="Beta", type_name="Concept", description="new"),
+    ]
+    tracker = LibrarianTrajectoryTracker(entities=entities)
+    deps = LibrarianAgentDeps(
+        episode_text="private",
+        node_types=["Concept"],
+        edge_types=[],
+        extracted_entities=entities,
+        extracted_relations=[],
+        repo=repo,
+        embeddings=None,
+        agent_id=AGENT,
+        action_tracker=tracker,
+    )
+    ctx = SimpleNamespace(deps=deps, run_id="entity-retry", retry=0)
+    tools = build_librarian_agent(_TEST_CONFIG, profile="qwen_bounded")._function_toolset.tools
+    await tools["resolve_entities"].function(ctx, entity_indices=[0, 1])
+    await tools["read_entity_details"].function(ctx, requests=[EntityDetailRequest(entity_index=0)])
+
+    mixed = await tools["apply_entity_decisions"].function(
+        ctx,
+        decisions=[
+            EntityDecision(entity_index=0, decision="create", content="wrong action"),
+            EntityDecision(entity_index=1, decision="create", content="new"),
+        ],
+    )
+    assert [(item.status, item.reason) for item in mixed.items] == [
+        ("rejected", "selected_candidate_exists"),
+        ("ok", "created"),
+    ]
+    assert tracker.entity_states == {0: "pending", 1: "created"}
+    assert tracker.validation_rejections == 1
+
+    corrected = await tools["apply_entity_decisions"].function(
+        ctx, decisions=[EntityDecision(entity_index=0, decision="unchanged")]
+    )
+    assert [(item.status, item.reason) for item in corrected.items] == [("noop", "unchanged")]
+    assert tracker.bound_node_ids[0] == existing.id
+    assert tracker.duplicate_calls == 0
+    assert tracker.build_report().status == "completed"
+
+
+@pytest.mark.asyncio
+async def test_bounded_wrong_phase_decision_is_rejected_then_retriable(repo: InMemoryRepository) -> None:
+    entity = ExtractedEntity(name="Alpha", type_name="Concept")
+    tracker = LibrarianTrajectoryTracker(entities=[entity])
+    deps = LibrarianAgentDeps(
+        episode_text="private",
+        node_types=["Concept"],
+        edge_types=[],
+        extracted_entities=[entity],
+        extracted_relations=[],
+        repo=repo,
+        embeddings=None,
+        agent_id=AGENT,
+        action_tracker=tracker,
+    )
+    ctx = SimpleNamespace(deps=deps, run_id="phase-retry", retry=0)
+    tools = build_librarian_agent(_TEST_CONFIG, profile="qwen_bounded")._function_toolset.tools
+
+    rejected = await tools["apply_entity_decisions"].function(
+        ctx, decisions=[EntityDecision(entity_index=0, decision="create", content="new")]
+    )
+    assert [(item.status, item.reason) for item in rejected.items] == [("rejected", "phase_violation")]
+    assert not repo._nodes
+    assert tracker.entity_states[0] == "pending"
+
+    await tools["resolve_entities"].function(ctx, entity_indices=[0])
+    corrected = await tools["apply_entity_decisions"].function(
+        ctx, decisions=[EntityDecision(entity_index=0, decision="create", content="new")]
+    )
+    assert [(item.status, item.reason) for item in corrected.items] == [("ok", "created")]
+    assert tracker.validation_rejections == 1
+    assert tracker.duplicate_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_bounded_relation_batch_applies_valid_items_and_allows_rejected_retry(
+    repo: InMemoryRepository,
+) -> None:
+    entities = [
+        ExtractedEntity(name="Alpha", type_name="Concept"),
+        ExtractedEntity(name="Beta", type_name="Concept"),
+    ]
+    relations = [
+        ExtractedRelation(source_name="Alpha", target_name="Beta", relation_type="FIRST"),
+        ExtractedRelation(source_name="Beta", target_name="Alpha", relation_type="SECOND"),
+    ]
+    node_type = await repo.get_or_create_node_type(AGENT, "Concept")
+    assert node_type is not None
+    alpha = await repo.upsert_node(agent_id=AGENT, name="Alpha", type_id=node_type.id)
+    beta = await repo.upsert_node(agent_id=AGENT, name="Beta", type_id=node_type.id)
+    await repo.get_or_create_edge_type(AGENT, "FIRST")
+    await repo.get_or_create_edge_type(AGENT, "SECOND")
+    tracker = LibrarianTrajectoryTracker(entities=entities, relations=relations)
+    tracker.entity_states.update({0: "unchanged", 1: "unchanged"})
+    tracker.bound_node_ids.update({0: alpha.id, 1: beta.id})
+    deps = LibrarianAgentDeps(
+        episode_text="private",
+        node_types=["Concept"],
+        edge_types=["FIRST", "SECOND"],
+        extracted_entities=entities,
+        extracted_relations=relations,
+        repo=repo,
+        embeddings=None,
+        agent_id=AGENT,
+        action_tracker=tracker,
+    )
+    ctx = SimpleNamespace(deps=deps, run_id="relation-retry", retry=0)
+    tools = build_librarian_agent(_TEST_CONFIG, profile="qwen_bounded")._function_toolset.tools
+    checked = await tools["check_relations"].function(ctx, relation_indices=[0, 1])
+    assert all(item.allowed_decisions == ["create"] for item in checked.items)
+
+    mixed = await tools["apply_relation_decisions"].function(
+        ctx,
+        decisions=[
+            RelationDecision(relation_index=0, decision="create"),
+            RelationDecision(relation_index=1, decision="unresolved"),
+        ],
+    )
+    assert [(item.status, item.reason) for item in mixed.items] == [
+        ("ok", "created"),
+        ("rejected", "unresolved_not_allowed"),
+    ]
+    assert tracker.relation_states == {0: "created", 1: "pending"}
+    assert tracker.validation_rejections == 1
+
+    corrected = await tools["apply_relation_decisions"].function(
+        ctx, decisions=[RelationDecision(relation_index=1, decision="create")]
+    )
+    assert [(item.status, item.reason) for item in corrected.items] == [("ok", "created")]
+    assert tracker.duplicate_calls == 0
+    assert tracker.build_report().status == "completed"
 
 
 @pytest.mark.asyncio

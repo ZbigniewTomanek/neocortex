@@ -1,0 +1,18 @@
+{
+  "command": "NEOCORTEX_EXTRACTION_ENABLED=true NEOCORTEX_{ONTOLOGY,EXTRACTOR,LIBRARIAN,DOMAIN_CLASSIFIER}_MODEL=openai-responses:gpt-5.4-mini uv run pytest tests/ -q",
+  "source_revision": "8f443e9",
+  "status": "PASS",
+  "passed": 1100,
+  "skipped": 7,
+  "seconds": 29.31,
+  "raw_path": "/tmp/neocortex-plan33-resume-tests-corrected.log",
+  "raw_sha256": "c4ab7b4a113095be656ecb347e95d4ea4bf9b73f8113de67aa76092de0aac9a6",
+  "prior_attempt": {
+    "status": "FAIL",
+    "passed": 1099,
+    "failed": 1,
+    "skipped": 7,
+    "seconds": 29.62,
+    "reason": "Coordinator supplied openai: instead of expected openai-responses: prefix; corrected environment only."
+  }
+}

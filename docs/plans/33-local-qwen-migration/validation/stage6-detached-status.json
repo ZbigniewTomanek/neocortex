@@ -1,0 +1,28 @@
+{
+  "run_id": "20260909T180657Z-compact",
+  "harness_pid": 89663,
+  "monitor_pid": 28801,
+  "terminal_watcher_pid": 28803,
+  "status": "HARNESS_EXITED_REVIEW_REQUIRED",
+  "periodic_capture_enabled": false,
+  "result_status": "NOT MEASURED: inspect metrics, E2E manifest and restoration evidence on resume",
+  "capture_interval_s": 60,
+  "terminal_watcher_exit_code": 0,
+  "last_capture_exit_code": 0,
+  "latest_corpus_capture": "docs/plans/33-local-qwen-migration/validation/stage6-capture-20260909T180657Z-compact-20260910T011016872713Z.json",
+  "last_corpus_summary": {
+    "todo": 0,
+    "doing": 1,
+    "succeeded": 30,
+    "failed": 0,
+    "cancelled": 0,
+    "total": 31
+  },
+  "last_corpus_nodes": 313,
+  "last_corpus_edges": 475,
+  "updated_at_utc": "2026-09-10T01:49:18.228742+00:00",
+  "corpus_replaced": true,
+  "harness_exit_code": "NOT MEASURED: monitor is not its parent",
+  "canonical_metrics_present": true,
+  "finished_observed_at_utc": "2026-09-10T01:49:18.228708+00:00"
+}
