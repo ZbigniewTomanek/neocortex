@@ -10,6 +10,7 @@ import asyncio
 import inspect
 import os
 import time
+from dataclasses import dataclass
 from math import ceil
 from typing import TYPE_CHECKING, Any
 
@@ -34,18 +35,32 @@ from neocortex.extraction.agents import (
     build_librarian_relation_items,
     build_ontology_agent,
 )
-from neocortex.extraction.schemas import CurationSummary, LibrarianPayload
+from neocortex.extraction.schemas import CurationSummary, ExtractionResult, LibrarianPayload
 from neocortex.extraction.type_consolidation import archive_unused_types
 from neocortex.jobs.correlation import normalize_extraction_correlation_id
 from neocortex.model_factory import is_local_model, is_qwen_model
 from neocortex.schemas.memory import TypeInfo
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from neocortex.db.protocol import MemoryRepository
     from neocortex.domains.seed_generator import SeedGenerator
     from neocortex.embedding_service import EmbeddingService
 
 _UNSET: str = "__UNSET__"
+
+
+@dataclass(frozen=True)
+class _PrecomputedExtraction:
+    """Stand-in for an extractor run result when a cached extraction is supplied.
+
+    ``run_extraction`` reads only ``.output`` from the extractor result, so a
+    cached ``ExtractionResult`` can replace the model call without touching the
+    librarian stage below it.
+    """
+
+    output: ExtractionResult
 
 
 _ACTION_AUDIT_FIELDS = frozenset(
@@ -208,6 +223,9 @@ async def run_extraction(
     archive_interval: int = 10,
     librarian_budget: LibrarianBudgetConfig | None = None,
     librarian_profile: LibrarianProfile | None = None,
+    *,
+    precomputed: dict[int, ExtractionResult] | None = None,
+    on_extracted: Callable[[int, ExtractionResult], Awaitable[None]] | None = None,
 ) -> None:
     """Process episodes through the 3-agent pipeline and persist results.
 
@@ -231,6 +249,12 @@ async def run_extraction(
                              via tools. When False, falls back to _persist_payload.
         archive_interval: Run archive_unused_types every N episodes (default 10).
                           Set to 0 to disable.
+        precomputed: Episode id → cached ExtractionResult. For a listed episode the
+                     ontology and extractor stages are skipped entirely (no model
+                     calls, no new type proposals) and the librarian runs on the
+                     cached entities and relations.
+        on_extracted: Awaited with (episode_id, ExtractionResult) after a real
+                      extractor run, so callers can cache what they just paid for.
     """
     ont_cfg = ontology_config or AgentInferenceConfig()
     ext_cfg = extractor_config or AgentInferenceConfig()
@@ -309,146 +333,160 @@ async def run_extraction(
         node_type_descs = {t.name: (t.description or "") for t in node_types}
         edge_type_descs = {t.name: (t.description or "") for t in edge_types}
 
-        # 2. Ontology stage
-        t0 = time.monotonic()
-        if seed_generator is not None and domain_slug:
-            seed = await seed_generator.resolve_seed(domain_slug)
-        else:
-            seed = DOMAIN_SEEDS.get(domain_slug or "")
-        ontology_result = await ontology_agent.run(
-            "Analyze the source text and propose ontology extensions.",
-            deps=OntologyAgentDeps(
-                episode_text=text,
-                existing_node_types=[t.name for t in node_types],
-                existing_edge_types=[t.name for t in edge_types],
-                node_type_descriptions=node_type_descs,
-                edge_type_descriptions=edge_type_descs,
-                domain_hint=domain_hint,
-                type_examples=type_examples,
-                recommended_node_types=seed.node_types if seed else {},
-                recommended_edge_types=seed.edge_types if seed else {},
-                repo=repo,
-                agent_id=agent_id,
-                target_schema=target_schema,
-                episode_id=episode_id,
-                correlation_id=correlation_id,
-            ),
-            model_settings=ont_cfg.model_settings,
-            usage_limits=UsageLimits(tool_calls_limit=ontology_tool_calls_limit),
-        )
-        ontology_elapsed = round(time.monotonic() - t0, 2)
-        _audit_usage("ontology_agent", ontology_result, ont_cfg, agent_id, correlation_id, episode_id)
-        logger.bind(action_log=True).info(
-            "stage_timing",
-            **_audit_fields("ontology_agent", ont_cfg, agent_id, correlation_id, episode_id),
-            elapsed_s=ontology_elapsed,
-        )
+        # A cached extraction skips the ontology and extractor model calls entirely.
+        cached_extraction = (precomputed or {}).get(episode_id)
 
-        # Ontology agent observability: log model info, token usage, tool call count
-        ontology_tool_calls = sum(
-            len([p for p in msg.parts if isinstance(p, ToolCallPart)])
-            for msg in ontology_result.all_messages()
-            if hasattr(msg, "parts")
-        )
-        logger.bind(action_log=True).info(
-            "ontology_agent_complete",
-            **_audit_fields("ontology_agent", ont_cfg, agent_id, correlation_id, episode_id),
-            thinking=ont_cfg.thinking_effort,
-            proposed_node_types=len(ontology_result.output.new_node_types),
-            proposed_edge_types=len(ontology_result.output.new_edge_types),
-            tool_calls=ontology_tool_calls,
-            elapsed_s=ontology_elapsed,
-        )
-
-        # 2.5. Type budget enforcement (defense-in-depth safety valve)
-        if len(ontology_result.output.new_node_types) > ontology_max_new_types:
-            logger.warning(
-                "ontology_type_budget_exceeded",
-                kind="node",
-                proposed=len(ontology_result.output.new_node_types),
-                limit=ontology_max_new_types,
+        if cached_extraction is None:
+            # 2. Ontology stage
+            t0 = time.monotonic()
+            if seed_generator is not None and domain_slug:
+                seed = await seed_generator.resolve_seed(domain_slug)
+            else:
+                seed = DOMAIN_SEEDS.get(domain_slug or "")
+            ontology_result = await ontology_agent.run(
+                "Analyze the source text and propose ontology extensions.",
+                deps=OntologyAgentDeps(
+                    episode_text=text,
+                    existing_node_types=[t.name for t in node_types],
+                    existing_edge_types=[t.name for t in edge_types],
+                    node_type_descriptions=node_type_descs,
+                    edge_type_descriptions=edge_type_descs,
+                    domain_hint=domain_hint,
+                    type_examples=type_examples,
+                    recommended_node_types=seed.node_types if seed else {},
+                    recommended_edge_types=seed.edge_types if seed else {},
+                    repo=repo,
+                    agent_id=agent_id,
+                    target_schema=target_schema,
+                    episode_id=episode_id,
+                    correlation_id=correlation_id,
+                ),
+                model_settings=ont_cfg.model_settings,
+                usage_limits=UsageLimits(tool_calls_limit=ontology_tool_calls_limit),
             )
-            ontology_result.output.new_node_types = ontology_result.output.new_node_types[:ontology_max_new_types]
-        if len(ontology_result.output.new_edge_types) > ontology_max_new_types:
-            logger.warning(
-                "ontology_type_budget_exceeded",
-                kind="edge",
-                proposed=len(ontology_result.output.new_edge_types),
-                limit=ontology_max_new_types,
+            ontology_elapsed = round(time.monotonic() - t0, 2)
+            _audit_usage("ontology_agent", ontology_result, ont_cfg, agent_id, correlation_id, episode_id)
+            logger.bind(action_log=True).info(
+                "stage_timing",
+                **_audit_fields("ontology_agent", ont_cfg, agent_id, correlation_id, episode_id),
+                elapsed_s=ontology_elapsed,
             )
-            ontology_result.output.new_edge_types = ontology_result.output.new_edge_types[:ontology_max_new_types]
 
-        # 3. Persist new types and merge into existing lists
-        t0 = time.monotonic()
-        existing_node_names = {t.name for t in node_types}
-        for nt in ontology_result.output.new_node_types:
-            created = await repo.get_or_create_node_type(agent_id, nt.name, nt.description, target_schema=target_schema)
-            if created is None:
-                logger.bind(action_log=True).warning(
-                    "skipping_invalid_node_type",
-                    **_audit_fields("type_persist", ont_cfg, agent_id, correlation_id, episode_id),
+            # Ontology agent observability: log model info, token usage, tool call count
+            ontology_tool_calls = sum(
+                len([p for p in msg.parts if isinstance(p, ToolCallPart)])
+                for msg in ontology_result.all_messages()
+                if hasattr(msg, "parts")
+            )
+            logger.bind(action_log=True).info(
+                "ontology_agent_complete",
+                **_audit_fields("ontology_agent", ont_cfg, agent_id, correlation_id, episode_id),
+                thinking=ont_cfg.thinking_effort,
+                proposed_node_types=len(ontology_result.output.new_node_types),
+                proposed_edge_types=len(ontology_result.output.new_edge_types),
+                tool_calls=ontology_tool_calls,
+                elapsed_s=ontology_elapsed,
+            )
+
+            # 2.5. Type budget enforcement (defense-in-depth safety valve)
+            if len(ontology_result.output.new_node_types) > ontology_max_new_types:
+                logger.warning(
+                    "ontology_type_budget_exceeded",
                     kind="node",
-                    accepted=False,
-                    reason_code="normalization_rejected",
+                    proposed=len(ontology_result.output.new_node_types),
+                    limit=ontology_max_new_types,
                 )
-            elif created.name not in existing_node_names:
-                node_types.append(TypeInfo(id=created.id, name=created.name, description=created.description))
-                existing_node_names.add(created.name)
-
-        existing_edge_names = {t.name for t in edge_types}
-        for et in ontology_result.output.new_edge_types:
-            created = await repo.get_or_create_edge_type(agent_id, et.name, et.description, target_schema=target_schema)
-            if created is None:
-                logger.bind(action_log=True).warning(
-                    "skipping_invalid_edge_type",
-                    **_audit_fields("type_persist", ont_cfg, agent_id, correlation_id, episode_id),
+                ontology_result.output.new_node_types = ontology_result.output.new_node_types[:ontology_max_new_types]
+            if len(ontology_result.output.new_edge_types) > ontology_max_new_types:
+                logger.warning(
+                    "ontology_type_budget_exceeded",
                     kind="edge",
-                    accepted=False,
-                    reason_code="normalization_rejected",
+                    proposed=len(ontology_result.output.new_edge_types),
+                    limit=ontology_max_new_types,
                 )
-            elif created.name not in existing_edge_names:
-                edge_types.append(TypeInfo(id=created.id, name=created.name, description=created.description))
-                existing_edge_names.add(created.name)
+                ontology_result.output.new_edge_types = ontology_result.output.new_edge_types[:ontology_max_new_types]
 
-        # Rebuild description dicts with merged types (no reload needed)
-        node_type_descs = {t.name: (t.description or "") for t in node_types}
-        edge_type_descs = {t.name: (t.description or "") for t in edge_types}
-        logger.bind(action_log=True).info(
-            "stage_timing",
-            **_audit_fields("type_persist", ont_cfg, agent_id, correlation_id, episode_id),
-            elapsed_s=round(time.monotonic() - t0, 2),
-        )
+            # 3. Persist new types and merge into existing lists
+            t0 = time.monotonic()
+            existing_node_names = {t.name for t in node_types}
+            for nt in ontology_result.output.new_node_types:
+                created = await repo.get_or_create_node_type(
+                    agent_id, nt.name, nt.description, target_schema=target_schema
+                )
+                if created is None:
+                    logger.bind(action_log=True).warning(
+                        "skipping_invalid_node_type",
+                        **_audit_fields("type_persist", ont_cfg, agent_id, correlation_id, episode_id),
+                        kind="node",
+                        accepted=False,
+                        reason_code="normalization_rejected",
+                    )
+                elif created.name not in existing_node_names:
+                    node_types.append(TypeInfo(id=created.id, name=created.name, description=created.description))
+                    existing_node_names.add(created.name)
 
-        # 4. Extraction stage
-        t0 = time.monotonic()
-        extraction_result = await extractor_agent.run(
-            "Extract entities and relations from the source text.",
-            deps=ExtractorAgentDeps(
-                episode_text=text,
-                node_types=[t.name for t in node_types],
-                edge_types=[t.name for t in edge_types],
-                node_type_descriptions=node_type_descs,
-                edge_type_descriptions=edge_type_descs,
-                domain_hint=domain_hint,
-                type_examples=type_examples,
-                agent_id=agent_id,
-                episode_id=episode_id,
-                correlation_id=correlation_id,
-            ),
-            model_settings=ext_cfg.model_settings,
-        )
-        _audit_usage("extractor_agent", extraction_result, ext_cfg, agent_id, correlation_id, episode_id)
-        logger.bind(action_log=True).info(
-            "extractor_cardinality",
-            **_audit_fields("extractor_agent", ext_cfg, agent_id, correlation_id, episode_id),
-            entity_count=len(extraction_result.output.entities),
-            relation_count=len(extraction_result.output.relations),
-        )
-        logger.bind(action_log=True).info(
-            "stage_timing",
-            **_audit_fields("extractor_agent", ext_cfg, agent_id, correlation_id, episode_id),
-            elapsed_s=round(time.monotonic() - t0, 2),
-        )
+            existing_edge_names = {t.name for t in edge_types}
+            for et in ontology_result.output.new_edge_types:
+                created = await repo.get_or_create_edge_type(
+                    agent_id, et.name, et.description, target_schema=target_schema
+                )
+                if created is None:
+                    logger.bind(action_log=True).warning(
+                        "skipping_invalid_edge_type",
+                        **_audit_fields("type_persist", ont_cfg, agent_id, correlation_id, episode_id),
+                        kind="edge",
+                        accepted=False,
+                        reason_code="normalization_rejected",
+                    )
+                elif created.name not in existing_edge_names:
+                    edge_types.append(TypeInfo(id=created.id, name=created.name, description=created.description))
+                    existing_edge_names.add(created.name)
+
+            # Rebuild description dicts with merged types (no reload needed)
+            node_type_descs = {t.name: (t.description or "") for t in node_types}
+            edge_type_descs = {t.name: (t.description or "") for t in edge_types}
+            logger.bind(action_log=True).info(
+                "stage_timing",
+                **_audit_fields("type_persist", ont_cfg, agent_id, correlation_id, episode_id),
+                elapsed_s=round(time.monotonic() - t0, 2),
+            )
+
+        extraction_result: Any
+        if cached_extraction is not None:
+            extraction_result = _PrecomputedExtraction(output=cached_extraction)
+        else:
+            # 4. Extraction stage
+            t0 = time.monotonic()
+            extraction_result = await extractor_agent.run(
+                "Extract entities and relations from the source text.",
+                deps=ExtractorAgentDeps(
+                    episode_text=text,
+                    node_types=[t.name for t in node_types],
+                    edge_types=[t.name for t in edge_types],
+                    node_type_descriptions=node_type_descs,
+                    edge_type_descriptions=edge_type_descs,
+                    domain_hint=domain_hint,
+                    type_examples=type_examples,
+                    agent_id=agent_id,
+                    episode_id=episode_id,
+                    correlation_id=correlation_id,
+                ),
+                model_settings=ext_cfg.model_settings,
+            )
+            _audit_usage("extractor_agent", extraction_result, ext_cfg, agent_id, correlation_id, episode_id)
+            logger.bind(action_log=True).info(
+                "extractor_cardinality",
+                **_audit_fields("extractor_agent", ext_cfg, agent_id, correlation_id, episode_id),
+                entity_count=len(extraction_result.output.entities),
+                relation_count=len(extraction_result.output.relations),
+            )
+            logger.bind(action_log=True).info(
+                "stage_timing",
+                **_audit_fields("extractor_agent", ext_cfg, agent_id, correlation_id, episode_id),
+                elapsed_s=round(time.monotonic() - t0, 2),
+            )
+            if on_extracted is not None:
+                await on_extracted(episode_id, extraction_result.output)
 
         # 5. Librarian stage
         if librarian_use_tools:
