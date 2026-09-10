@@ -86,6 +86,7 @@ class _NodePlan:
     content: str | None
     properties: dict[str, Any]
     importance: float
+    new_fact: str | None = None
     node_id: int | None = None
     aliases: list[str] = field(default_factory=list)
 
@@ -226,6 +227,23 @@ def render_oneshot_items(items: list[OneshotItem]) -> str:
     return "\n".join(lines)
 
 
+def _colliding_candidate(entity: ExtractedEntity, outcome: EntityResolutionOutcome) -> Any | None:
+    """The offered candidate a ``create`` for this entity would overwrite.
+
+    ``upsert_node`` dedups by name, so creating an entity whose canonical name
+    equals a candidate's name does not add a node: it rewrites that candidate's
+    content.  Such a create is therefore applied as a merge instead.
+    """
+    canonical, _aliases = canonicalize_name(entity.name)
+    wanted = (canonical or entity.name).casefold()
+    for node in outcome.candidates[:MAX_CANDIDATES]:
+        if node.name.casefold() == wanted:
+            return node
+    if outcome.single_strong_match:
+        return outcome.candidates[0]
+    return None
+
+
 def _decision_for(
     entity: ExtractedEntity,
     outcome: EntityResolutionOutcome,
@@ -234,21 +252,40 @@ def _decision_for(
     """Return (action, node, content) after validating the model's decision.
 
     An unusable decision is not retried with the model: the host default wins.
+    A ``create`` that would collide with an offered candidate is one such
+    unusable decision, because the collision destroys the candidate's content.
     """
     candidates = {node.id: node for node in outcome.candidates[:MAX_CANDIDATES]}
-    if decision is not None and not entity.supersedes:
-        if decision.decision == "create":
-            return "create", None, None
+    if decision is not None and not entity.supersedes and decision.decision != "create":
         node = candidates.get(decision.node_id) if decision.node_id is not None else None
         if node is not None and decision.decision == "unchanged":
             return "unchanged", node, None
         if node is not None and decision.decision == "merge" and decision.content:
             return "merge", node, decision.content[:MERGE_CONTENT_CHARS]
 
-    if not entity.supersedes and outcome.single_strong_match:
-        node = outcome.candidates[0]
-        return "merge", node, _merge_content(node.content, entity.description)
+    if not entity.supersedes:
+        collision = _colliding_candidate(entity, outcome)
+        if collision is not None:
+            return "merge", collision, _merge_content(collision.content, entity.description)
     return "create", None, None
+
+
+def _chain_repeated_targets(plans: list[_NodePlan]) -> None:
+    """Make a second write to one node build on the first write, not the snapshot.
+
+    Two extracted entities can resolve to the same node (a name and one of its
+    aliases).  Both merges were decided against the content read at resolution
+    time, so applying them in order would drop the earlier one's fact.  Rebuild
+    the later plan's content from what the run already decided to write.
+    """
+    decided: dict[int, str | None] = {}
+    for plan in plans:
+        if plan.node_id is None or plan.action == "unchanged":
+            continue
+        previous = decided.get(plan.node_id)
+        if previous is not None:
+            plan.content = _merge_content(previous, plan.new_fact)
+        decided[plan.node_id] = plan.content
 
 
 async def run_oneshot_librarian(
@@ -412,6 +449,7 @@ async def _apply(
                     content=entity.description,
                     properties=properties,
                     importance=entity.importance,
+                    new_fact=entity.description,
                     aliases=aliases,
                 )
             )
@@ -431,9 +469,12 @@ async def _apply(
                 content=content,
                 properties=properties,
                 importance=max(node.importance, entity.importance),
+                new_fact=entity.description,
                 node_id=node.id,
             )
         )
+
+    _chain_repeated_targets(plans)
 
     # One embedding batch for everything that gets written.
     embedded: dict[int, list[float] | None] = {}
@@ -474,6 +515,7 @@ async def _apply(
             tracker.record_node("updated")
 
     edges_created = 0
+    edges_unresolved = 0
     for outcome in outcomes:
         entity = entities[outcome.index]
         if not entity.supersedes or outcome.predecessor is None or outcome.index not in bound:
@@ -493,11 +535,18 @@ async def _apply(
             properties=temporal_properties,
             target_schema=target_schema,
         )
-        if edge is not None:
-            edges_created += 1
-            tracker.record_edge_upsert()
+        if edge is None:
+            edges_unresolved += 1
+            logger.bind(action_log=True, **audit).warning(
+                "edge_skipped_upsert_failed",
+                source_id=bound[outcome.index],
+                target_id=outcome.predecessor.id,
+                reason_code="upsert_failed",
+            )
+            continue
+        edges_created += 1
+        tracker.record_edge_upsert()
 
-    edges_unresolved = 0
     for relation in relations:
         source_id = _endpoint_id(entities, outcomes, bound, relation, source=True)
         target_id = _endpoint_id(entities, outcomes, bound, relation, source=False)
@@ -535,6 +584,12 @@ async def _apply(
         )
         if edge is None:
             edges_unresolved += 1
+            logger.bind(action_log=True, **audit).warning(
+                "edge_skipped_upsert_failed",
+                source_id=source_id,
+                target_id=target_id,
+                reason_code="upsert_failed",
+            )
             continue
         edges_created += 1
         tracker.record_edge_upsert()

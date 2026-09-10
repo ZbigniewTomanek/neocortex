@@ -6,6 +6,9 @@ and the model is asked at most one question:
 - no candidates in the graph → no model call at all;
 - a merge decision updates the resolved node instead of duplicating it;
 - a decision naming a node outside the host's candidate set is discarded;
+- a `create` that would overwrite an offered candidate is applied as a merge;
+- two entities resolving to one node keep both of their facts;
+- an edge upsert that returns None is counted unresolved and audited;
 - an entity with ``supersedes`` stays distinct and gets its temporal edge;
 - replaying the same extraction adds no nodes and no edges;
 - a relation whose endpoint never bound is skipped and audited.
@@ -320,6 +323,64 @@ async def test_missing_decision_falls_back_to_host_default(repo: InMemoryReposit
     assert await _counts(repo) == (1, 0)
 
 
+@pytest.mark.asyncio
+async def test_create_decision_colliding_with_a_candidate_merges_instead(repo: InMemoryRepository) -> None:
+    """`create` on a name the graph already holds would erase it, so it merges.
+
+    ``upsert_node`` dedups by name: honoring this decision verbatim replaces the
+    existing node's content with the one-line description instead of adding a node.
+    """
+    node_type = await repo.get_or_create_node_type(AGENT, "Technology")
+    assert node_type is not None
+    existing = await repo.upsert_node(
+        agent_id=AGENT,
+        name="Apache Kafka",
+        type_id=node_type.id,
+        content="Message broker written in Scala. Used by 200 teams.",
+    )
+    extraction = ExtractionResult(
+        entities=[ExtractedEntity(name="Apache Kafka", type_name="Technology", description="Streaming.")]
+    )
+    payload = {"decisions": [{"index": 0, "decision": "create"}]}
+
+    report, _ = await _run(repo, extraction, model=_decisions_model(payload))
+
+    kept = _node(repo, existing.id)
+    assert "Message broker written in Scala" in kept.content
+    assert "Streaming." in kept.content
+    assert report.entities_updated == 1
+    assert report.entities_created == 0
+    assert await _counts(repo) == (1, 0)
+
+
+@pytest.mark.asyncio
+async def test_two_entities_on_one_node_keep_both_facts(repo: InMemoryRepository) -> None:
+    """A name and one of its aliases both merge; the second write chains on the first."""
+    node_type = await repo.get_or_create_node_type(AGENT, "Technology")
+    assert node_type is not None
+    existing = await repo.upsert_node(
+        agent_id=AGENT, name="Kubernetes", type_id=node_type.id, content="Container orchestrator."
+    )
+    await repo.register_alias(AGENT, existing.id, "K8s", source="test")
+
+    extraction = ExtractionResult(
+        entities=[
+            ExtractedEntity(name="Kubernetes", type_name="Technology", description="Now at version 1.33."),
+            ExtractedEntity(name="K8s", type_name="Technology", description="Runs the payments cluster."),
+        ]
+    )
+
+    report, _ = await _run(repo, extraction, model=_decisions_model({"decisions": []}))
+
+    merged = _node(repo, existing.id)
+    assert "Container orchestrator." in merged.content
+    assert "Now at version 1.33." in merged.content
+    assert "Runs the payments cluster." in merged.content
+    assert report.entities_updated == 2
+    assert report.entities_created == 0
+    assert await _counts(repo) == (1, 0)
+
+
 # ── Temporal corrections ──
 
 
@@ -477,6 +538,50 @@ async def test_relation_to_a_predecessor_binds_to_the_resolved_node(repo: InMemo
     nodes, edges = await _counts(repo)
     assert (nodes, edges) == (2, 1)
     assert predecessor.id in {node.id for node in await repo.find_nodes_by_name(AGENT, "Metaphone3")}
+
+
+@pytest.mark.asyncio
+async def test_edge_upsert_returning_none_is_counted_and_audited(repo: InMemoryRepository) -> None:
+    """Both edge loops treat a None upsert as unresolved and say so with ids only."""
+
+    class _RefusingRepo(InMemoryRepository):
+        async def upsert_edge(self, *args: Any, **kwargs: Any) -> None:
+            del args, kwargs
+            return None
+
+    refusing = _RefusingRepo()
+    node_type = await refusing.get_or_create_node_type(AGENT, "Strategy")
+    assert node_type is not None
+    await refusing.upsert_node(agent_id=AGENT, name="Metaphone3", type_id=node_type.id, content="Old strategy.")
+    extraction = ExtractionResult(
+        entities=[
+            ExtractedEntity(
+                name="Metaphone3 Hybrid Strategy",
+                type_name="Strategy",
+                description="New strategy.",
+                supersedes="Metaphone3",
+                temporal_signal="SUPERSEDES",
+            ),
+            ExtractedEntity(name="Search Team", type_name="Team", description="Owns the matcher."),
+        ],
+        relations=[
+            ExtractedRelation(source_name="Search Team", target_name="Metaphone3 Hybrid Strategy", relation_type="OWNS")
+        ],
+    )
+
+    report, sink = await _run(refusing, extraction, model=_NoModelCall())
+
+    assert report.edges_created == 0
+    # One temporal edge and one relation, both refused by the repository.
+    assert report.edges_unresolved == 2
+    assert report.status == "completed_with_unresolved"
+    failed = sink.events("edge_skipped_upsert_failed")
+    assert len(failed) == 2
+    assert {fields["reason_code"] for fields in failed} == {"upsert_failed"}
+    for fields in failed:
+        assert isinstance(fields["source_id"], int)
+        assert isinstance(fields["target_id"], int)
+    assert sink.events("edge_skipped_missing_node") == []
 
 
 # ── Work list and prompt shape ──
