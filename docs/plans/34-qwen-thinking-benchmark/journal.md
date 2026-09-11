@@ -152,3 +152,67 @@ TestModel path -- unchanged from before this stage); that `--per-call-timeout` a
 HTTP call (Stage 5 measures it).
 
 **Commit**: see `state.json`.
+
+## 2026-09-11 16:35 -- Stage 1 review spent; run paused and serialized for resume
+
+**Did**: Received the Stage 1 post-review, wrote the complete finding set to
+`validation/stage1-review.md`, triaged all 8 findings into `backlog.md` items 6-12, and stopped the run
+at the owner's request ("we'll have no time for the fixes, let's serialize the state in the plan files so
+it can be resumed"). No fix round was opened.
+
+**Review outcome**: PASS, 8 findings, **none blocking**. Reviewer gate dispositions agree with my own
+independent re-runs: G1 47 passed, G2 11/11 rows with `fact_score`, G3 1,322 passed / 7 skipped, G4
+clean, hosted-path identity untouched (`0101ce4` changes nothing under `src/neocortex/extraction/`).
+The reviewer confirmed the two properties the whole plan rests on: the supersession haystack really is
+anchor-`content`-only, so the probe cannot pass where the E2E child fails (exact for S05 and S07,
+approximate for S11 -- backlog 10); and the mutation test is load-bearing, so a constant-full-marks
+scorer fails the suite. Zero deleted lines in `tests/`.
+
+**Triage**: `one-review-one-fix`, review spent, no fix round run. Stage 1 stays `DONE` at `0101ce4`;
+none of the 8 findings blocks a Stage 1 gate, and under `goal.md` guardrail 8 none is a
+product-correctness, privacy, or false-`PASS` issue in Stage 1's own deliverable. No finding was
+dismissed -- all 8 are in the backlog with their evidence and their fix.
+
+**The one item a resuming session must act on before Stage 6** is backlog 6 (review F1): the Stage 6
+step-2 librarian command, exactly as the stage file writes it today, computes a different cache key from
+the one step 1 writes (`E04-957d37180cb3` vs `E04-04c212aba9cf`, both verified), and the miss raises out
+of `run_text` -> `run_unit` -> `main` because `load_cached_extraction` sits outside the `try`. The cell
+would produce a traceback and **no output file at all** -- not the `NOT MEASURED` row the protocol
+requires. Two fixes, both needed, both written out in the backlog entry.
+
+**Verification**: gates re-run by the orchestrator, recorded in the previous entry. Nothing new was run.
+**Provenance**: every finding cites a file and line the reviewer read; F1's key hashes were computed by
+the reviewer and the crash reproduced live.
+**Problems**: none blocking.
+
+---
+
+## RESUME HERE
+
+State of record is `state.json`. Read `goal.md`, then `PROTOCOL.md`, then this entry.
+
+**Stage 1** -- `DONE`, commit `0101ce4`, review spent, 8 findings in `backlog.md` 6-12. Nothing to redo.
+
+**Stage 2** -- `IN_PROGRESS`, `step: WRITING`. A `claude/opus` implementer was dispatched against
+`briefs/stage2-brief.md` and was still running when the session ended. It leaves **uncommitted and
+ungated** work in the tree. At the time of this commit `git status` showed:
+`M scripts/compute_metrics.py`, `M src/neocortex/extraction/agents.py`,
+`M src/neocortex/extraction/pipeline.py`, `?? scripts/export_skip_events.py`,
+`?? scripts/export_graph_sample.py` -- and more may have landed after. No `validation/stage2-*` evidence
+existed yet, so **no gate has been run on any of it**.
+
+To resume Stage 2: inspect `git status` and `git diff` against `briefs/stage2-brief.md`; if the work is
+complete, run the brief's four gates yourself and save the raw output to the evidence paths the gate
+table names, then commit with the stage's message; if it is partial, either finish it with a fresh
+implementer given the same brief plus the diff, or `git checkout --` the tracked files and delete the two
+new scripts to start clean. Do not commit it ungated.
+
+**Stage 3** -- `PENDING`. `briefs/stage3-brief.md` is written, reviewed against a full inventory, and
+ready to dispatch. It could not start in parallel with Stage 2 because both briefs touch
+`scripts/model_bakeoff.sh`, which the one-writer rule forbids.
+
+**Stages 4-8** -- `PENDING`, no brief yet. Stage 4 is the first live model call in the plan.
+
+**Not yet started, and load-bearing**: no live model call has been made in this run. The plan's central
+question -- whether the local endpoint honours `reasoning_effort` at all -- is Stage 5 and is still
+`NOT MEASURED`.

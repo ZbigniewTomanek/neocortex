@@ -6,44 +6,63 @@
       "id": 1,
       "title": "Fact-retention scorer and probe extension",
       "file": "stages/01-fact-retention-scorer.md",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "depends_on": [],
-      "commit": null,
-      "note": null,
+      "commit": [
+        "0101ce4"
+      ],
+      "note": "E10 carries 5 fixture facts vs the 6-10 floor (spec lists five; shortfall recorded, not padded). Review PASS with 8 non-blocking findings -> backlog 6-12.",
       "blocked_by": [],
-      "step": "WRITING",
-      "writer": "claude/opus",
+      "step": null,
+      "writer": null,
       "implementer": "claude/opus, effort high",
-      "reviewer": null,
+      "reviewer": "claude/opus, effort high",
       "preReview": {
         "used": false
       },
       "review": {
-        "used": false
+        "used": true,
+        "verdict": "PASS",
+        "findings": 8,
+        "blocking": 0,
+        "file": "validation/stage1-review.md"
       },
       "gateFixes": 0,
       "repair": {
         "used": false,
-        "rounds": 0
+        "rounds": 0,
+        "note": "no fix round: no finding blocks a stage 1 gate; owner ended the session"
       },
       "repairReview": {
         "used": false
       },
-      "gates": {},
-      "evidence": []
+      "gates": {
+        "G1 unit (fact_retention + speed probe)": "PASS - 47 passed, orchestrator re-ran",
+        "G2 --test-model probe 11 units with fact_score": "PASS - exit 0, 11/11, JSON read directly",
+        "G3 suite": "PASS - 1322 passed / 7 skipped (baseline 1288/7, 0 deletions in existing tests)",
+        "G4 ruff": "PASS - All checks passed!",
+        "live model calls": "0 by design"
+      },
+      "evidence": [
+        "validation/stage1-unit-3.txt",
+        "validation/stage1-testmodel-3.txt",
+        "validation/stage1-suite-3.txt",
+        "validation/stage1-ruff-3.txt",
+        "resources/fact-fixture.json"
+      ]
     },
     {
       "id": 2,
       "title": "Privacy-safe integrity evidence export",
       "file": "stages/02-integrity-evidence-export.md",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "depends_on": [],
       "commit": null,
-      "note": null,
+      "note": "PAUSED MID-WRITE. A claude/opus implementer was running against briefs/stage2-brief.md when the session ended and left UNCOMMITTED, UNGATED work: M scripts/compute_metrics.py, M src/neocortex/extraction/agents.py, M src/neocortex/extraction/pipeline.py, ?? scripts/export_skip_events.py, ?? scripts/export_graph_sample.py (more may have landed after). No validation/stage2-* evidence exists, so no gate has been run. Resume: diff the tree against the brief, then either gate+commit it or reset and re-dispatch. Do not commit it ungated. See journal.md 'RESUME HERE'.",
       "blocked_by": [],
-      "step": null,
-      "writer": null,
-      "implementer": null,
+      "step": "WRITING",
+      "writer": "claude/opus",
+      "implementer": "claude/opus, effort high",
       "reviewer": null,
       "preReview": {
         "used": false
@@ -69,7 +88,7 @@
       "status": "PENDING",
       "depends_on": [],
       "commit": null,
-      "note": null,
+      "note": "briefs/stage3-brief.md is written and ready to dispatch. Could not run in parallel with stage 2: both briefs touch scripts/model_bakeoff.sh.",
       "blocked_by": [],
       "step": null,
       "writer": null,
@@ -259,7 +278,7 @@
   "goal": "34-qwen-thinking-benchmark",
   "goalId": "none",
   "armed": "2026-09-11",
-  "status": "IN_PROGRESS",
+  "status": "PAUSED",
   "modes": {
     "preset": "custom",
     "placement": "review-each-stage-after",
@@ -284,9 +303,9 @@
       "command": null
     }
   },
-  "currentStage": 1,
+  "currentStage": 2,
   "writesFrozen": false,
-  "writer": "claude/opus",
+  "writer": null,
   "runReview": {
     "preReview": {
       "used": false
@@ -301,5 +320,7 @@
     "repairReview": {
       "used": false
     }
-  }
+  },
+  "pausedAt": "2026-09-11T16:35",
+  "pauseReason": "Owner ended the session: 'we'll have no time for the fixes, let's serialize the state in the plan files so it can be resumed'."
 }
