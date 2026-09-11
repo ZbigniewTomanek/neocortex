@@ -126,6 +126,35 @@ def test_missing_top_ids_are_excluded_from_m2_with_availability_semantics() -> N
     validate_recall_evidence(evidence, run_id="run-123")
 
 
+def test_missing_activation_scores_count_as_zero_instead_of_crashing() -> None:
+    """A recall item may carry ``activation_score: null``; M1 still measures."""
+    rows: list[dict] = [
+        {"query": f"Q{index}", "keywords": ("match",), "results": [{"item_id": f"id-{index}"}]}
+        for index in range(1, 10)
+    ]
+    rows[0]["results"] = [
+        {"item_id": "id-null", "activation_score": None},
+        {"item_id": "id-text", "activation_score": "high"},
+        {"item_id": "id-real", "activation_score": 0.75},
+    ]
+
+    evidence = recall_scorer._safe_recall_evidence(rows, run_id="run-123")
+
+    assert evidence["metrics"]["M1_max_activation"] == 0.75
+    validate_recall_evidence(evidence, run_id="run-123")
+
+
+def test_all_activation_scores_missing_scores_zero() -> None:
+    rows: list[dict] = [
+        {"query": f"Q{index}", "keywords": (), "results": [{"item_id": f"id-{index}", "activation_score": None}]}
+        for index in range(1, 10)
+    ]
+
+    evidence = recall_scorer._safe_recall_evidence(rows, run_id="run-123")
+
+    assert evidence["metrics"]["M1_max_activation"] == 0
+
+
 @pytest.mark.parametrize(("value", "expected"), [(1, 1), ("node-1", "node-1"), ("  node-1  ", "node-1")])
 def test_recall_identifier_accepts_only_canonical_positive_values(value: object, expected: int | str) -> None:
     assert recall_scorer._item_identifier({"item_id": value}) == expected

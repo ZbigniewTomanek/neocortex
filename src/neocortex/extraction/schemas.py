@@ -318,6 +318,7 @@ class OneshotCandidate(BaseModel):
 
     node_id: int
     name: str = Field(max_length=256)
+    type_name: str = Field(default="", max_length=60)
     content: str = Field(default="", max_length=400)
     properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=8)
 

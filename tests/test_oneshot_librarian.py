@@ -364,6 +364,86 @@ async def test_create_decision_colliding_with_a_candidate_merges_instead(repo: I
 
 
 @pytest.mark.asyncio
+async def test_same_name_other_type_merges_onto_the_existing_node(repo: InMemoryRepository) -> None:
+    """A name the graph holds under another type is offered, and merges by default.
+
+    ``Project`` and ``Platform`` are not merge-safe, so ``upsert_node`` would
+    store a second "DataForge" node.  The resolver now offers the differently
+    typed node as a homonym candidate, and the host default keeps its type —
+    the same rule the hosted librarian prompt states.
+    """
+    node_type = await repo.get_or_create_node_type(AGENT, "Project")
+    assert node_type is not None
+    existing = await repo.upsert_node(
+        agent_id=AGENT,
+        name="DataForge",
+        type_id=node_type.id,
+        content="Internal data platform owned by the analytics group.",
+    )
+    extraction = ExtractionResult(
+        entities=[ExtractedEntity(name="DataForge", type_name="Platform", description="Runs the nightly ingestion.")]
+    )
+
+    report, _ = await _run(repo, extraction, model=_decisions_model({"decisions": []}))
+
+    assert await _counts(repo) == (1, 0)
+    kept = _node(repo, existing.id)
+    assert kept.type_id == node_type.id
+    assert "Internal data platform" in kept.content
+    assert "Runs the nightly ingestion." in kept.content
+    assert report.entities_updated == 1
+    assert report.entities_created == 0
+
+
+@pytest.mark.asyncio
+async def test_model_create_on_a_homonym_candidate_stays_a_create(repo: InMemoryRepository) -> None:
+    """A deliberate `create` over a differently typed candidate is honored.
+
+    The collision guard exists because ``upsert_node`` dedups by name; with a
+    different type it does not, so the second node is a legitimate homonym and
+    the model's decision must survive.
+    """
+    node_type = await repo.get_or_create_node_type(AGENT, "Project")
+    assert node_type is not None
+    existing = await repo.upsert_node(
+        agent_id=AGENT,
+        name="DataForge",
+        type_id=node_type.id,
+        content="Internal data platform owned by the analytics group.",
+    )
+    extraction = ExtractionResult(
+        entities=[ExtractedEntity(name="DataForge", type_name="Platform", description="A vendor product.")]
+    )
+    payload = {"decisions": [{"index": 0, "decision": "create"}]}
+
+    report, _ = await _run(repo, extraction, model=_decisions_model(payload))
+
+    assert await _counts(repo) == (2, 0)
+    assert report.entities_created == 1
+    assert report.entities_updated == 0
+    kept = _node(repo, existing.id)
+    assert kept.content == "Internal data platform owned by the analytics group."
+    homonym = next(node for node in repo._nodes.values() if node.name == "DataForge" and node.id != existing.id)
+    assert homonym.type_id != existing.type_id
+
+
+@pytest.mark.asyncio
+async def test_homonym_candidate_carries_its_type_into_the_work_list(repo: InMemoryRepository) -> None:
+    """The model sees the candidate's type, which is the only clue it mismatches."""
+    node_type = await repo.get_or_create_node_type(AGENT, "Project")
+    assert node_type is not None
+    await repo.upsert_node(agent_id=AGENT, name="DataForge", type_id=node_type.id, content="Internal platform.")
+    entities = [ExtractedEntity(name="DataForge", type_name="Platform", description="Nightly ingestion.")]
+
+    outcomes = await resolve_extraction_entities(repo, None, AGENT, None, entities)
+    items = build_oneshot_items(entities, outcomes)
+
+    assert outcomes[0].match == "homonym"
+    assert [candidate.type_name for candidate in items[0].candidates] == ["Project"]
+    assert render_oneshot_items(items).splitlines()[1].endswith("| DataForge | Project | Internal platform.")
+
+
+@pytest.mark.asyncio
 async def test_two_entities_on_one_node_keep_both_facts(repo: InMemoryRepository) -> None:
     """A name and one of its aliases both merge; the second write chains on the first."""
     node_type = await repo.get_or_create_node_type(AGENT, "Technology")
@@ -515,6 +595,34 @@ async def test_relation_with_an_unbound_endpoint_is_skipped_and_audited(repo: In
     assert len(skipped) == 1
     assert skipped[0]["target_present"] is False
     assert skipped[0]["reason_code"] == "missing_node"
+
+
+@pytest.mark.asyncio
+async def test_relation_endpoint_resolves_against_the_existing_graph(repo: InMemoryRepository) -> None:
+    """An endpoint an earlier episode created binds, instead of dropping the edge.
+
+    Episode 2 extracts only "Backend API" but relates it to "PostgreSQL", a node
+    episode 1 left in the graph.  One bound endpoint plus a single non-forgotten
+    graph hit for the other is enough to write the edge.
+    """
+    node_type = await repo.get_or_create_node_type(AGENT, "Technology")
+    assert node_type is not None
+    postgres = await repo.upsert_node(
+        agent_id=AGENT, name="PostgreSQL", type_id=node_type.id, content="Relational database."
+    )
+    extraction = ExtractionResult(
+        entities=[ExtractedEntity(name="Backend API", type_name="Service", description="Serves the mobile app.")],
+        relations=[ExtractedRelation(source_name="Backend API", target_name="PostgreSQL", relation_type="USES")],
+    )
+
+    report, sink = await _run(repo, extraction, model=_NoModelCall(), episode_id=2)
+
+    assert report.edges_created == 1
+    assert report.edges_unresolved == 0
+    assert report.status == "completed"
+    assert sink.events("edge_skipped_missing_node") == []
+    created = next(node for node in repo._nodes.values() if node.name == "Backend API")
+    assert _edge_types_between(repo, created.id, postgres.id) == ["USES"]
 
 
 @pytest.mark.asyncio

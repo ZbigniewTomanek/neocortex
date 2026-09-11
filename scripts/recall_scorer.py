@@ -7,6 +7,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import math
 import os
 from collections import Counter
 from pathlib import Path
@@ -79,6 +80,24 @@ def _item_identifier(item: object) -> int | str | None:
     return _valid_identifier(item_data.get("id"))
 
 
+def _activation_score(value: object) -> float:
+    """Read one item's activation as a number.
+
+    Recall items may carry ``activation_score: null`` (an episode row the
+    scorer never activated), and a recall backend is free to send a string.
+    Neither is a measurement, so both count as 0.0 instead of crashing the
+    scorer; the evidence schema is closed, so there is nowhere to publish a
+    separate missing-value count.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return 0.0
+    try:
+        activation = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return activation if math.isfinite(activation) else 0.0
+
+
 def _safe_recall_evidence(rows: list[dict[str, Any]], *, run_id: str, corpus_profile: str = "full") -> dict[str, Any]:
     if corpus_profile not in {"full", "compact"}:
         raise ValueError("unknown recall corpus profile")
@@ -113,7 +132,10 @@ def _safe_recall_evidence(rows: list[dict[str, Any]], *, run_id: str, corpus_pro
             }
         )
     activations = [
-        float(item.get("activation_score", 0)) for row in rows for item in row["results"] if isinstance(item, dict)
+        _activation_score(item.get("activation_score"))
+        for row in rows
+        for item in row["results"]
+        if isinstance(item, dict)
     ]
     top_ids = []
     for row in rows:

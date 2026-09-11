@@ -68,11 +68,22 @@ class EntityResolutionOutcome:
     match: str
     candidates: list[Any] = field(default_factory=list)
     predecessor: Any | None = None
+    candidate_types: dict[int, str] = field(default_factory=dict)
 
     @property
     def single_strong_match(self) -> bool:
-        """A lone exact or alias hit: safe to merge without the model."""
-        return self.match in {"exact", "alias"} and len(self.candidates) == 1
+        """A lone exact, alias, or same-name-other-type hit: safe to merge.
+
+        A ``homonym`` hit is one node the graph already stores under this exact
+        name with another type.  The hosted librarian is told to match the
+        existing node's type when in doubt, so the host default does the same
+        rather than letting ``upsert_node`` store a second node of that name.
+        """
+        return self.match in {"exact", "alias", "homonym"} and len(self.candidates) == 1
+
+    def type_of(self, node: Any) -> str:
+        """The node type name recorded for one candidate (empty when unknown)."""
+        return self.candidate_types.get(node.id, "")
 
 
 @dataclass
@@ -144,9 +155,16 @@ async def resolve_extraction_entities(
             entity.type_name,
             type_names=type_names,
             semantic=False,
+            include_homonyms=True,
         )
+        candidates = [node for node, _score in matches]
         outcomes.append(
-            EntityResolutionOutcome(index=index, match=match, candidates=[node for node, _score in matches])
+            EntityResolutionOutcome(
+                index=index,
+                match=match,
+                candidates=candidates,
+                candidate_types=_candidate_types(candidates, type_names),
+            )
         )
 
     pending = [outcome for outcome in outcomes if outcome.match == "none"]
@@ -165,6 +183,7 @@ async def resolve_extraction_entities(
             )
             outcome.match = match
             outcome.candidates = [node for node, _score in matches]
+            outcome.candidate_types = _candidate_types(outcome.candidates, type_names)
 
     for outcome in outcomes:
         entity = entities[outcome.index]
@@ -183,6 +202,11 @@ async def resolve_extraction_entities(
         if match in {"exact", "alias"} and len(matches) == 1:
             outcome.predecessor = matches[0][0]
     return outcomes
+
+
+def _candidate_types(candidates: list[Any], type_names: dict[int, str]) -> dict[int, str]:
+    """Map each candidate node id to its type name, for the model and the host."""
+    return {node.id: type_names.get(node.type_id, "") for node in candidates}
 
 
 def build_oneshot_items(entities: list[ExtractedEntity], outcomes: list[EntityResolutionOutcome]) -> list[OneshotItem]:
@@ -207,6 +231,7 @@ def build_oneshot_items(entities: list[ExtractedEntity], outcomes: list[EntityRe
                     OneshotCandidate(
                         node_id=node.id,
                         name=node.name,
+                        type_name=outcome.type_of(node),
                         content=(node.content or "")[:CANDIDATE_CONTENT_CHARS],
                         properties=_scalar_properties(node.properties),
                     )
@@ -223,24 +248,39 @@ def render_oneshot_items(items: list[OneshotItem]) -> str:
     for item in items:
         lines.append(f"{item.index} | {item.name} | {item.type_name} | {item.description or ''}")
         for candidate in item.candidates:
-            lines.append(f"  node_id={candidate.node_id} | {candidate.name} | {candidate.content}")
+            lines.append(
+                f"  node_id={candidate.node_id} | {candidate.name} | {candidate.type_name} | {candidate.content}"
+            )
     return "\n".join(lines)
 
 
-def _colliding_candidate(entity: ExtractedEntity, outcome: EntityResolutionOutcome) -> Any | None:
+def _colliding_candidate(
+    entity: ExtractedEntity, outcome: EntityResolutionOutcome, *, typed_only: bool = False
+) -> Any | None:
     """The offered candidate a ``create`` for this entity would overwrite.
 
-    ``upsert_node`` dedups by name, so creating an entity whose canonical name
-    equals a candidate's name does not add a node: it rewrites that candidate's
-    content.  Such a create is therefore applied as a merge instead.
+    ``upsert_node`` dedups by name *and* type, so creating an entity whose
+    canonical name equals a candidate's name does not add a node: it rewrites
+    that candidate's content.  Such a create is therefore applied as a merge.
+
+    ``typed_only`` restricts the guard to candidates stored under the type the
+    entity would be created with.  A model that explicitly chose ``create`` for
+    a differently typed candidate is describing a legitimate homonym, and
+    ``upsert_node`` really does add a second node for it, so that create must
+    survive.  Left off (the host default, when the model said nothing usable)
+    a lone same-name candidate of any type wins, matching the hosted prompt's
+    rule to keep the existing node's type when in doubt.
     """
+    candidates = outcome.candidates[:MAX_CANDIDATES]
+    if typed_only:
+        candidates = [node for node in candidates if outcome.type_of(node).casefold() == entity.type_name.casefold()]
     canonical, _aliases = canonicalize_name(entity.name)
     wanted = (canonical or entity.name).casefold()
-    for node in outcome.candidates[:MAX_CANDIDATES]:
+    for node in candidates:
         if node.name.casefold() == wanted:
             return node
-    if outcome.single_strong_match:
-        return outcome.candidates[0]
+    if candidates and outcome.single_strong_match:
+        return candidates[0]
     return None
 
 
@@ -264,7 +304,8 @@ def _decision_for(
             return "merge", node, decision.content[:MERGE_CONTENT_CHARS]
 
     if not entity.supersedes:
-        collision = _colliding_candidate(entity, outcome)
+        chose_create = decision is not None and decision.decision == "create"
+        collision = _colliding_candidate(entity, outcome, typed_only=chose_create)
         if collision is not None:
             return "merge", collision, _merge_content(collision.content, entity.description)
     return "create", None, None
@@ -535,10 +576,23 @@ async def _apply(
     edges_created = 0
     edges_unchanged = 0
     edges_unresolved = 0
+    extracted_names = {entity.name.casefold() for entity in entities}
+    graph_endpoints: dict[str, int | None] = {}
 
     for relation in relations:
         source_id = _endpoint_id(entities, outcomes, bound, relation, source=True)
         target_id = _endpoint_id(entities, outcomes, bound, relation, source=False)
+        # One endpoint bound and the other named nobody this episode extracted:
+        # the graph may already hold it from an earlier episode, exactly as
+        # ``pipeline._persist_payload`` assumes.  One lookup per distinct name.
+        if source_id is not None and target_id is None:
+            target_id = await _graph_endpoint_id(
+                repo, agent_id, target_schema, relation.target_name, extracted_names, graph_endpoints
+            )
+        elif target_id is not None and source_id is None:
+            source_id = await _graph_endpoint_id(
+                repo, agent_id, target_schema, relation.source_name, extracted_names, graph_endpoints
+            )
         if source_id is None or target_id is None:
             edges_unresolved += 1
             logger.bind(action_log=True, **audit).warning(
@@ -628,6 +682,41 @@ async def _apply(
         pending_entities=0,
         pending_relations=0,
     )
+
+
+async def _graph_endpoint_id(
+    repo: MemoryRepository,
+    agent_id: str,
+    target_schema: str | None,
+    name: str,
+    extracted_names: set[str],
+    cache: dict[str, int | None],
+) -> int | None:
+    """Resolve a relation endpoint no extracted entity claims against the graph.
+
+    Exact name first, then aliases, both case-insensitive and ignoring forgotten
+    nodes.  Only a single hit binds: several same-name nodes are a homonym the
+    host has no evidence to choose between, so the edge is skipped as before.
+    A name some extracted entity does own is never looked up here — that entity
+    failing to bind is a decision the host already made.
+    """
+    key = name.casefold()
+    if key in extracted_names:
+        return None
+    if key in cache:
+        return cache[key]
+    matches = [
+        node
+        for node in await repo.find_nodes_by_name(agent_id, name, target_schema=target_schema)
+        if not node.forgotten
+    ]
+    if not matches:
+        matches = [
+            node for node in await repo.resolve_alias(agent_id, name, target_schema=target_schema) if not node.forgotten
+        ]
+    node_id = matches[0].id if len(matches) == 1 else None
+    cache[key] = node_id
+    return node_id
 
 
 def _endpoint_id(

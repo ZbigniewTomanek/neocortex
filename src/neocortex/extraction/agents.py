@@ -1264,19 +1264,26 @@ async def resolve_entity_candidates(
     *,
     type_names: dict[int, str] | None = None,
     semantic: bool = True,
+    include_homonyms: bool = False,
 ) -> tuple[str, list[tuple[Any, float | None]]]:
     """Resolve one entity name to typed graph candidates, host-side.
 
     Tries exact name, then aliases, then trigram similarity, then (when
     ``semantic`` is set and an embedding service is available) vector search.
     Returns the match kind (``exact``/``alias``/``fuzzy``/``semantic``/
-    ``ambiguous``/``ambiguous_homonym``/``none``) and up to three candidates
-    with their score, if the step that produced them has one.
+    ``ambiguous``/``ambiguous_homonym``/``homonym``/``none``) and up to three
+    candidates with their score, if the step that produced them has one.
 
     ``type_names`` lets a caller reuse one node-type snapshot across entities.
     ``semantic=False`` stops before the embedding step, so a batching caller
     can collect the unmatched names and finish with
     ``resolve_semantic_candidates``.
+
+    ``include_homonyms`` changes only the case where the name (or one of its
+    aliases) exists in the graph but no hit carries the expected type: instead
+    of the empty ``ambiguous_homonym`` answer, the differently typed nodes are
+    returned as ``homonym`` candidates so the caller can decide whether they
+    are the same real-world thing.  Callers that leave it off are unaffected.
     """
     types: dict[int, str] = type_names or {
         item.id: item.name for item in await repo.get_node_types(agent_id, target_schema=target_schema)
@@ -1291,6 +1298,8 @@ async def resolve_entity_candidates(
     if exact_all:
         if len(exact) == 1:
             return "exact", exact
+        if not exact and include_homonyms:
+            return "homonym", [(node, None) for node in exact_all[:3]]
         return ("ambiguous" if exact else "ambiguous_homonym"), exact
 
     alias_all = [
@@ -1300,6 +1309,8 @@ async def resolve_entity_candidates(
     if alias_all:
         if len(alias) == 1:
             return "alias", alias
+        if not alias and include_homonyms:
+            return "homonym", [(node, None) for node in alias_all[:3]]
         return ("ambiguous" if alias else "ambiguous_homonym"), alias
 
     fuzzy_all = await repo.find_nodes_fuzzy(
@@ -1876,6 +1887,8 @@ def build_librarian_agent(
             "merge - a candidate is the same real-world thing: give its node_id and content.",
             "unchanged - a candidate already states every new fact: give its node_id, omit content.",
             "create - no candidate is the same thing: omit node_id and content.",
+            "A candidate listed under a different type is still a merge when it is the same real-world thing; "
+            "the host keeps that candidate's type.",
             "content is ONE combined description under 600 characters that keeps every existing fact and "
             "adds or corrects it with the new one; newer numbers, dates, and versions win.",
             "node_id must be a candidate id listed under that index.",
