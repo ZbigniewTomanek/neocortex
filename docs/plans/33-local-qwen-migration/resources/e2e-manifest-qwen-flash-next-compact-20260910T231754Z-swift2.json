@@ -1,0 +1,244 @@
+{
+  "arm": "qwen-flash-next-compact",
+  "corpus_metrics": {
+    "path": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+    "sha256": "e5dc3dca607609419d3d25bf35267f163e4be35729308886d57c2278b4b850ca"
+  },
+  "e2e": {
+    "children": [
+      {
+        "child_run_id": "20260910T231754Z-swift2.e2e.01",
+        "diagnostics": {
+          "availability": "NONE"
+        },
+        "exit_code": 0,
+        "result": {
+          "exit_code": 0,
+          "reason": "exit_status_only",
+          "status": "PASS"
+        },
+        "script": "e2e_extraction_pipeline_test.py",
+        "script_sha256": "d1d2463e08661af2966f10737219c9eda3e8cee1814cd4e5f43df8a0ee80ad95"
+      },
+      {
+        "child_run_id": "20260910T231754Z-swift2.e2e.02",
+        "diagnostics": {
+          "availability": "PRIVATE",
+          "child_run_id": "20260910T231754Z-swift2.e2e.02",
+          "exit_code": 1
+        },
+        "exit_code": 1,
+        "result": {
+          "counts": {
+            "acceptable": 13,
+            "fail": 1,
+            "partial": 5,
+            "pass": 8,
+            "total": 14
+          },
+          "exit_code": 1,
+          "gate": {
+            "basis": "PASS",
+            "passed": false,
+            "threshold": 11
+          },
+          "scenarios": [
+            {
+              "index": 1,
+              "verdict": "PASS"
+            },
+            {
+              "index": 2,
+              "verdict": "PASS"
+            },
+            {
+              "index": 3,
+              "verdict": "FAIL"
+            },
+            {
+              "index": 4,
+              "verdict": "PARTIAL"
+            },
+            {
+              "index": 5,
+              "verdict": "PARTIAL"
+            },
+            {
+              "index": 6,
+              "verdict": "PARTIAL"
+            },
+            {
+              "index": 7,
+              "verdict": "PASS"
+            },
+            {
+              "index": 8,
+              "verdict": "PASS"
+            },
+            {
+              "index": 9,
+              "verdict": "PASS"
+            },
+            {
+              "index": 10,
+              "verdict": "PASS"
+            },
+            {
+              "index": 11,
+              "verdict": "PARTIAL"
+            },
+            {
+              "index": 12,
+              "verdict": "PASS"
+            },
+            {
+              "index": 13,
+              "verdict": "PARTIAL"
+            },
+            {
+              "index": 14,
+              "verdict": "PASS"
+            }
+          ],
+          "status": "FAIL"
+        },
+        "script": "e2e_plan15_scenarios_test.py",
+        "script_sha256": "9f77a18a2f5036ab0de64e5b638a1e3e14030e8865ef5bdeffd7ff7000aee274"
+      },
+      {
+        "child_run_id": "20260910T231754Z-swift2.e2e.03",
+        "diagnostics": {
+          "availability": "PRIVATE",
+          "child_run_id": "20260910T231754Z-swift2.e2e.03",
+          "exit_code": 1
+        },
+        "exit_code": 1,
+        "result": {
+          "counts": {
+            "acceptable": 11,
+            "fail": 1,
+            "partial": 2,
+            "pass": 0,
+            "total": 14
+          },
+          "exit_code": 1,
+          "gate": {
+            "basis": "ACCEPTABLE",
+            "passed": false,
+            "threshold": 13
+          },
+          "scenarios": [
+            {
+              "index": 1,
+              "verdict": "ACCEPTABLE"
+            },
+            {
+              "index": 2,
+              "verdict": "ACCEPTABLE"
+            },
+            {
+              "index": 3,
+              "verdict": "ACCEPTABLE"
+            },
+            {
+              "index": 4,
+              "verdict": "ACCEPTABLE"
+            },
+            {
+              "index": 5,
+              "verdict": "PARTIAL"
+            },
+            {
+              "index": 6,
+              "verdict": "PARTIAL"
+            },
+            {
+              "index": 7,
+              "verdict": "ACCEPTABLE"
+            },
+            {
+              "index": 8,
+              "verdict": "ACCEPTABLE"
+            },
+            {
+              "index": 9,
+              "verdict": "ACCEPTABLE"
+            },
+            {
+              "index": 10,
+              "verdict": "ACCEPTABLE"
+            },
+            {
+              "index": 11,
+              "verdict": "ACCEPTABLE"
+            },
+            {
+              "index": 12,
+              "verdict": "FAIL"
+            },
+            {
+              "index": 13,
+              "verdict": "ACCEPTABLE"
+            },
+            {
+              "index": 14,
+              "verdict": "ACCEPTABLE"
+            }
+          ],
+          "status": "FAIL"
+        },
+        "script": "e2e_plan17_validation.py",
+        "script_sha256": "e215e3478b335ff328d444b9c0c2b078782bf2749defb2462ecdf565bddb2e58"
+      },
+      {
+        "child_run_id": "20260910T231754Z-swift2.e2e.04",
+        "diagnostics": {
+          "availability": "PRIVATE",
+          "child_run_id": "20260910T231754Z-swift2.e2e.04",
+          "exit_code": 1
+        },
+        "exit_code": 1,
+        "result": {
+          "exit_code": 1,
+          "reason": "exit_status_only",
+          "status": "FAIL"
+        },
+        "script": "e2e_episodic_memory_test.py",
+        "script_sha256": "6c20dd6e1e473d85fddb6266685e1a23a56331028c32b353b960812ddc60985d"
+      },
+      {
+        "child_run_id": "20260910T231754Z-swift2.e2e.05",
+        "diagnostics": {
+          "availability": "NONE"
+        },
+        "exit_code": 0,
+        "result": {
+          "exit_code": 0,
+          "reason": "exit_status_only",
+          "status": "PASS"
+        },
+        "script": "e2e_cognitive_recall_test.py",
+        "script_sha256": "5531166c256b20cca99ed19c41beac7a052496ad9199a12b7576e41f7490604f"
+      }
+    ],
+    "failed": 3,
+    "passed": 2,
+    "total": 5
+  },
+  "kind": "neocortex-bakeoff-e2e-manifest",
+  "post_snapshot": {
+    "path": "backups/qwen-flash-next-compact-20260910T231754Z-swift2-20260911-012722.tar.gz",
+    "sha256": "8061d01e92c932eeb2c86dfd9449d011b50e182dcaa33047b948260298351afc"
+  },
+  "recall": {
+    "path": "docs/plans/33-local-qwen-migration/resources/recall-results-qwen-flash-next-compact-20260910T231754Z-swift2.json",
+    "result": {
+      "reason": "recall_scorer_exit_1",
+      "status": "NOT_MEASURED"
+    },
+    "sha256": "a71016228b2887da28c58340c5d0fa63b981b83ab5ee50cf17909ac77a5e0782"
+  },
+  "run_id": "20260910T231754Z-swift2",
+  "schema_version": 2,
+  "status": "NOT_MEASURED"
+}
