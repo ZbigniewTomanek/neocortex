@@ -253,3 +253,10 @@ and exclude prompts, outputs, tool arguments, and secrets.
 **Recall**: Select Q2,Q3,Q6,Q7,Q8,Q9; exclude unsupported Q1,Q4,Q5 explicitly. M3 denominator is 1; M4 is 3; M2 spans six queries. Do not compare raw full-profile metrics.
 **Disposition**: Stage 6 is PENDING for a fresh compact arm and preflight. Stages 7–9 consume compact evidence; no gate or quality verdict is claimed by this amendment.
 **Details**: `resources/compact-corpus-design.md` and the 2026-09-09 journal entry.
+
+### D39: Hold all four reasoning agents after the compact run
+**Date**: 2026-09-11 - **Stage**: 7
+**Options**: A) migrate on terminal stability and speed B) hold until integrity and quality are measured and pass.
+**Chosen**: B. Ontology, extractor, librarian, and domain classifier remain `HOLD`; current model defaults do not change.
+**Rationale**: The run completed 30/30 jobs in 2,397 seconds, but the final arm passed 0/5 E2Es. Sixteen missing-endpoint skips and five temporal conflicts lack per-event attribution, and no privacy-safe graph export supports the required 20-node/20-edge sample. Stability and speed do not authorize migration.
+**Evidence**: `resources/bakeoff-comparison.md`; `resources/qwen-parsing-report.json`; `resources/quality-sample-qwen-flash-next.json`.

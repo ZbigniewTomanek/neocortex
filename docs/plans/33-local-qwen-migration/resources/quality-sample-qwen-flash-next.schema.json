@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neocortex.local/schemas/quality-sample-qwen-flash-next.schema.json",
+  "title": "Qwen Flash Next fixed graph quality sample",
+  "oneOf": [{"$ref": "#/$defs/measured"}, {"$ref": "#/$defs/notMeasured"}],
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "episodeKey": {"enum": ["E02", "E04", "E05", "E10", "E18", "E20", "E26", "E27"]},
+    "snapshot": {"type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": {"path": {"type": "string", "pattern": "^(?!/)(?!.*ncx_).+$"}, "sha256": {"$ref": "#/$defs/digest"}}},
+    "node": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "name", "source_episode_key", "source_job_id"],
+      "properties": {
+        "id": {"type": "integer", "minimum": 0}, "type": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]{0,59}$"},
+        "name": {"oneOf": [
+          {"type": "object", "additionalProperties": false, "required": ["kind", "value"], "properties": {"kind": {"const": "opaque_id"}, "value": {"type": "integer", "minimum": 0}}},
+          {"type": "object", "additionalProperties": false, "required": ["kind", "value"], "properties": {"kind": {"const": "one_way_hash"}, "value": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}}
+        ]},
+        "source_episode_key": {"$ref": "#/$defs/episodeKey"}, "source_job_id": {"type": "integer", "minimum": 0}
+      }
+    },
+    "edge": {
+      "type": "object", "additionalProperties": false, "required": ["id", "type", "source_node_id", "target_node_id", "source_episode_key", "source_job_id"],
+      "properties": {
+        "id": {"type": "integer", "minimum": 0}, "type": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,59}$"},
+        "source_node_id": {"type": "integer", "minimum": 0}, "target_node_id": {"type": "integer", "minimum": 0},
+        "source_episode_key": {"$ref": "#/$defs/episodeKey"}, "source_job_id": {"type": "integer", "minimum": 0}
+      }
+    },
+    "measured": {
+      "type": "object", "additionalProperties": false, "required": ["schema_version", "status", "snapshot", "declared_types", "nodes", "edges", "validator_result"],
+      "properties": {
+        "schema_version": {"const": 1}, "status": {"const": "MEASURED"}, "snapshot": {"$ref": "#/$defs/snapshot"},
+        "declared_types": {
+          "type": "object", "additionalProperties": false, "required": ["node", "edge"],
+          "properties": {
+            "node": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]{0,59}$"}},
+            "edge": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,59}$"}}
+          }
+        },
+        "nodes": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"$ref": "#/$defs/node"}},
+        "edges": {"type": "array", "minItems": 20, "maxItems": 20, "items": {"$ref": "#/$defs/edge"}},
+        "validator_result": {"type": "object", "additionalProperties": false, "required": ["status", "node_count", "edge_count", "invalid_references", "invalid_records"], "properties": {"status": {"const": "PASS"}, "node_count": {"const": 20}, "edge_count": {"const": 20}, "invalid_references": {"const": 0}, "invalid_records": {"const": 0}}}
+      }
+    },
+    "notMeasured": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "status", "expected_counts", "observed_counts", "snapshot", "missing_input", "reason", "consequence"],
+      "properties": {
+        "schema_version": {"const": 1}, "status": {"const": "NOT_MEASURED"},
+        "expected_counts": {"type": "object", "additionalProperties": false, "required": ["nodes", "edges"], "properties": {"nodes": {"const": 20}, "edges": {"const": 20}}},
+        "observed_counts": {"type": "object", "additionalProperties": false, "required": ["nodes", "edges"], "properties": {"nodes": {"const": "NOT_MEASURED"}, "edges": {"const": "NOT_MEASURED"}}},
+        "snapshot": {"$ref": "#/$defs/snapshot"}, "missing_input": {"const": "graph_export"},
+        "reason": {"type": "string", "minLength": 1}, "consequence": {"const": "absolute_quality_fails_closed_all_agents_hold"}
+      }
+    }
+  }
+}

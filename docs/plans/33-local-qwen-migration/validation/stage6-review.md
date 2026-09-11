@@ -36,3 +36,28 @@ Gate dispositions:
 - Runtime benefit and cutover recommendation: **DEFERRED**.
 
 Refuted candidate defects: terminal counts are corroborated by the terminal watcher and sanitized capture; corpus IDs/hash, run ID, and source revision agree; correlation IDs are collision-free across episodes; graph capture shows zero artifact markers, invalid types, invalid references, and stored leaks; post-snapshot restoration is evidenced by `corpus_replaced: true`. No additional non-blocking findings were confirmed.
+
+## Triage
+
+- F1: FIXED by canonical run-3 artifacts at `219e56e`; current metrics and manifest digests match and manifest validation exits 0.
+- F2: FIXED for the replacement arm by `ad85426` plus run-3 evidence: eight classifier runs completed with zero agent failures or validation rejections. The unreproduced historical rejected field remains `NOT MEASURED` and is not claimed fixed by reproduction.
+- F3: FIXED for the replacement arm: run 3 has zero agent failures/rejections, 30/30 terminal successes, and complete 22-path audit coverage. Historical failures remain recorded.
+- F4: FIXED for the replacement arm: run 3 records zero tool-validation rejections.
+- F5: DEFERRED to the plan's declared Stage 7 deliverable. It does not block the Stage 6 stability measurement, but it continues to block Stage 7 and Stage 9 until the eight-row report validates.
+- F6: MEASURED by run 3, not fixed as quality. Recall is measured and all five final E2E children fail; this is mandatory Stage 7 `HOLD` input and can never support `MIGRATE`.
+
+The accumulated repair evidence is `validation/stage6-repair-evidence.md`. It additionally finds Stage 6 integrity `NOT MEASURED`: all 16 missing-endpoint skips lack individual safe attribution and none of the five run-3 temporal-pair skips has per-event proof that the required temporal edge survived. The remaining repair re-review must judge that evidence without reopening the full review or repair round 1.
+
+## Re-review
+
+Reviewer: `codex/gpt-5.6-sol`, effort `high`. Scope: accumulated repair commits and `validation/stage6-repair-evidence.md` only. Verdict: **BLOCK** with one P1 blocking finding.
+
+### F7 — P1 BLOCKING — integrity remains NOT MEASURED
+
+The repair correctly records 16 `edge_skipped_missing_node` events and five `edge_skipped_temporal_pair` events, but cannot individually attribute the former or prove required `CORRECTS`/`SUPERSEDES` survival for the latter. Marking Stage 6 complete could certify a graph with a missing required endpoint or temporal correction edge. This blocks the Stage 6 integrity gate and endpoint/temporal-edge invariants. Supply privacy-safe attribution for all 16/16 skips and run-3 survival evidence for all 5/5 temporal conflicts, or leave Stage 6 blocked.
+
+All original F1–F6 dispositions, direct selectors, and other gates were independently verified. Run/model/corpus identity, 30/30 terminal completion, stored leak/type/failure scans, isolation/retry provenance, opaque correlations, digests, snapshot, restore, recall measurement, E2E measurement, timing, manifest validation, 1251-pass full suite, 83-pass focused suite, Ruff, and diff check are PASS. The parsing report and verdict remain Stage 7 deliverables. The final 0/5 E2E result requires `HOLD`, not `MIGRATE`.
+
+### Re-review triage
+
+- F7: ACCEPT as blocking. The repair budget is spent and current privacy-safe artifacts do not contain the required per-event attribution. Stage 6 is `BLOCKED`; Stage 7 remains independently reachable through Stage 6b and must publish `HOLD` with this gap.

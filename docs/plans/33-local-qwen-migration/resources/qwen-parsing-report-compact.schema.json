@@ -2,950 +2,189 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://neocortex.local/schemas/qwen-parsing-report-compact.schema.json",
   "title": "Qwen Flash Next compact per-episode parsing report",
-  "description": "Compact revision 1: source-backed report for eight selected original episodes; not full-corpus evidence.",
+  "description": "Compact revision 1. Evidence is limited to committed privacy-safe aggregates.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "status",
-    "run",
-    "source_artifacts",
-    "episodes",
-    "checks"
-  ],
+  "required": ["schema_version", "status", "run", "source_artifacts", "episodes", "checks"],
   "properties": {
-    "schema_version": {
-      "const": 1
-    },
-    "status": {
-      "enum": [
-        "MEASURED",
-        "NOT_MEASURED"
-      ]
-    },
-    "run": {
-      "$ref": "#/$defs/run"
-    },
+    "schema_version": {"const": 1},
+    "status": {"enum": ["MEASURED", "NOT_MEASURED"]},
+    "run": {"$ref": "#/$defs/run"},
     "source_artifacts": {
       "type": "array",
-      "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/sourceArtifact"
-      }
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/sourceArtifact"}
     },
     "episodes": {
       "type": "array",
       "minItems": 8,
       "maxItems": 8,
       "uniqueItems": true,
-      "items": {
-        "$ref": "#/$defs/episode"
-      },
+      "items": {"$ref": "#/$defs/episode"},
       "allOf": [
-        {
-          "contains": {
-            "properties": {
-              "episode_key": {
-                "const": "E02"
-              }
-            },
-            "required": [
-              "episode_key"
-            ]
-          },
-          "minContains": 1,
-          "maxContains": 1
-        },
-        {
-          "contains": {
-            "properties": {
-              "episode_key": {
-                "const": "E04"
-              }
-            },
-            "required": [
-              "episode_key"
-            ]
-          },
-          "minContains": 1,
-          "maxContains": 1
-        },
-        {
-          "contains": {
-            "properties": {
-              "episode_key": {
-                "const": "E05"
-              }
-            },
-            "required": [
-              "episode_key"
-            ]
-          },
-          "minContains": 1,
-          "maxContains": 1
-        },
-        {
-          "contains": {
-            "properties": {
-              "episode_key": {
-                "const": "E10"
-              }
-            },
-            "required": [
-              "episode_key"
-            ]
-          },
-          "minContains": 1,
-          "maxContains": 1
-        },
-        {
-          "contains": {
-            "properties": {
-              "episode_key": {
-                "const": "E18"
-              }
-            },
-            "required": [
-              "episode_key"
-            ]
-          },
-          "minContains": 1,
-          "maxContains": 1
-        },
-        {
-          "contains": {
-            "properties": {
-              "episode_key": {
-                "const": "E20"
-              }
-            },
-            "required": [
-              "episode_key"
-            ]
-          },
-          "minContains": 1,
-          "maxContains": 1
-        },
-        {
-          "contains": {
-            "properties": {
-              "episode_key": {
-                "const": "E26"
-              }
-            },
-            "required": [
-              "episode_key"
-            ]
-          },
-          "minContains": 1,
-          "maxContains": 1
-        },
-        {
-          "contains": {
-            "properties": {
-              "episode_key": {
-                "const": "E27"
-              }
-            },
-            "required": [
-              "episode_key"
-            ]
-          },
-          "minContains": 1,
-          "maxContains": 1
-        }
+        {"contains": {"properties": {"episode_key": {"const": "E02"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E04"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E05"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E10"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E18"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E20"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E26"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E27"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1}
       ]
     },
-    "checks": {
-      "$ref": "#/$defs/reportChecks"
-    }
+    "checks": {"$ref": "#/$defs/reportChecks"}
   },
   "$defs": {
-    "opaqueDomainId": {
-      "description": "Use the database domain id. Never use a domain value or schema name.",
-      "oneOf": [
-        {
-          "type": "integer",
-          "minimum": 1
-        },
-        {
-          "const": "NOT_MEASURED"
-        }
-      ]
-    },
-    "oneWayHash": {
-      "description": "Use a SHA-256 value for a dynamic domain value.",
-      "type": "string",
-      "pattern": "^sha256:[0-9a-f]{64}$"
-    },
-    "measurementReason": {
-      "enum": [
-        "source_missing",
-        "source_incomplete",
-        "outside_selected_run",
-        "not_submitted",
-        "not_applicable"
-      ]
-    },
+    "episodeKey": {"enum": ["E02", "E04", "E05", "E10", "E18", "E20", "E26", "E27"]},
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "safeReference": {
-      "description": "Use a source reference without a schema name.",
       "type": "string",
       "minLength": 1,
-      "not": {
-        "pattern": "ncx_[a-z0-9]+__[a-z0-9_]+"
-      }
+      "not": {"pattern": "(^/|^[a-zA-Z][a-zA-Z0-9+.-]*://|ncx_[a-z0-9]+__[a-z0-9_]+)"}
     },
-    "staticDomainRef": {
-      "description": "Use one of the four built-in domain references.",
-      "enum": [
-        "user_profile",
-        "technical_knowledge",
-        "work_context",
-        "domain_knowledge"
-      ]
-    },
-    "domainProposal": {
-      "description": "Record proposal status, an opaque id, a one-way hash, and a static parent reference.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "status"
-      ],
-      "properties": {
-        "status": {
-          "enum": [
-            "accepted",
-            "rejected",
-            "not_proposed",
-            "NOT_MEASURED"
-          ]
-        },
-        "domain_id": {
-          "$ref": "#/$defs/opaqueDomainId"
-        },
-        "dynamic_proposal_hash": {
-          "oneOf": [
-            {
-              "$ref": "#/$defs/oneWayHash"
-            },
-            {
-              "const": "NOT_MEASURED"
-            }
-          ]
-        },
-        "static_parent_ref": {
-          "oneOf": [
-            {
-              "$ref": "#/$defs/staticDomainRef"
-            },
-            {
-              "const": "NONE"
-            },
-            {
-              "const": "NOT_MEASURED"
-            }
-          ]
-        }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "status": {
-                "enum": [
-                  "accepted",
-                  "rejected"
-                ]
-              }
-            },
-            "required": [
-              "status"
-            ]
-          },
-          "then": {
-            "required": [
-              "dynamic_proposal_hash"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "status": {
-                "const": "accepted"
-              }
-            },
-            "required": [
-              "status"
-            ]
-          },
-          "then": {
-            "required": [
-              "domain_id"
-            ]
-          }
-        }
-      ]
-    },
-    "safeValue": {
-      "description": "Use only typed values that do not contain source text or schema names.",
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "kind",
-            "value"
-          ],
-          "properties": {
-            "kind": {
-              "const": "opaque_id"
-            },
-            "value": {
-              "type": "integer",
-              "minimum": 0
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "kind",
-            "value"
-          ],
-          "properties": {
-            "kind": {
-              "const": "one_way_hash"
-            },
-            "value": {
-              "$ref": "#/$defs/oneWayHash"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "kind",
-            "value"
-          ],
-          "properties": {
-            "kind": {
-              "const": "type_name"
-            },
-            "value": {
-              "type": "string",
-              "pattern": "^[A-Z][A-Za-z0-9]{0,59}$"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "kind",
-            "value"
-          ],
-          "properties": {
-            "kind": {
-              "const": "relation_type"
-            },
-            "value": {
-              "type": "string",
-              "pattern": "^[A-Z][A-Z0-9_]{0,59}$"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "kind",
-            "value"
-          ],
-          "properties": {
-            "kind": {
-              "const": "static_domain_ref"
-            },
-            "value": {
-              "$ref": "#/$defs/staticDomainRef"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "kind",
-            "value"
-          ],
-          "properties": {
-            "kind": {
-              "const": "action"
-            },
-            "value": {
-              "enum": [
-                "created_node",
-                "updated_node",
-                "archived_node",
-                "created_edge",
-                "removed_edge"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    "value": {
-      "oneOf": [
-        {
-          "type": "integer",
-          "minimum": 0
-        },
-        {
-          "const": "NOT_MEASURED"
-        }
-      ]
-    },
+    "measurement": {"enum": ["MEASURED", "NOT_MEASURED"]},
+    "missingValue": {"const": "NOT_MEASURED"},
+    "safeScalar": {"oneOf": [{"type": "string"}, {"type": "number"}, {"type": "boolean"}, {"type": "null"}]},
     "run": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "run_id",
-        "model",
-        "effort",
-        "source_revision",
-        "corpus_path",
-        "corpus_sha256",
-        "snapshot_path"
-      ],
+      "type": "object", "additionalProperties": false,
+      "required": ["run_id", "model", "effort", "source_revision", "corpus_profile", "corpus_revision", "corpus_path", "corpus_sha256", "snapshot_path", "snapshot_sha256"],
       "properties": {
-        "run_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "model": {
-          "type": "string",
-          "minLength": 1
-        },
-        "effort": {
-          "type": "string",
-          "minLength": 1
-        },
-        "source_revision": {
-          "type": "string",
-          "minLength": 1
-        },
-        "corpus_path": {
-          "$ref": "#/$defs/safeReference"
-        },
-        "corpus_sha256": {
-          "type": "string",
-          "minLength": 1
-        },
-        "snapshot_path": {
-          "$ref": "#/$defs/safeReference"
-        }
+        "run_id": {"const": "20260911T001509Z-swift3"}, "model": {"const": "qwen3.8-flash-next"}, "effort": {"const": "false"},
+        "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "corpus_profile": {"const": "compact"}, "corpus_revision": {"const": 1},
+        "corpus_path": {"$ref": "#/$defs/safeReference"}, "corpus_sha256": {"$ref": "#/$defs/digest"},
+        "snapshot_path": {"$ref": "#/$defs/safeReference"}, "snapshot_sha256": {"$ref": "#/$defs/digest"}
       }
     },
     "sourceArtifact": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "kind",
-        "path",
-        "sha256",
-        "availability"
-      ],
+      "type": "object", "additionalProperties": false, "required": ["kind", "path", "sha256", "availability"],
       "properties": {
-        "kind": {
-          "enum": [
-            "corpus",
-            "metrics",
-            "snapshot",
-            "admin_jobs",
-            "graph_export",
-            "audit_log"
-          ]
-        },
-        "path": {
-          "$ref": "#/$defs/safeReference"
-        },
-        "sha256": {
-          "type": "string",
-          "minLength": 1
-        },
-        "availability": {
-          "enum": [
-            "MEASURED",
-            "NOT_MEASURED"
-          ]
-        },
-        "reason": {
-          "$ref": "#/$defs/measurementReason"
-        }
-      }
-    },
-    "episode": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "episode_key",
-        "source",
-        "jobs",
-        "run_provenance",
-        "domains",
-        "ontology",
-        "extraction",
-        "librarian",
-        "events",
-        "quality_integrity"
-      ],
-      "properties": {
-        "episode_key": {
-          "enum": [
-            "E02",
-            "E04",
-            "E05",
-            "E10",
-            "E18",
-            "E20",
-            "E26",
-            "E27"
-          ]
-        },
-        "source": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "path",
-            "locator"
-          ],
-          "properties": {
-            "path": {
-              "$ref": "#/$defs/safeReference"
-            },
-            "locator": {
-              "$ref": "#/$defs/safeReference"
-            }
-          }
-        },
-        "jobs": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/job"
-          }
-        },
-        "run_provenance": {
-          "$ref": "#/$defs/episodeRun"
-        },
-        "domains": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "accepted",
-            "proposal"
-          ],
-          "properties": {
-            "accepted": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "availability",
-                "static_refs",
-                "domain_ids",
-                "dynamic_domain_hashes"
-              ],
-              "properties": {
-                "availability": {
-                  "enum": [
-                    "MEASURED",
-                    "NOT_MEASURED"
-                  ]
-                },
-                "static_refs": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/$defs/staticDomainRef"
-                  }
-                },
-                "domain_ids": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/$defs/opaqueDomainId"
-                  }
-                },
-                "dynamic_domain_hashes": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/$defs/oneWayHash"
-                  }
-                }
-              }
-            },
-            "proposal": {
-              "$ref": "#/$defs/domainProposal"
-            }
-          }
-        },
-        "ontology": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "proposed",
-            "accepted",
-            "rejected"
-          ],
-          "properties": {
-            "proposed": {
-              "$ref": "#/$defs/ontologyTypes"
-            },
-            "accepted": {
-              "$ref": "#/$defs/ontologyTypes"
-            },
-            "rejected": {
-              "$ref": "#/$defs/ontologyTypes"
-            }
-          }
-        },
-        "extraction": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "entities",
-            "relations"
-          ],
-          "properties": {
-            "entities": {
-              "$ref": "#/$defs/collection"
-            },
-            "relations": {
-              "$ref": "#/$defs/collection"
-            }
-          }
-        },
-        "librarian": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "actions"
-          ],
-          "properties": {
-            "actions": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "availability",
-                "counts",
-                "representative_safe_values"
-              ],
-              "properties": {
-                "availability": {
-                  "enum": [
-                    "MEASURED",
-                    "NOT_MEASURED"
-                  ]
-                },
-                "counts": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "created_nodes",
-                    "updated_nodes",
-                    "archived_nodes",
-                    "created_edges",
-                    "removed_edges"
-                  ],
-                  "properties": {
-                    "created_nodes": {
-                      "$ref": "#/$defs/value"
-                    },
-                    "updated_nodes": {
-                      "$ref": "#/$defs/value"
-                    },
-                    "archived_nodes": {
-                      "$ref": "#/$defs/value"
-                    },
-                    "created_edges": {
-                      "$ref": "#/$defs/value"
-                    },
-                    "removed_edges": {
-                      "$ref": "#/$defs/value"
-                    }
-                  }
-                },
-                "representative_safe_values": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/$defs/safeValue"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "events": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "retries",
-            "timeouts",
-            "rejections"
-          ],
-          "properties": {
-            "retries": {
-              "$ref": "#/$defs/value"
-            },
-            "timeouts": {
-              "$ref": "#/$defs/value"
-            },
-            "rejections": {
-              "$ref": "#/$defs/value"
-            }
-          }
-        },
-        "quality_integrity": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "status",
-            "checks"
-          ],
-          "properties": {
-            "status": {
-              "enum": [
-                "PASS",
-                "FAIL",
-                "NOT_MEASURED"
-              ]
-            },
-            "checks": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "name",
-                  "status",
-                  "source"
-                ],
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "status": {
-                    "enum": [
-                      "PASS",
-                      "FAIL",
-                      "NOT_MEASURED"
-                    ]
-                  },
-                  "source": {
-                    "$ref": "#/$defs/safeReference"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+        "kind": {"enum": ["corpus", "metrics", "snapshot", "admin_jobs", "graph_export", "audit_log", "e2e_manifest", "recall"]},
+        "path": {"$ref": "#/$defs/safeReference"}, "sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": "NOT_MEASURED"}]},
+        "availability": {"$ref": "#/$defs/measurement"}, "reason": {"type": "string", "minLength": 1}
+      },
+      "allOf": [{
+        "if": {"properties": {"availability": {"const": "NOT_MEASURED"}}, "required": ["availability"]},
+        "then": {"required": ["reason"], "properties": {"sha256": {"const": "NOT_MEASURED"}}},
+        "else": {"not": {"required": ["reason"]}, "properties": {"sha256": {"$ref": "#/$defs/digest"}}}
+      }]
     },
     "job": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "kind",
-        "status",
-        "job_id",
-        "outcome"
-      ],
+      "type": "object", "additionalProperties": false, "required": ["kind", "status", "job_id", "outcome"],
       "properties": {
-        "kind": {
-          "enum": [
-            "ingestion",
-            "routing",
-            "extraction"
-          ]
-        },
-        "status": {
-          "enum": [
-            "todo",
-            "doing",
-            "succeeded",
-            "failed",
-            "cancelled",
-            "NOT_MEASURED"
-          ]
-        },
-        "job_id": {
-          "oneOf": [
-            {
-              "type": "integer",
-              "minimum": 0
-            },
-            {
-              "const": "NOT_MEASURED"
-            }
-          ]
-        },
-        "outcome": {
-          "enum": [
-            "queued",
-            "running",
-            "succeeded",
-            "failed",
-            "cancelled",
-            "not_submitted",
-            "not_started",
-            "NOT_MEASURED"
-          ]
-        }
+        "kind": {"enum": ["ingestion", "routing", "extraction"]},
+        "status": {"enum": ["todo", "doing", "succeeded", "failed", "cancelled", "NOT_MEASURED"]},
+        "job_id": {"oneOf": [{"type": "integer", "minimum": 0}, {"$ref": "#/$defs/missingValue"}]},
+        "outcome": {"enum": ["queued", "running", "succeeded", "failed", "cancelled", "not_submitted", "not_started", "NOT_MEASURED"]}
       }
     },
-    "episodeRun": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "model",
-        "effort",
-        "run_id",
-        "snapshot_path",
-        "source_revision"
-      ],
+    "countValue": {"oneOf": [{"type": "integer", "minimum": 0}, {"$ref": "#/$defs/missingValue"}]},
+    "domainProposal": {
+      "type": "object", "additionalProperties": false, "required": ["status", "domain_id", "dynamic_proposal_hash", "static_parent_ref"],
       "properties": {
-        "model": {
-          "type": "string",
-          "minLength": 1
-        },
-        "effort": {
-          "type": "string",
-          "minLength": 1
-        },
-        "run_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "snapshot_path": {
-          "$ref": "#/$defs/safeReference"
-        },
-        "source_revision": {
-          "type": "string",
-          "minLength": 1
-        }
+        "status": {"enum": ["accepted", "rejected", "not_proposed"]},
+        "domain_id": {"oneOf": [{"type": "integer", "minimum": 1}, {"const": "NONE"}]},
+        "dynamic_proposal_hash": {"oneOf": [{"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, {"const": "NONE"}]},
+        "static_parent_ref": {"enum": ["user_profile", "technical_knowledge", "work_context", "domain_knowledge", "NONE"]}
+      }
+    },
+    "acceptedDomains": {
+      "type": "object", "additionalProperties": false, "required": ["static_refs", "domain_ids", "dynamic_domain_hashes"],
+      "properties": {
+        "static_refs": {"type": "array", "items": {"enum": ["user_profile", "technical_knowledge", "work_context", "domain_knowledge"]}, "uniqueItems": true},
+        "domain_ids": {"type": "array", "items": {"type": "integer", "minimum": 1}, "uniqueItems": true},
+        "dynamic_domain_hashes": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "uniqueItems": true}
+      }
+    },
+    "countPair": {
+      "type": "object", "additionalProperties": false, "required": ["node", "edge"],
+      "properties": {
+        "node": {"oneOf": [{"type": "integer", "minimum": 0}, {"$ref": "#/$defs/missingValue"}]},
+        "edge": {"oneOf": [{"type": "integer", "minimum": 0}, {"$ref": "#/$defs/missingValue"}]}
       }
     },
     "collection": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "availability",
-        "count",
-        "stable_ids",
-        "representative_safe_values"
-      ],
+      "type": "object", "additionalProperties": false, "required": ["count", "stable_ids", "representative_safe_values"],
       "properties": {
-        "availability": {
-          "enum": [
-            "MEASURED",
-            "NOT_MEASURED"
-          ]
-        },
-        "count": {
-          "$ref": "#/$defs/value"
-        },
-        "stable_ids": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
-        "representative_safe_values": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/safeValue"
-          }
-        }
+        "count": {"oneOf": [{"type": "integer", "minimum": 0}, {"$ref": "#/$defs/missingValue"}]},
+        "stable_ids": {"oneOf": [{"type": "array", "items": {"type": "integer", "minimum": 0}}, {"$ref": "#/$defs/missingValue"}]},
+        "representative_safe_values": {"oneOf": [{"type": "array", "items": {"$ref": "#/$defs/safeValue"}}, {"$ref": "#/$defs/missingValue"}]}
       }
     },
-    "ontologyTypes": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "node",
-        "edge"
-      ],
+    "safeValue": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "value"],
+      "properties": {"kind": {"enum": ["opaque_id", "one_way_hash", "type_name", "relation_type", "static_domain_ref", "action"]}, "value": {}},
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "opaque_id"}}}, "then": {"properties": {"value": {"type": "integer", "minimum": 0}}}},
+        {"if": {"properties": {"kind": {"const": "one_way_hash"}}}, "then": {"properties": {"value": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}}},
+        {"if": {"properties": {"kind": {"const": "type_name"}}}, "then": {"properties": {"value": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]{0,59}$"}}}},
+        {"if": {"properties": {"kind": {"const": "relation_type"}}}, "then": {"properties": {"value": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,59}$"}}}},
+        {"if": {"properties": {"kind": {"const": "static_domain_ref"}}}, "then": {"properties": {"value": {"enum": ["user_profile", "technical_knowledge", "work_context", "domain_knowledge"]}}}},
+        {"if": {"properties": {"kind": {"const": "action"}}}, "then": {"properties": {"value": {"enum": ["created_node", "updated_node", "archived_node", "created_edge", "removed_edge"]}}}}
+      ]
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false, "required": ["pointer", "status", "value", "source"],
       "properties": {
-        "node": {
-          "$ref": "#/$defs/collection"
+        "pointer": {"type": "string", "pattern": "^/episodes/[0-7]/(jobs|domains|ontology|extraction|librarian|events|quality_integrity)/"},
+        "status": {"$ref": "#/$defs/measurement"}, "value": {"$ref": "#/$defs/safeScalar"},
+        "source": {"$ref": "#/$defs/safeReference"}, "reason": {"type": "string", "minLength": 1}
+      },
+      "allOf": [{
+        "if": {"properties": {"status": {"const": "NOT_MEASURED"}}, "required": ["status"]},
+        "then": {"required": ["reason"], "properties": {"value": {"const": "NOT_MEASURED"}}},
+        "else": {"not": {"required": ["reason"]}}
+      }]
+    },
+    "episode": {
+      "type": "object", "additionalProperties": false,
+      "required": ["episode_key", "source", "jobs", "run_provenance", "domains", "ontology", "extraction", "librarian", "events", "quality_integrity", "evidence"],
+      "properties": {
+        "episode_key": {"$ref": "#/$defs/episodeKey"},
+        "source": {
+          "type": "object", "additionalProperties": false, "required": ["path", "locator"],
+          "properties": {"path": {"$ref": "#/$defs/safeReference"}, "locator": {"type": "string", "pattern": "^episode:E(02|04|05|10|18|20|26|27)$"}}
         },
-        "edge": {
-          "$ref": "#/$defs/collection"
-        }
+        "jobs": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/job"}},
+        "run_provenance": {
+          "type": "object", "additionalProperties": false, "required": ["model", "effort", "run_id", "snapshot_path", "source_revision"],
+          "properties": {
+            "model": {"const": "qwen3.8-flash-next"}, "effort": {"const": "false"}, "run_id": {"const": "20260911T001509Z-swift3"},
+            "snapshot_path": {"$ref": "#/$defs/safeReference"}, "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+          }
+        },
+        "domains": {"type": "object", "additionalProperties": false, "required": ["accepted", "proposal"], "properties": {"accepted": {"oneOf": [{"$ref": "#/$defs/acceptedDomains"}, {"$ref": "#/$defs/missingValue"}]}, "proposal": {"oneOf": [{"$ref": "#/$defs/domainProposal"}, {"$ref": "#/$defs/missingValue"}]}}},
+        "ontology": {"type": "object", "additionalProperties": false, "required": ["proposed", "accepted", "rejected"], "properties": {"proposed": {"$ref": "#/$defs/countPair"}, "accepted": {"$ref": "#/$defs/countPair"}, "rejected": {"$ref": "#/$defs/countPair"}}},
+        "extraction": {"type": "object", "additionalProperties": false, "required": ["entities", "relations"], "properties": {"entities": {"$ref": "#/$defs/collection"}, "relations": {"$ref": "#/$defs/collection"}}},
+        "librarian": {
+          "type": "object", "additionalProperties": false, "required": ["actions"],
+          "properties": {"actions": {
+            "type": "object", "additionalProperties": false,
+            "required": ["created_nodes", "updated_nodes", "archived_nodes", "created_edges", "removed_edges"],
+            "properties": {"created_nodes": {"$ref": "#/$defs/countValue"}, "updated_nodes": {"$ref": "#/$defs/countValue"}, "archived_nodes": {"$ref": "#/$defs/countValue"}, "created_edges": {"$ref": "#/$defs/countValue"}, "removed_edges": {"$ref": "#/$defs/countValue"}}
+          }}
+        },
+        "events": {"type": "object", "additionalProperties": false, "required": ["retries", "timeouts", "rejections"], "properties": {"retries": {"$ref": "#/$defs/countValue"}, "timeouts": {"$ref": "#/$defs/countValue"}, "rejections": {"$ref": "#/$defs/countValue"}}},
+        "quality_integrity": {
+          "type": "object", "additionalProperties": false, "required": ["status", "checks"],
+          "properties": {
+            "status": {"enum": ["PASS", "FAIL", "NOT_MEASURED"]},
+            "checks": {"type": "array", "minItems": 5, "maxItems": 5, "items": {
+              "type": "object", "additionalProperties": false, "required": ["name", "status", "source"],
+              "properties": {"name": {"enum": ["extraction_smoke", "plan15", "plan17", "episodic_memory", "cognitive_recall"]}, "status": {"enum": ["PASS", "FAIL", "NOT_MEASURED"]}, "source": {"$ref": "#/$defs/safeReference"}}
+            }}
+          }
+        },
+        "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/evidence"}}
       }
     },
     "reportChecks": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "episode_set",
-        "source_links",
-        "no_invented_rows",
-        "hidden_reasoning_absent",
-        "raw_secrets_absent",
-        "sensitive_audit_absent",
-        "domain_privacy"
-      ],
+      "type": "object", "additionalProperties": false,
+      "required": ["episode_set", "source_links", "evidence_coverage", "evidence_value_equality", "no_invented_rows", "hidden_reasoning_absent", "raw_secrets_absent", "sensitive_audit_absent", "domain_privacy"],
       "properties": {
-        "episode_set": {
-          "const": "E02,E04,E05,E10,E18,E20,E26,E27"
-        },
-        "source_links": {
-          "enum": [
-            "PASS",
-            "FAIL",
-            "NOT_MEASURED"
-          ]
-        },
-        "no_invented_rows": {
-          "enum": [
-            "PASS",
-            "FAIL",
-            "NOT_MEASURED"
-          ]
-        },
-        "hidden_reasoning_absent": {
-          "enum": [
-            "PASS",
-            "FAIL",
-            "NOT_MEASURED"
-          ]
-        },
-        "raw_secrets_absent": {
-          "enum": [
-            "PASS",
-            "FAIL",
-            "NOT_MEASURED"
-          ]
-        },
-        "sensitive_audit_absent": {
-          "enum": [
-            "PASS",
-            "FAIL",
-            "NOT_MEASURED"
-          ]
-        },
-        "domain_privacy": {
-          "enum": [
-            "PASS",
-            "FAIL",
-            "NOT_MEASURED"
-          ]
-        }
+        "episode_set": {"const": "E02,E04,E05,E10,E18,E20,E26,E27"}, "source_links": {"const": "PASS"},
+        "evidence_coverage": {"const": "PASS"}, "evidence_value_equality": {"const": "PASS"}, "no_invented_rows": {"const": "PASS"},
+        "hidden_reasoning_absent": {"const": "PASS"}, "raw_secrets_absent": {"const": "PASS"}, "sensitive_audit_absent": {"const": "PASS"}, "domain_privacy": {"const": "PASS"}
       }
     }
   }

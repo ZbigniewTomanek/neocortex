@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "run_id": "20260911T001509Z-swift3",
+  "artifacts": [
+    {
+      "kind": "corpus",
+      "path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+      "sha256": "2394bcacfc4fcff6d8ee1f280f8642f8eaf864797cfcd4b333d57b4b9da296d3",
+      "availability": "MEASURED"
+    },
+    {
+      "kind": "metrics",
+      "path": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+      "sha256": "dbaccaeb4cb5e57fad7c3a4ec454c83a6d23dc51ab2c5e2783775df1dc01f5ff",
+      "availability": "MEASURED"
+    },
+    {
+      "kind": "snapshot",
+      "path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+      "sha256": "4e3dc2e6bbbbf461aa8a2a32351a82ccfc965da285304ecd33b94fc4f3bee95b",
+      "availability": "MEASURED"
+    },
+    {
+      "kind": "admin_jobs",
+      "path": "NOT_MEASURED/admin_jobs",
+      "sha256": "NOT_MEASURED",
+      "availability": "NOT_MEASURED",
+      "reason": "No committed privacy-safe per-job admin response exists for this run."
+    },
+    {
+      "kind": "graph_export",
+      "path": "NOT_MEASURED/graph_export",
+      "sha256": "NOT_MEASURED",
+      "availability": "NOT_MEASURED",
+      "reason": "No privacy-safe graph export with source episode and job identifiers is committed."
+    },
+    {
+      "kind": "audit_log",
+      "path": "log/agent_actions.log",
+      "sha256": "NOT_MEASURED",
+      "availability": "NOT_MEASURED",
+      "reason": "The private audit log was not read; only committed aggregate counters are used."
+    },
+    {
+      "kind": "e2e_manifest",
+      "path": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+      "sha256": "ddd35c9deb2d25adcb3a6eb82777cab30d95db3d64025d6eb082f57d50268e31",
+      "availability": "MEASURED"
+    },
+    {
+      "kind": "recall",
+      "path": "docs/plans/33-local-qwen-migration/resources/recall-results-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+      "sha256": "b80edd9c82628c88f8f1a1eaa0a37009f5a585bc50b37552303cc0c88a872b48",
+      "availability": "MEASURED"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "dynamic_schema_name": 0,
+  "email_address": 0,
+  "reasoning_marker": 0,
+  "secret_assignment": 0,
+  "forbidden_payload_key": 0,
+  "sensitive_audit_key": 0,
+  "dynamic_domain_key": 0,
+  "agent_non_hold_verdict": 0,
+  "agent_hold_verdict": 4,
+  "comparison_missing_required_value": 0,
+  "comparison_next_action": 4
+}

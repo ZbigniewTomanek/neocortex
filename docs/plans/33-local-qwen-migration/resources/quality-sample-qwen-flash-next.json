@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "status": "NOT_MEASURED",
+  "expected_counts": {
+    "nodes": 20,
+    "edges": 20
+  },
+  "observed_counts": {
+    "nodes": "NOT_MEASURED",
+    "edges": "NOT_MEASURED"
+  },
+  "snapshot": {
+    "path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+    "sha256": "4e3dc2e6bbbbf461aa8a2a32351a82ccfc965da285304ecd33b94fc4f3bee95b"
+  },
+  "missing_input": "graph_export",
+  "reason": "The snapshot was hash-verified but not extracted because no committed privacy-safe graph export links records to source episode and job identifiers.",
+  "consequence": "absolute_quality_fails_closed_all_agents_hold"
+}

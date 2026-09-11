@@ -484,3 +484,32 @@ finished, and A2/E05 had not started. No probe process or temporary graph schema
 The material reduction gate and independent Stage 4 review are not measured. No new
 compact benchmark was launched. On resume, finish the cached six-row comparison, run the
 independent review, and launch the benchmark detached only if those gates pass.
+
+## 2026-09-11, run started
+
+- Run directory created by `init_run.sh`. Preset `unattended` (review-each-stage-before-and-after, two-fix-rounds-max, never-stop).
+- Roles: orchestrator `codex/gpt-6-astra` (coordinator), implementer `codex/gpt-5.6-sol` effort `high` (strong), reviewer `codex/gpt-5.6-sol` effort `high` (strong), helper `codex/gpt-5.6-luna` effort `medium` (light).
+- Stages: Authenticated local preflight and routing, Real-agent Flash Next probes, Iterative prompt and compatibility hardening, Harness, instrumentation, and auth stability, Optional hosted baseline comparison, Compact local stability and quality run, Isolation and root-cause diagnosis, Quality decision and evidence report, Thinking-effort tuning, Conditional cutover or ASD-STE100 report.
+- Owner's reply to the settings message: "proceed".
+- The reply accepted the announced defaults: Codex strong/light roles, preset `unattended`, groups `A=6` and `B=7,8,9`, the stated local/repository action scope, in-place run directory, and replacement of `PROTOCOL.md` with preservation as `PROTOCOL.previous.md`.
+- Accepted lineage exists: `b6b0950` (last previously DONE control stage) and `219e56e` (latest Qwen compact-run evidence commit) both resolve as commits.
+- Baseline attempt before the owner's local correction: `uv run pytest tests/ -q` gave 29 failed, 1173 passed, 7 skipped, and 49 errors because `.env` supplied the already-known invalid boolean `NEOCORTEX_EXTRACTION_ENABLED='true\\'`; no source regression was inferred.
+- After the owner said "I removed the backslash", the same unoverridden command `uv run pytest tests/ -q` passed: 1251 passed, 7 skipped in 38.70 seconds. Input: the current repository and corrected local environment. Any repository test failure turns this gate red.
+
+## 2026-09-11, Stage 6 compact local stability and quality run blocked
+
+- Prior run: `.tmp/qwen-swift`; safe post-mortem is `briefs/postmortem-qwen-swift.md`. Canonical evidence commit: `219e56e`; run `20260911T001509Z-swift3` at source `653cbd6`.
+- Pre-review (`codex/gpt-5.6-sol`, high): three blocking brief defects fixed; finding set and triage in `validation/stage6-pre-review.md`.
+- Implementer (`codex/gpt-5.6-sol`, high) reconstructed `validation/stage6-repair-evidence.md`; no product code changed. Original F1–F6 triage is in `validation/stage6-review.md`.
+- PASS: exact four local model ids; compact eight-item corpus; 30/30 terminal successes; 0% failure/stall; zero stored markers, invalid names, garbage types, agent/librarian failures, validation rejections, or unproven failed mutations; opaque correlations; matching metrics/recall/snapshot digests; restore.
+- PASS checks: manifest validator; full suite 1251 passed/7 skipped; focused suite 83 passed; Ruff; diff check. Recall is measured. Final E2E is measured at 0/5; Plan 15 is 9 PASS/3 PARTIAL/2 FAIL and Plan 17 is 12 acceptable/1 partial/1 fail.
+- Repair re-review (`codex/gpt-5.6-sol`, high): one P1 BLOCKING. Sixteen missing-endpoint skips lack safe per-event attribution, and five temporal conflicts lack run-3 proof that required correction edges survived. Overall integrity is `NOT MEASURED`.
+- Disposition: Stage 6 `BLOCKED` on B16. The repair budget and re-review are spent. Stages 7–9 remain reachable through accepted Stage 6b and must issue `HOLD`; speed (2397 seconds, 68 requests, zero reasoning tokens) is REPORT evidence only.
+- Backlog 12 and 14 are resolved by the replacement arm. No new live model run, external write, or commit was made in this disposition.
+
+## 2026-09-11, owner ruling on execution efficiency
+
+- Owner's instruction: "continue, but be aware, that your role, as a coordinator is to make sure that the whole process goes smoothly and efficiently. do spiral into rabbithole of running lenghty tests on xhigh that take hours, that was the case historically"
+- Applied interpretation from context: do not repeat historical multi-hour `xhigh` experiments or continue a test after it cannot change the decision.
+- Stage 7 already requires four `HOLD` verdicts, so Stage 8 will record the planned `DONE` no-op. This run will make no `xhigh` model call.
+- Future effort work requires a short bounded probe before any larger arm and remains outside this execution unless a later Stage 7 result is `MIGRATE`.

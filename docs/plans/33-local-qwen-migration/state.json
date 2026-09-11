@@ -10,7 +10,27 @@
       "depends_on": [],
       "commit": "4ab4284",
       "note": "LITELLM_API_KEY preflight passed; missing named credentials fail fast; default VLLM_API_KEY retained.",
-      "blocked_by": []
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
     },
     {
       "id": 2,
@@ -22,7 +42,27 @@
       ],
       "commit": "edc33eb",
       "note": "See journal Stage 2 and resources/probe-findings.md.",
-      "blocked_by": []
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
     },
     {
       "id": 3,
@@ -34,7 +74,27 @@
       ],
       "commit": "1df6c2a",
       "note": "See journal Stage 3; backlog 12 tracks residual risk.",
-      "blocked_by": []
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
     },
     {
       "id": 4,
@@ -46,7 +106,27 @@
       ],
       "commit": "dc5fd15",
       "note": "Repository-wide privacy gate accepted at dc5fd15 after privacy cleanup in f1ba3bc and independent acceptance. Ninety action-log call sites had zero raw source/model field violations; focused extraction/privacy checks: 76 passed; full safe suite: 977 passed, 7 skipped; git diff check passed; worktree clean. Accepted Stage 6 evidence-harness corrections are recorded at a2ac217.",
-      "blocked_by": []
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
     },
     {
       "id": 5,
@@ -58,20 +138,44 @@
       ],
       "commit": "5e7d075",
       "note": "DONE no-op: no current isolated hosted two-run baseline; historical run-one artifact is NOT MEASURED; local Stage 6 remains eligible; backlog 6 OPEN.",
-      "blocked_by": []
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
     },
     {
       "id": 6,
       "title": "Compact local stability and quality run",
       "file": "stages/06-qwen-arm.md",
-      "status": "IN_PROGRESS",
+      "status": "BLOCKED",
       "depends_on": [
         3,
         4
       ],
-      "commit": null,
-      "note": "Compact run 20260909T180657Z-compact finished; 31/31 jobs succeeded, but recall was NOT_MEASURED and all five E2E children failed. The review traced the main failure to unbounded librarian trajectories. A bounded Qwen harness is implemented and passes deterministic tests. A2-only live probes complete correctly, but the full A0/A1/A2 comparison was stopped at the user's session-close request after four legacy timeouts and before an A2 row finished. Stage 6 remains in progress; no replacement benchmark has been launched.",
-      "blocked_by": [],
+      "commit": [
+        "219e56e"
+      ],
+      "note": "Run 20260911T001509Z-swift3 passed 30/30 terminal stability, failure scans, provenance, snapshot, restore, and regressions; recall and E2E are measured. BLOCKED because 16 missing-endpoint skips and five temporal conflicts lack complete safe attribution, so integrity is NOT MEASURED. Repair budget and re-review are spent; B16.",
+      "blocked_by": [
+        16
+      ],
       "review": {
         "used": true,
         "at": "2026-09-10T09:04:14+02:00",
@@ -80,9 +184,60 @@
       },
       "repair": {
         "used": true,
+        "rounds": 1,
         "at": "2026-09-10T22:35:31+02:00",
         "result": "VALIDATION_INCOMPLETE"
-      }
+      },
+      "step": null,
+      "writer": null,
+      "implementer": {
+        "agent": "codex/gpt-5.6-sol",
+        "effort": "high",
+        "tier": "strong"
+      },
+      "reviewer": {
+        "agent": "codex/gpt-5.6-sol",
+        "effort": "high",
+        "tier": "strong"
+      },
+      "preReview": {
+        "used": true,
+        "at": "2026-09-11T12:00:00+02:00",
+        "findings": 3
+      },
+      "gateFixes": 0,
+      "repairReview": {
+        "used": true,
+        "at": "2026-09-11T12:30:00+02:00",
+        "blocking": 1
+      },
+      "gates": {
+        "identity": "PASS",
+        "terminal_stability": "PASS",
+        "failure_scans": "PASS",
+        "endpoint_attribution": "NOT MEASURED",
+        "temporal_edge_survival": "NOT MEASURED",
+        "integrity": "NOT MEASURED",
+        "provenance": "PASS",
+        "snapshot": "PASS",
+        "restore": "PASS",
+        "recall": "PASS",
+        "e2e_measurement": "PASS",
+        "manifest": "PASS",
+        "full_tests": "PASS",
+        "focused_tests": "PASS",
+        "ruff": "PASS",
+        "diff_check": "PASS"
+      },
+      "evidence": [
+        "briefs/postmortem-qwen-swift.md",
+        "validation/stage6-pre-review.md",
+        "validation/stage6-repair-evidence.md",
+        "validation/stage6-review.md",
+        "resources/metrics-qwen-flash-next-compact.json",
+        "resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+        "resources/recall-results-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+      ]
     },
     {
       "id": "6b",
@@ -95,19 +250,65 @@
       ],
       "commit": "b6b0950",
       "note": "Accepted repairs at b6b0950; see journal 2026-09-06. Fresh compact Stage 6 evidence remains required (D38).",
-      "blocked_by": []
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
     },
     {
       "id": 7,
       "title": "Quality decision and evidence report",
       "file": "stages/07-quality-gate.md",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "depends_on": [
         "6b"
       ],
       "commit": null,
       "note": null,
-      "blocked_by": []
+      "blocked_by": [],
+      "step": "WRITING",
+      "writer": "codex/gpt-5.6-sol",
+      "implementer": {
+        "agent": "codex/gpt-5.6-sol",
+        "effort": "high",
+        "tier": "strong"
+      },
+      "reviewer": null,
+      "preReview": {
+        "used": true,
+        "at": "2026-09-11T13:00:00+02:00",
+        "findings": 3
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 1,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
     },
     {
       "id": 8,
@@ -119,7 +320,27 @@
       ],
       "commit": null,
       "note": null,
-      "blocked_by": []
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
     },
     {
       "id": 9,
@@ -131,11 +352,73 @@
       ],
       "commit": null,
       "note": null,
-      "blocked_by": []
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
     }
   ],
   "status": "IN_PROGRESS",
-  "currentStage": 6,
-  "writesFrozen": true,
-  "writer": null
+  "currentStage": 7,
+  "writesFrozen": false,
+  "writer": "codex/gpt-5.6-sol",
+  "goal": "33-local-qwen-migration",
+  "goalId": "none",
+  "armed": "2026-09-11",
+  "modes": {
+    "preset": "unattended",
+    "placement": "review-each-stage-before-and-after",
+    "budget": "two-fix-rounds-max",
+    "stop": "never-stop"
+  },
+  "roles": {
+    "orchestrator": "codex/gpt-6-astra",
+    "implementer": {
+      "agent": "codex/gpt-5.6-sol",
+      "effort": "high",
+      "command": null
+    },
+    "reviewer": {
+      "agent": "codex/gpt-5.6-sol",
+      "effort": "high",
+      "command": null
+    },
+    "helper": {
+      "agent": "codex/gpt-5.6-luna",
+      "effort": "medium",
+      "command": null
+    }
+  },
+  "runReview": {
+    "preReview": {
+      "used": false
+    },
+    "review": {
+      "used": false
+    },
+    "repair": {
+      "used": false,
+      "rounds": 0
+    },
+    "repairReview": {
+      "used": false
+    }
+  }
 }

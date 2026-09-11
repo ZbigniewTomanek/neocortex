@@ -1,0 +1,3658 @@
+{
+  "schema_version": 1,
+  "status": "NOT_MEASURED",
+  "run": {
+    "run_id": "20260911T001509Z-swift3",
+    "model": "qwen3.8-flash-next",
+    "effort": "false",
+    "source_revision": "653cbd62c962dbb8388518873fe47cd44e7fc77d",
+    "corpus_profile": "compact",
+    "corpus_revision": 1,
+    "corpus_path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+    "corpus_sha256": "2394bcacfc4fcff6d8ee1f280f8642f8eaf864797cfcd4b333d57b4b9da296d3",
+    "snapshot_path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+    "snapshot_sha256": "4e3dc2e6bbbbf461aa8a2a32351a82ccfc965da285304ecd33b94fc4f3bee95b"
+  },
+  "source_artifacts": [
+    {
+      "kind": "corpus",
+      "path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+      "sha256": "2394bcacfc4fcff6d8ee1f280f8642f8eaf864797cfcd4b333d57b4b9da296d3",
+      "availability": "MEASURED"
+    },
+    {
+      "kind": "metrics",
+      "path": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+      "sha256": "dbaccaeb4cb5e57fad7c3a4ec454c83a6d23dc51ab2c5e2783775df1dc01f5ff",
+      "availability": "MEASURED"
+    },
+    {
+      "kind": "snapshot",
+      "path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+      "sha256": "4e3dc2e6bbbbf461aa8a2a32351a82ccfc965da285304ecd33b94fc4f3bee95b",
+      "availability": "MEASURED"
+    },
+    {
+      "kind": "admin_jobs",
+      "path": "NOT_MEASURED/admin_jobs",
+      "sha256": "NOT_MEASURED",
+      "availability": "NOT_MEASURED",
+      "reason": "No committed privacy-safe per-job admin response exists for this run."
+    },
+    {
+      "kind": "graph_export",
+      "path": "NOT_MEASURED/graph_export",
+      "sha256": "NOT_MEASURED",
+      "availability": "NOT_MEASURED",
+      "reason": "No privacy-safe graph export with source episode and job identifiers is committed."
+    },
+    {
+      "kind": "audit_log",
+      "path": "log/agent_actions.log",
+      "sha256": "NOT_MEASURED",
+      "availability": "NOT_MEASURED",
+      "reason": "The private audit log was not read; only committed aggregate counters are used."
+    },
+    {
+      "kind": "e2e_manifest",
+      "path": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+      "sha256": "ddd35c9deb2d25adcb3a6eb82777cab30d95db3d64025d6eb082f57d50268e31",
+      "availability": "MEASURED"
+    },
+    {
+      "kind": "recall",
+      "path": "docs/plans/33-local-qwen-migration/resources/recall-results-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+      "sha256": "b80edd9c82628c88f8f1a1eaa0a37009f5a585bc50b37552303cc0c88a872b48",
+      "availability": "MEASURED"
+    }
+  ],
+  "episodes": [
+    {
+      "episode_key": "E02",
+      "source": {
+        "path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+        "locator": "episode:E02"
+      },
+      "jobs": [
+        {
+          "kind": "ingestion",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "routing",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "extraction",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        }
+      ],
+      "run_provenance": {
+        "model": "qwen3.8-flash-next",
+        "effort": "false",
+        "run_id": "20260911T001509Z-swift3",
+        "snapshot_path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+        "source_revision": "653cbd62c962dbb8388518873fe47cd44e7fc77d"
+      },
+      "domains": {
+        "accepted": "NOT_MEASURED",
+        "proposal": "NOT_MEASURED"
+      },
+      "ontology": {
+        "proposed": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "accepted": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "rejected": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        }
+      },
+      "extraction": {
+        "entities": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        },
+        "relations": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        }
+      },
+      "librarian": {
+        "actions": {
+          "created_nodes": "NOT_MEASURED",
+          "updated_nodes": "NOT_MEASURED",
+          "archived_nodes": "NOT_MEASURED",
+          "created_edges": "NOT_MEASURED",
+          "removed_edges": "NOT_MEASURED"
+        }
+      },
+      "events": {
+        "retries": "NOT_MEASURED",
+        "timeouts": "NOT_MEASURED",
+        "rejections": "NOT_MEASURED"
+      },
+      "quality_integrity": {
+        "status": "NOT_MEASURED",
+        "checks": [
+          {
+            "name": "extraction_smoke",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan15",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan17",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "episodic_memory",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "cognitive_recall",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "pointer": "/episodes/0/jobs/0/kind",
+          "status": "MEASURED",
+          "value": "ingestion",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/0/jobs/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/jobs/0/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/jobs/0/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/jobs/1/kind",
+          "status": "MEASURED",
+          "value": "routing",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/0/jobs/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/jobs/1/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/jobs/1/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/jobs/2/kind",
+          "status": "MEASURED",
+          "value": "extraction",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/0/jobs/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/jobs/2/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/jobs/2/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/domains/accepted",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/domains/proposal",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/ontology/proposed/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/ontology/proposed/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/ontology/accepted/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/ontology/accepted/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/ontology/rejected/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/ontology/rejected/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/extraction/entities/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/extraction/entities/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/extraction/entities/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/extraction/relations/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/extraction/relations/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/extraction/relations/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/librarian/actions/created_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/librarian/actions/updated_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/librarian/actions/archived_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/librarian/actions/created_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/librarian/actions/removed_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/events/retries",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/events/timeouts",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/events/rejections",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/0/name",
+          "status": "MEASURED",
+          "value": "extraction_smoke",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/0/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/1/name",
+          "status": "MEASURED",
+          "value": "plan15",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/1/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/2/name",
+          "status": "MEASURED",
+          "value": "plan17",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/2/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/3/name",
+          "status": "MEASURED",
+          "value": "episodic_memory",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/3/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/3/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/4/name",
+          "status": "MEASURED",
+          "value": "cognitive_recall",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/4/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/0/quality_integrity/checks/4/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        }
+      ]
+    },
+    {
+      "episode_key": "E04",
+      "source": {
+        "path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+        "locator": "episode:E04"
+      },
+      "jobs": [
+        {
+          "kind": "ingestion",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "routing",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "extraction",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        }
+      ],
+      "run_provenance": {
+        "model": "qwen3.8-flash-next",
+        "effort": "false",
+        "run_id": "20260911T001509Z-swift3",
+        "snapshot_path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+        "source_revision": "653cbd62c962dbb8388518873fe47cd44e7fc77d"
+      },
+      "domains": {
+        "accepted": "NOT_MEASURED",
+        "proposal": "NOT_MEASURED"
+      },
+      "ontology": {
+        "proposed": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "accepted": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "rejected": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        }
+      },
+      "extraction": {
+        "entities": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        },
+        "relations": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        }
+      },
+      "librarian": {
+        "actions": {
+          "created_nodes": "NOT_MEASURED",
+          "updated_nodes": "NOT_MEASURED",
+          "archived_nodes": "NOT_MEASURED",
+          "created_edges": "NOT_MEASURED",
+          "removed_edges": "NOT_MEASURED"
+        }
+      },
+      "events": {
+        "retries": "NOT_MEASURED",
+        "timeouts": "NOT_MEASURED",
+        "rejections": "NOT_MEASURED"
+      },
+      "quality_integrity": {
+        "status": "NOT_MEASURED",
+        "checks": [
+          {
+            "name": "extraction_smoke",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan15",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan17",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "episodic_memory",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "cognitive_recall",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "pointer": "/episodes/1/jobs/0/kind",
+          "status": "MEASURED",
+          "value": "ingestion",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/1/jobs/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/jobs/0/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/jobs/0/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/jobs/1/kind",
+          "status": "MEASURED",
+          "value": "routing",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/1/jobs/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/jobs/1/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/jobs/1/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/jobs/2/kind",
+          "status": "MEASURED",
+          "value": "extraction",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/1/jobs/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/jobs/2/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/jobs/2/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/domains/accepted",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/domains/proposal",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/ontology/proposed/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/ontology/proposed/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/ontology/accepted/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/ontology/accepted/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/ontology/rejected/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/ontology/rejected/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/extraction/entities/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/extraction/entities/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/extraction/entities/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/extraction/relations/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/extraction/relations/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/extraction/relations/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/librarian/actions/created_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/librarian/actions/updated_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/librarian/actions/archived_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/librarian/actions/created_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/librarian/actions/removed_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/events/retries",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/events/timeouts",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/events/rejections",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/0/name",
+          "status": "MEASURED",
+          "value": "extraction_smoke",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/0/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/1/name",
+          "status": "MEASURED",
+          "value": "plan15",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/1/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/2/name",
+          "status": "MEASURED",
+          "value": "plan17",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/2/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/3/name",
+          "status": "MEASURED",
+          "value": "episodic_memory",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/3/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/3/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/4/name",
+          "status": "MEASURED",
+          "value": "cognitive_recall",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/4/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/1/quality_integrity/checks/4/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        }
+      ]
+    },
+    {
+      "episode_key": "E05",
+      "source": {
+        "path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+        "locator": "episode:E05"
+      },
+      "jobs": [
+        {
+          "kind": "ingestion",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "routing",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "extraction",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        }
+      ],
+      "run_provenance": {
+        "model": "qwen3.8-flash-next",
+        "effort": "false",
+        "run_id": "20260911T001509Z-swift3",
+        "snapshot_path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+        "source_revision": "653cbd62c962dbb8388518873fe47cd44e7fc77d"
+      },
+      "domains": {
+        "accepted": "NOT_MEASURED",
+        "proposal": "NOT_MEASURED"
+      },
+      "ontology": {
+        "proposed": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "accepted": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "rejected": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        }
+      },
+      "extraction": {
+        "entities": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        },
+        "relations": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        }
+      },
+      "librarian": {
+        "actions": {
+          "created_nodes": "NOT_MEASURED",
+          "updated_nodes": "NOT_MEASURED",
+          "archived_nodes": "NOT_MEASURED",
+          "created_edges": "NOT_MEASURED",
+          "removed_edges": "NOT_MEASURED"
+        }
+      },
+      "events": {
+        "retries": "NOT_MEASURED",
+        "timeouts": "NOT_MEASURED",
+        "rejections": "NOT_MEASURED"
+      },
+      "quality_integrity": {
+        "status": "NOT_MEASURED",
+        "checks": [
+          {
+            "name": "extraction_smoke",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan15",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan17",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "episodic_memory",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "cognitive_recall",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "pointer": "/episodes/2/jobs/0/kind",
+          "status": "MEASURED",
+          "value": "ingestion",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/2/jobs/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/jobs/0/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/jobs/0/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/jobs/1/kind",
+          "status": "MEASURED",
+          "value": "routing",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/2/jobs/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/jobs/1/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/jobs/1/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/jobs/2/kind",
+          "status": "MEASURED",
+          "value": "extraction",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/2/jobs/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/jobs/2/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/jobs/2/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/domains/accepted",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/domains/proposal",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/ontology/proposed/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/ontology/proposed/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/ontology/accepted/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/ontology/accepted/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/ontology/rejected/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/ontology/rejected/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/extraction/entities/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/extraction/entities/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/extraction/entities/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/extraction/relations/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/extraction/relations/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/extraction/relations/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/librarian/actions/created_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/librarian/actions/updated_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/librarian/actions/archived_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/librarian/actions/created_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/librarian/actions/removed_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/events/retries",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/events/timeouts",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/events/rejections",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/0/name",
+          "status": "MEASURED",
+          "value": "extraction_smoke",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/0/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/1/name",
+          "status": "MEASURED",
+          "value": "plan15",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/1/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/2/name",
+          "status": "MEASURED",
+          "value": "plan17",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/2/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/3/name",
+          "status": "MEASURED",
+          "value": "episodic_memory",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/3/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/3/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/4/name",
+          "status": "MEASURED",
+          "value": "cognitive_recall",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/4/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/2/quality_integrity/checks/4/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        }
+      ]
+    },
+    {
+      "episode_key": "E10",
+      "source": {
+        "path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+        "locator": "episode:E10"
+      },
+      "jobs": [
+        {
+          "kind": "ingestion",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "routing",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "extraction",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        }
+      ],
+      "run_provenance": {
+        "model": "qwen3.8-flash-next",
+        "effort": "false",
+        "run_id": "20260911T001509Z-swift3",
+        "snapshot_path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+        "source_revision": "653cbd62c962dbb8388518873fe47cd44e7fc77d"
+      },
+      "domains": {
+        "accepted": "NOT_MEASURED",
+        "proposal": "NOT_MEASURED"
+      },
+      "ontology": {
+        "proposed": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "accepted": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "rejected": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        }
+      },
+      "extraction": {
+        "entities": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        },
+        "relations": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        }
+      },
+      "librarian": {
+        "actions": {
+          "created_nodes": "NOT_MEASURED",
+          "updated_nodes": "NOT_MEASURED",
+          "archived_nodes": "NOT_MEASURED",
+          "created_edges": "NOT_MEASURED",
+          "removed_edges": "NOT_MEASURED"
+        }
+      },
+      "events": {
+        "retries": "NOT_MEASURED",
+        "timeouts": "NOT_MEASURED",
+        "rejections": "NOT_MEASURED"
+      },
+      "quality_integrity": {
+        "status": "NOT_MEASURED",
+        "checks": [
+          {
+            "name": "extraction_smoke",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan15",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan17",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "episodic_memory",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "cognitive_recall",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "pointer": "/episodes/3/jobs/0/kind",
+          "status": "MEASURED",
+          "value": "ingestion",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/3/jobs/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/jobs/0/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/jobs/0/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/jobs/1/kind",
+          "status": "MEASURED",
+          "value": "routing",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/3/jobs/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/jobs/1/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/jobs/1/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/jobs/2/kind",
+          "status": "MEASURED",
+          "value": "extraction",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/3/jobs/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/jobs/2/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/jobs/2/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/domains/accepted",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/domains/proposal",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/ontology/proposed/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/ontology/proposed/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/ontology/accepted/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/ontology/accepted/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/ontology/rejected/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/ontology/rejected/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/extraction/entities/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/extraction/entities/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/extraction/entities/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/extraction/relations/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/extraction/relations/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/extraction/relations/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/librarian/actions/created_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/librarian/actions/updated_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/librarian/actions/archived_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/librarian/actions/created_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/librarian/actions/removed_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/events/retries",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/events/timeouts",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/events/rejections",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/0/name",
+          "status": "MEASURED",
+          "value": "extraction_smoke",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/0/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/1/name",
+          "status": "MEASURED",
+          "value": "plan15",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/1/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/2/name",
+          "status": "MEASURED",
+          "value": "plan17",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/2/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/3/name",
+          "status": "MEASURED",
+          "value": "episodic_memory",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/3/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/3/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/4/name",
+          "status": "MEASURED",
+          "value": "cognitive_recall",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/4/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/3/quality_integrity/checks/4/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        }
+      ]
+    },
+    {
+      "episode_key": "E18",
+      "source": {
+        "path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+        "locator": "episode:E18"
+      },
+      "jobs": [
+        {
+          "kind": "ingestion",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "routing",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "extraction",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        }
+      ],
+      "run_provenance": {
+        "model": "qwen3.8-flash-next",
+        "effort": "false",
+        "run_id": "20260911T001509Z-swift3",
+        "snapshot_path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+        "source_revision": "653cbd62c962dbb8388518873fe47cd44e7fc77d"
+      },
+      "domains": {
+        "accepted": "NOT_MEASURED",
+        "proposal": "NOT_MEASURED"
+      },
+      "ontology": {
+        "proposed": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "accepted": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "rejected": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        }
+      },
+      "extraction": {
+        "entities": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        },
+        "relations": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        }
+      },
+      "librarian": {
+        "actions": {
+          "created_nodes": "NOT_MEASURED",
+          "updated_nodes": "NOT_MEASURED",
+          "archived_nodes": "NOT_MEASURED",
+          "created_edges": "NOT_MEASURED",
+          "removed_edges": "NOT_MEASURED"
+        }
+      },
+      "events": {
+        "retries": "NOT_MEASURED",
+        "timeouts": "NOT_MEASURED",
+        "rejections": "NOT_MEASURED"
+      },
+      "quality_integrity": {
+        "status": "NOT_MEASURED",
+        "checks": [
+          {
+            "name": "extraction_smoke",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan15",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan17",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "episodic_memory",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "cognitive_recall",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "pointer": "/episodes/4/jobs/0/kind",
+          "status": "MEASURED",
+          "value": "ingestion",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/4/jobs/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/jobs/0/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/jobs/0/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/jobs/1/kind",
+          "status": "MEASURED",
+          "value": "routing",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/4/jobs/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/jobs/1/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/jobs/1/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/jobs/2/kind",
+          "status": "MEASURED",
+          "value": "extraction",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/4/jobs/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/jobs/2/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/jobs/2/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/domains/accepted",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/domains/proposal",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/ontology/proposed/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/ontology/proposed/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/ontology/accepted/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/ontology/accepted/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/ontology/rejected/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/ontology/rejected/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/extraction/entities/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/extraction/entities/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/extraction/entities/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/extraction/relations/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/extraction/relations/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/extraction/relations/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/librarian/actions/created_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/librarian/actions/updated_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/librarian/actions/archived_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/librarian/actions/created_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/librarian/actions/removed_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/events/retries",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/events/timeouts",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/events/rejections",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/0/name",
+          "status": "MEASURED",
+          "value": "extraction_smoke",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/0/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/1/name",
+          "status": "MEASURED",
+          "value": "plan15",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/1/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/2/name",
+          "status": "MEASURED",
+          "value": "plan17",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/2/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/3/name",
+          "status": "MEASURED",
+          "value": "episodic_memory",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/3/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/3/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/4/name",
+          "status": "MEASURED",
+          "value": "cognitive_recall",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/4/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/4/quality_integrity/checks/4/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        }
+      ]
+    },
+    {
+      "episode_key": "E20",
+      "source": {
+        "path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+        "locator": "episode:E20"
+      },
+      "jobs": [
+        {
+          "kind": "ingestion",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "routing",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "extraction",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        }
+      ],
+      "run_provenance": {
+        "model": "qwen3.8-flash-next",
+        "effort": "false",
+        "run_id": "20260911T001509Z-swift3",
+        "snapshot_path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+        "source_revision": "653cbd62c962dbb8388518873fe47cd44e7fc77d"
+      },
+      "domains": {
+        "accepted": "NOT_MEASURED",
+        "proposal": "NOT_MEASURED"
+      },
+      "ontology": {
+        "proposed": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "accepted": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "rejected": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        }
+      },
+      "extraction": {
+        "entities": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        },
+        "relations": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        }
+      },
+      "librarian": {
+        "actions": {
+          "created_nodes": "NOT_MEASURED",
+          "updated_nodes": "NOT_MEASURED",
+          "archived_nodes": "NOT_MEASURED",
+          "created_edges": "NOT_MEASURED",
+          "removed_edges": "NOT_MEASURED"
+        }
+      },
+      "events": {
+        "retries": "NOT_MEASURED",
+        "timeouts": "NOT_MEASURED",
+        "rejections": "NOT_MEASURED"
+      },
+      "quality_integrity": {
+        "status": "NOT_MEASURED",
+        "checks": [
+          {
+            "name": "extraction_smoke",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan15",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan17",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "episodic_memory",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "cognitive_recall",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "pointer": "/episodes/5/jobs/0/kind",
+          "status": "MEASURED",
+          "value": "ingestion",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/5/jobs/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/jobs/0/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/jobs/0/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/jobs/1/kind",
+          "status": "MEASURED",
+          "value": "routing",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/5/jobs/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/jobs/1/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/jobs/1/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/jobs/2/kind",
+          "status": "MEASURED",
+          "value": "extraction",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/5/jobs/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/jobs/2/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/jobs/2/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/domains/accepted",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/domains/proposal",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/ontology/proposed/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/ontology/proposed/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/ontology/accepted/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/ontology/accepted/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/ontology/rejected/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/ontology/rejected/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/extraction/entities/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/extraction/entities/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/extraction/entities/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/extraction/relations/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/extraction/relations/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/extraction/relations/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/librarian/actions/created_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/librarian/actions/updated_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/librarian/actions/archived_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/librarian/actions/created_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/librarian/actions/removed_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/events/retries",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/events/timeouts",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/events/rejections",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/0/name",
+          "status": "MEASURED",
+          "value": "extraction_smoke",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/0/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/1/name",
+          "status": "MEASURED",
+          "value": "plan15",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/1/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/2/name",
+          "status": "MEASURED",
+          "value": "plan17",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/2/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/3/name",
+          "status": "MEASURED",
+          "value": "episodic_memory",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/3/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/3/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/4/name",
+          "status": "MEASURED",
+          "value": "cognitive_recall",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/4/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/5/quality_integrity/checks/4/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        }
+      ]
+    },
+    {
+      "episode_key": "E26",
+      "source": {
+        "path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+        "locator": "episode:E26"
+      },
+      "jobs": [
+        {
+          "kind": "ingestion",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "routing",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "extraction",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        }
+      ],
+      "run_provenance": {
+        "model": "qwen3.8-flash-next",
+        "effort": "false",
+        "run_id": "20260911T001509Z-swift3",
+        "snapshot_path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+        "source_revision": "653cbd62c962dbb8388518873fe47cd44e7fc77d"
+      },
+      "domains": {
+        "accepted": "NOT_MEASURED",
+        "proposal": "NOT_MEASURED"
+      },
+      "ontology": {
+        "proposed": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "accepted": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "rejected": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        }
+      },
+      "extraction": {
+        "entities": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        },
+        "relations": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        }
+      },
+      "librarian": {
+        "actions": {
+          "created_nodes": "NOT_MEASURED",
+          "updated_nodes": "NOT_MEASURED",
+          "archived_nodes": "NOT_MEASURED",
+          "created_edges": "NOT_MEASURED",
+          "removed_edges": "NOT_MEASURED"
+        }
+      },
+      "events": {
+        "retries": "NOT_MEASURED",
+        "timeouts": "NOT_MEASURED",
+        "rejections": "NOT_MEASURED"
+      },
+      "quality_integrity": {
+        "status": "NOT_MEASURED",
+        "checks": [
+          {
+            "name": "extraction_smoke",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan15",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan17",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "episodic_memory",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "cognitive_recall",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "pointer": "/episodes/6/jobs/0/kind",
+          "status": "MEASURED",
+          "value": "ingestion",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/6/jobs/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/jobs/0/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/jobs/0/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/jobs/1/kind",
+          "status": "MEASURED",
+          "value": "routing",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/6/jobs/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/jobs/1/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/jobs/1/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/jobs/2/kind",
+          "status": "MEASURED",
+          "value": "extraction",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/6/jobs/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/jobs/2/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/jobs/2/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/domains/accepted",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/domains/proposal",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/ontology/proposed/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/ontology/proposed/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/ontology/accepted/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/ontology/accepted/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/ontology/rejected/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/ontology/rejected/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/extraction/entities/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/extraction/entities/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/extraction/entities/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/extraction/relations/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/extraction/relations/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/extraction/relations/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/librarian/actions/created_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/librarian/actions/updated_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/librarian/actions/archived_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/librarian/actions/created_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/librarian/actions/removed_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/events/retries",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/events/timeouts",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/events/rejections",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/0/name",
+          "status": "MEASURED",
+          "value": "extraction_smoke",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/0/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/1/name",
+          "status": "MEASURED",
+          "value": "plan15",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/1/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/2/name",
+          "status": "MEASURED",
+          "value": "plan17",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/2/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/3/name",
+          "status": "MEASURED",
+          "value": "episodic_memory",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/3/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/3/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/4/name",
+          "status": "MEASURED",
+          "value": "cognitive_recall",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/4/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/6/quality_integrity/checks/4/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        }
+      ]
+    },
+    {
+      "episode_key": "E27",
+      "source": {
+        "path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+        "locator": "episode:E27"
+      },
+      "jobs": [
+        {
+          "kind": "ingestion",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "routing",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        },
+        {
+          "kind": "extraction",
+          "status": "NOT_MEASURED",
+          "job_id": "NOT_MEASURED",
+          "outcome": "NOT_MEASURED"
+        }
+      ],
+      "run_provenance": {
+        "model": "qwen3.8-flash-next",
+        "effort": "false",
+        "run_id": "20260911T001509Z-swift3",
+        "snapshot_path": "backups/qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+        "source_revision": "653cbd62c962dbb8388518873fe47cd44e7fc77d"
+      },
+      "domains": {
+        "accepted": "NOT_MEASURED",
+        "proposal": "NOT_MEASURED"
+      },
+      "ontology": {
+        "proposed": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "accepted": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        },
+        "rejected": {
+          "node": "NOT_MEASURED",
+          "edge": "NOT_MEASURED"
+        }
+      },
+      "extraction": {
+        "entities": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        },
+        "relations": {
+          "count": "NOT_MEASURED",
+          "stable_ids": "NOT_MEASURED",
+          "representative_safe_values": "NOT_MEASURED"
+        }
+      },
+      "librarian": {
+        "actions": {
+          "created_nodes": "NOT_MEASURED",
+          "updated_nodes": "NOT_MEASURED",
+          "archived_nodes": "NOT_MEASURED",
+          "created_edges": "NOT_MEASURED",
+          "removed_edges": "NOT_MEASURED"
+        }
+      },
+      "events": {
+        "retries": "NOT_MEASURED",
+        "timeouts": "NOT_MEASURED",
+        "rejections": "NOT_MEASURED"
+      },
+      "quality_integrity": {
+        "status": "NOT_MEASURED",
+        "checks": [
+          {
+            "name": "extraction_smoke",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan15",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "plan17",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "episodic_memory",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          },
+          {
+            "name": "cognitive_recall",
+            "status": "NOT_MEASURED",
+            "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+          }
+        ]
+      },
+      "evidence": [
+        {
+          "pointer": "/episodes/7/jobs/0/kind",
+          "status": "MEASURED",
+          "value": "ingestion",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/7/jobs/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/jobs/0/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/jobs/0/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/jobs/1/kind",
+          "status": "MEASURED",
+          "value": "routing",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/7/jobs/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/jobs/1/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/jobs/1/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/jobs/2/kind",
+          "status": "MEASURED",
+          "value": "extraction",
+          "source": "resources/qwen-parsing-report-compact.schema.json"
+        },
+        {
+          "pointer": "/episodes/7/jobs/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/jobs/2/job_id",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/jobs/2/outcome",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/admin_jobs",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/domains/accepted",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/domains/proposal",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/ontology/proposed/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/ontology/proposed/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/ontology/accepted/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/ontology/accepted/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/ontology/rejected/node",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/ontology/rejected/edge",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/extraction/entities/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/extraction/entities/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/extraction/entities/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/extraction/relations/count",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/extraction/relations/stable_ids",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/extraction/relations/representative_safe_values",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/librarian/actions/created_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/librarian/actions/updated_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/librarian/actions/archived_nodes",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/librarian/actions/created_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/librarian/actions/removed_edges",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "NOT_MEASURED/graph_export",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/events/retries",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/events/timeouts",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/events/rejections",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "log/agent_actions.log",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/0/name",
+          "status": "MEASURED",
+          "value": "extraction_smoke",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/0/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/0/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/1/name",
+          "status": "MEASURED",
+          "value": "plan15",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/1/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/1/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/2/name",
+          "status": "MEASURED",
+          "value": "plan17",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/2/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/2/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/3/name",
+          "status": "MEASURED",
+          "value": "episodic_memory",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/3/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/3/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/4/name",
+          "status": "MEASURED",
+          "value": "cognitive_recall",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/4/status",
+          "status": "NOT_MEASURED",
+          "value": "NOT_MEASURED",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "reason": "No committed privacy-safe per-episode attribution exists for this field."
+        },
+        {
+          "pointer": "/episodes/7/quality_integrity/checks/4/source",
+          "status": "MEASURED",
+          "value": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json",
+          "source": "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "episode_set": "E02,E04,E05,E10,E18,E20,E26,E27",
+    "source_links": "PASS",
+    "evidence_coverage": "PASS",
+    "evidence_value_equality": "PASS",
+    "no_invented_rows": "PASS",
+    "hidden_reasoning_absent": "PASS",
+    "raw_secrets_absent": "PASS",
+    "sensitive_audit_absent": "PASS",
+    "domain_privacy": "PASS"
+  }
+}
