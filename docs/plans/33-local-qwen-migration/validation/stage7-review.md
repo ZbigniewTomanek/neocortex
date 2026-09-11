@@ -62,3 +62,45 @@ An evidence record can move to another episode array while global coverage still
 - F5: FIX by restricting reasons to approved constants and extending all-format label scans.
 - F6: FIX by parsing the verdict table and requiring the exact four-agent set once each with HOLD.
 - F7: FIX by validating evidence coverage and pointer prefixes separately for each episode.
+
+## Re-review — repair commit `a6fdb85`
+
+Reviewer: `codex/gpt-5.6-sol`, effort `high`
+
+Verdict: approve with fixes. Six original findings are closed. One P2 blocking finding remains.
+
+### Original finding disposition
+
+- F1 CLOSED: canonical pointer sources and the complete canonical report comparison reject invented values.
+- F2 CLOSED: the validator derives the top-level status from required inputs and leaves.
+- F3 CLOSED: the validator binds the complete manifest and run object to canonical inputs.
+- F4 CLOSED: a measured sample requires a digest-verified graph export and exact matching records.
+- F5 CLOSED: approved reason constants, forbidden-label scans, and canonical Markdown checks protect privacy.
+- F6 OPEN: verdict rows are counted across the complete Markdown file instead of the visible verdict table.
+- F7 CLOSED: evidence pointers and coverage are checked separately for each episode.
+
+### F8 — P2 BLOCKING — hidden rows can satisfy verdict completeness
+
+Location: `scripts/generate_qwen_parsing_report.py:725`
+
+The parser counts verdict rows outside the `## Per-agent verdicts` table, including HTML comments. A visible table with a duplicate agent can pass when a comment contains four canonical rows. This blocks the comparison completeness and privacy gate.
+
+Failing input: use inline-code `HOLD` in the four visible rows, duplicate `Ontology` for `Domain classifier`, and append four canonical plain-text rows inside an HTML comment. The current scan reports four unique HOLD agents and passes.
+
+Required fix: parse only the bounded verdict table. Reject comments, decorated verdict cells, extra rows, duplicate agents, and verdict rows outside that table.
+
+### Gate dispositions
+
+- Focused tests: PASS, 68 passed in the independent re-review.
+- Determinism: PASS.
+- Committed generation: PASS.
+- Schema, report, and sample validation: PASS.
+- Privacy and comparison scan: NOT MEASURED because F8 remains fail-open.
+- Full regression: PASS, 1,283 passed and 7 skipped in recorded evidence.
+- Static checks: PASS.
+
+No new finding exists outside the original F1–F7 scope.
+
+### Re-review triage
+
+- F8: FIX in final repair round 2. Restrict the parser to the named table and add the reproduced comment-bypass regression test.

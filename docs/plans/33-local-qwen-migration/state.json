@@ -281,7 +281,8 @@
         "6b"
       ],
       "commit": [
-        "27387b0"
+        "27387b0",
+        "a6fdb85"
       ],
       "note": null,
       "blocked_by": [],
@@ -310,13 +311,15 @@
       },
       "gateFixes": 1,
       "repair": {
-        "used": false,
-        "rounds": 1,
-        "at": "2026-09-11T13:16:12+02:00",
-        "result": "READY_FOR_REVIEW"
+        "used": true,
+        "rounds": 2,
+        "at": "2026-09-11T13:29:00+02:00",
+        "result": "PASS"
       },
       "repairReview": {
-        "used": false
+        "used": true,
+        "at": "2026-09-11T13:22:00+02:00",
+        "blocking": 1
       },
       "gates": {},
       "evidence": []

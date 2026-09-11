@@ -57,6 +57,15 @@ REASON_SAMPLE = (
     "links records to source episode and job identifiers."
 )
 COMPARISON_AGENTS = ("Ontology", "Extractor", "Librarian", "Domain classifier")
+COMPARISON_COLUMNS = (
+    "Reasoning agent",
+    "Verdict",
+    "Integrity disposition",
+    "E2E and quality disposition",
+    "Hosted baseline",
+    "Direct evidence",
+    "Next action",
+)
 
 
 class ReportError(ValueError):
@@ -378,17 +387,12 @@ def _privacy_counts(values: list[bytes]) -> dict[str, int]:
         ),
         "sensitive_audit_key": rb'(?i)"(agent_id|endpoint|correlation_id)"\s*:',
         "dynamic_domain_key": rb'(?i)"(domain_value|domain_description|dynamic_schema)"\s*:',
-        "agent_non_hold_verdict": (
-            rb"(?m)^\| (Ontology|Extractor|Librarian|Domain classifier) \| (MIGRATE|BLOCKED) \|"
-        ),
-        "agent_hold_verdict": rb"(?m)^\| (Ontology|Extractor|Librarian|Domain classifier) \| HOLD \|",
     }
     return {name: sum(len(re.findall(pattern, value)) for value in values) for name, pattern in patterns.items()}
 
 
 def _validate_safe_content(*documents: Any) -> None:
     counts = _privacy_counts([_json_bytes(document) for document in documents])
-    counts.pop("agent_hold_verdict")
     if any(counts.values()):
         raise ReportError("privacy or safe-value scan failed")
 
@@ -690,6 +694,66 @@ def self_check(plan_dir: Path, output: Path) -> dict[str, Any]:
     return result
 
 
+def _markdown_row(line: str) -> tuple[str, ...] | None:
+    stripped = line.strip()
+    if not stripped.startswith("|") or not stripped.endswith("|"):
+        return None
+    return tuple(cell.strip() for cell in stripped[1:-1].split("|"))
+
+
+def _verdict_table_counts(text: str) -> dict[str, int]:
+    lines = text.splitlines()
+    headings = [index for index, line in enumerate(lines) if line.strip() == "## Per-agent verdicts"]
+    table_rows: list[tuple[str, ...]] = []
+    table_row_indexes: set[int] = set()
+    header_mismatch = 1
+    separator_mismatch = 1
+    if len(headings) == 1:
+        cursor = headings[0] + 1
+        while cursor < len(lines) and not lines[cursor].strip():
+            cursor += 1
+        header = _markdown_row(lines[cursor]) if cursor < len(lines) else None
+        header_mismatch = int(header != COMPARISON_COLUMNS)
+        cursor += 1
+        separator = _markdown_row(lines[cursor]) if cursor < len(lines) else None
+        separator_mismatch = int(separator != ("---",) * len(COMPARISON_COLUMNS))
+        cursor += 1
+        while cursor < len(lines):
+            row = _markdown_row(lines[cursor])
+            if row is None:
+                break
+            table_row_indexes.add(cursor)
+            table_rows.append(row)
+            cursor += 1
+
+    well_formed_rows = [row for row in table_rows if len(row) == len(COMPARISON_COLUMNS)]
+    parsed_agents = [row[0] for row in well_formed_rows]
+    outside_verdict_rows = 0
+    for index, line in enumerate(lines):
+        if index in table_row_indexes:
+            continue
+        row = _markdown_row(line)
+        if row and len(row) >= 2 and re.search(r"\b(?:HOLD|MIGRATE|BLOCKED)\b", row[1]):
+            outside_verdict_rows += 1
+
+    return {
+        "comparison_verdict_heading_count": len(headings),
+        "comparison_table_header_mismatch": header_mismatch,
+        "comparison_table_separator_mismatch": separator_mismatch,
+        "comparison_html_comment_markers": len(re.findall(r"<!--|-->", text)),
+        "comparison_agent_rows": len(table_rows),
+        "comparison_malformed_agent_rows": len(table_rows) - len(well_formed_rows),
+        "comparison_unique_agents": len(set(parsed_agents)),
+        "comparison_hold_rows": sum(row[1] == "HOLD" for row in well_formed_rows),
+        "comparison_invalid_verdict_cells": sum(row[1] != "HOLD" for row in well_formed_rows),
+        "comparison_duplicate_agents": len(parsed_agents) - len(set(parsed_agents)),
+        "comparison_extra_rows": max(0, len(table_rows) - len(COMPARISON_AGENTS)),
+        "comparison_unknown_agent_rows": sum(agent not in COMPARISON_AGENTS for agent in parsed_agents),
+        "comparison_missing_agents": sum(agent not in parsed_agents for agent in COMPARISON_AGENTS),
+        "comparison_outside_verdict_rows": outside_verdict_rows,
+    }
+
+
 def _comparison_counts(comparison: Path) -> dict[str, int]:
     root = _repo_root(Path(__file__))
     plan_dir = root / Path(METRICS_PATH).parents[1]
@@ -722,17 +786,12 @@ def _comparison_counts(comparison: Path) -> dict[str, int]:
         "Keep the current model defaults.",
     )
     next_action = "Add privacy-safe per-event reason and correlation evidence"
-    verdict_rows = re.findall(r"^\|\s*([^|]+?)\s*\|\s*(HOLD|MIGRATE|BLOCKED)\s*\|", text, flags=re.MULTILINE)
-    parsed_agents = [agent.strip() for agent, _verdict in verdict_rows]
-    return {
+    counts = {
         "comparison_missing_required_value": sum(value not in text for value in required),
         "comparison_next_action": text.count(next_action),
-        "comparison_agent_rows": len(verdict_rows),
-        "comparison_unique_agents": len(set(parsed_agents)),
-        "comparison_hold_rows": sum(verdict == "HOLD" for _agent, verdict in verdict_rows),
-        "comparison_unknown_agent_rows": sum(agent not in COMPARISON_AGENTS for agent in parsed_agents),
-        "comparison_missing_agents": sum(agent not in parsed_agents for agent in COMPARISON_AGENTS),
     }
+    counts.update(_verdict_table_counts(text))
+    return counts
 
 
 def privacy_scan(paths: list[Path], output: Path) -> dict[str, Any]:
@@ -746,8 +805,8 @@ def privacy_scan(paths: list[Path], output: Path) -> dict[str, Any]:
     counts["markdown_canonical_mismatch"] = int(paths[2].read_text() != render_markdown(parsed_report))
     counts.update(_comparison_counts(paths[-1]))
     expected_nonzero = {
-        "agent_hold_verdict": 4,
         "comparison_next_action": 4,
+        "comparison_verdict_heading_count": 1,
         "comparison_agent_rows": 4,
         "comparison_unique_agents": 4,
         "comparison_hold_rows": 4,

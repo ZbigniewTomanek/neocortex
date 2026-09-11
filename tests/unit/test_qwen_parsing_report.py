@@ -466,6 +466,51 @@ def test_f6_comparison_requires_each_of_four_agents_once_with_hold(tmp_path: Pat
         )
 
 
+def test_f8_hidden_rows_and_decorated_visible_verdicts_are_rejected(tmp_path: Path) -> None:
+    _manifest, _parsed, _sample, output = _generate(tmp_path)
+    source = PLAN / "resources/bakeoff-comparison.md"
+    text = source.read_text().replace(" | HOLD |", " | `HOLD` |")
+    text = text.replace("| Domain classifier | `HOLD` |", "| Ontology | `HOLD` |")
+    text += """
+<!--
+| Ontology | HOLD |
+| Extractor | HOLD |
+| Librarian | HOLD |
+| Domain classifier | HOLD |
+-->
+"""
+    counts = report._verdict_table_counts(text)
+    assert counts["comparison_html_comment_markers"] == 2
+    assert counts["comparison_invalid_verdict_cells"] == 4
+    assert counts["comparison_duplicate_agents"] == 1
+    assert counts["comparison_missing_agents"] == 1
+    assert counts["comparison_outside_verdict_rows"] == 4
+
+    comparison = tmp_path / "bakeoff-comparison.md"
+    comparison.write_text(text)
+    with pytest.raises(report.ReportError, match="privacy scan failed"):
+        report.privacy_scan(
+            [
+                output / "qwen-parsing-inputs.json",
+                output / "qwen-parsing-report.json",
+                output / "qwen-parsing-report.md",
+                output / "quality-sample-qwen-flash-next.json",
+                comparison,
+            ],
+            tmp_path / "privacy.json",
+        )
+
+
+def test_f8_extra_visible_verdict_row_is_rejected() -> None:
+    text = (PLAN / "resources/bakeoff-comparison.md").read_text()
+    ontology_row = next(line for line in text.splitlines() if line.startswith("| Ontology | HOLD |"))
+    text = text.replace(ontology_row, f"{ontology_row}\n{ontology_row}", 1)
+    counts = report._verdict_table_counts(text)
+    assert counts["comparison_agent_rows"] == 5
+    assert counts["comparison_extra_rows"] == 1
+    assert counts["comparison_duplicate_agents"] == 1
+
+
 def test_f7_evidence_cannot_be_moved_between_episode_arrays(tmp_path: Path) -> None:
     _manifest, parsed, _sample, output = _generate(tmp_path)
     moved = parsed["episodes"][0]["evidence"].pop()
