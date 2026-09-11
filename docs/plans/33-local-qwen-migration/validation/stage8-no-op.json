@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "outcome": "DONE_NO_OP",
+  "stage7_verdicts": [
+    {
+      "agent": "Ontology",
+      "verdict": "HOLD"
+    },
+    {
+      "agent": "Extractor",
+      "verdict": "HOLD"
+    },
+    {
+      "agent": "Librarian",
+      "verdict": "HOLD"
+    },
+    {
+      "agent": "Domain classifier",
+      "verdict": "HOLD"
+    }
+  ],
+  "migrate_count": 0,
+  "effort_sweep": "NOT_RUN",
+  "combined_tuned_arm": "NOT_RUN",
+  "reason": "Stage 7 has no validated migration path"
+}

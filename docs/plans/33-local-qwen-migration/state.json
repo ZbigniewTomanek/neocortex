@@ -276,17 +276,18 @@
       "id": 7,
       "title": "Quality decision and evidence report",
       "file": "stages/07-quality-gate.md",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "depends_on": [
         "6b"
       ],
       "commit": [
         "27387b0",
-        "a6fdb85"
+        "a6fdb85",
+        "c6391f4"
       ],
-      "note": null,
+      "note": "Four exact agent verdicts are HOLD. Operational stability passed, but final E2E is 0/5, integrity attribution is incomplete, and the fixed quality sample is NOT MEASURED. Validation and privacy controls pass after two repair rounds.",
       "blocked_by": [],
-      "step": "FROZEN",
+      "step": null,
       "writer": null,
       "implementer": {
         "agent": "codex/gpt-5.6-sol",
@@ -321,29 +322,63 @@
         "at": "2026-09-11T13:22:00+02:00",
         "blocking": 1
       },
-      "gates": {},
-      "evidence": []
+      "gates": {
+        "per_episode_report": "PASS",
+        "determinism": "PASS",
+        "committed_generation": "PASS",
+        "schema_validation": "PASS",
+        "privacy": "PASS",
+        "verdict_completeness": "PASS",
+        "fixed_quality_sample": "NOT MEASURED",
+        "quality_comparison": "PASS",
+        "full_tests": "PASS",
+        "focused_tests": "PASS",
+        "static_checks": "PASS"
+      },
+      "evidence": [
+        "briefs/stage7-brief.md",
+        "validation/stage7-pre-review.md",
+        "validation/stage7-review.md",
+        "validation/stage7-focused-tests.txt",
+        "validation/stage7-full-tests.txt",
+        "validation/stage7-self-check.json",
+        "validation/stage7-validation.json",
+        "validation/stage7-privacy.json",
+        "resources/qwen-parsing-report.json",
+        "resources/qwen-parsing-report.md",
+        "resources/quality-sample-qwen-flash-next.json",
+        "resources/bakeoff-comparison.md"
+      ]
     },
     {
       "id": 8,
       "title": "Thinking-effort tuning",
       "file": "stages/08-thinking-effort-tuning.md",
-      "status": "PENDING",
+      "status": "DONE",
       "depends_on": [
         7
       ],
       "commit": null,
-      "note": null,
+      "note": "DONE no-op under D20: all four accepted Stage 7 verdicts are HOLD, so no effort sweep or combined tuned arm ran.",
       "blocked_by": [],
       "step": null,
       "writer": null,
       "implementer": null,
-      "reviewer": null,
+      "reviewer": {
+        "agent": "codex/gpt-5.6-sol",
+        "effort": "high",
+        "tier": "strong"
+      },
       "preReview": {
-        "used": false
+        "used": true,
+        "at": "2026-09-11T13:36:00+02:00",
+        "findings": 1
       },
       "review": {
-        "used": false
+        "used": true,
+        "at": "2026-09-11T13:45:00+02:00",
+        "blocking": 0,
+        "backlogged": 0
       },
       "gateFixes": 0,
       "repair": {
@@ -353,8 +388,18 @@
       "repairReview": {
         "used": false
       },
-      "gates": {},
-      "evidence": []
+      "gates": {
+        "d20_no_op": "PASS",
+        "stage7_verdict_binding": "PASS",
+        "tuning_artifacts_absent": "PASS",
+        "qwen_calls": "NOT_RUN"
+      },
+      "evidence": [
+        "briefs/stage8-brief.md",
+        "validation/stage8-pre-review.md",
+        "validation/stage8-no-op.json",
+        "validation/stage8-review.md"
+      ]
     },
     {
       "id": 9,
@@ -390,8 +435,8 @@
     }
   ],
   "status": "IN_PROGRESS",
-  "currentStage": 7,
-  "writesFrozen": true,
+  "currentStage": 9,
+  "writesFrozen": false,
   "writer": null,
   "goal": "33-local-qwen-migration",
   "goalId": "none",

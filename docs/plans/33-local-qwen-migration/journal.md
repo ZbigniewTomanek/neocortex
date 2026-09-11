@@ -513,3 +513,29 @@ independent review, and launch the benchmark detached only if those gates pass.
 - Applied interpretation from context: do not repeat historical multi-hour `xhigh` experiments or continue a test after it cannot change the decision.
 - Stage 7 already requires four `HOLD` verdicts, so Stage 8 will record the planned `DONE` no-op. This run will make no `xhigh` model call.
 - Future effort work requires a short bounded probe before any larger arm and remains outside this execution unless a later Stage 7 result is `MIGRATE`.
+
+## 2026-09-11, Stage 7 quality decision accepted
+
+- Implementation commit: `27387b0`. Repair commits: `a6fdb85` and `c6391f4`.
+- The report contains the exact eight compact episodes and 400 evidence records. Regeneration is byte-identical.
+- Schema validation, source digests, privacy counts, and the exact four-agent verdict table pass.
+- Focused checks: 70 passed. Full regression evidence: 1,283 passed and 7 skipped.
+- The second repair changed only the Markdown verdict parser and tests. The full suite was not repeated after that narrow fix.
+- The fixed 20-node and 20-edge quality sample is `NOT MEASURED` because no privacy-safe graph export exists.
+- Final E2E remains 0/5. Sixteen missing-endpoint skips and five temporal conflicts lack safe event-level proof.
+- Verdict: `HOLD` for ontology, extractor, librarian, and domain classifier. No model default changes.
+- Review tiers: implementer and reviewer both used `codex/gpt-5.6-sol`, effort `high`.
+
+## 2026-09-11, Stage 8 effort tuning completed as a no-op
+
+- D20 applies because Stage 7 has zero `MIGRATE` verdicts.
+- The bounded check found the exact four agents with `HOLD` and both Stage 7 state gates at `PASS`.
+- `validation/stage8-no-op.json` records `DONE_NO_OP`, migration count zero, and both tuning actions as `NOT_RUN`.
+- No effort sweep, tuned arm, Qwen call, benchmark, or new tuning artifact ran.
+- Stage 8 is `DONE` with `commit: null`. The strong pre-review and post-review are complete.
+
+## 2026-09-11, owner stopped execution before Stage 9
+
+- Owner instruction: "do not execute this stage, commit current state, we'll need to fix this later"
+- Stage 9 remains `PENDING`. No cutover, documentation update, local smoke, or model call ran.
+- The run remains `IN_PROGRESS` at Stage 9. Resume from the Stage 9 brief step after the underlying quality and integrity faults are fixed.
