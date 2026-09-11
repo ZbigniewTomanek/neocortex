@@ -4,10 +4,17 @@
   "reasoning_marker": 0,
   "secret_assignment": 0,
   "forbidden_payload_key": 0,
+  "forbidden_label": 0,
   "sensitive_audit_key": 0,
   "dynamic_domain_key": 0,
   "agent_non_hold_verdict": 0,
   "agent_hold_verdict": 4,
+  "markdown_canonical_mismatch": 0,
   "comparison_missing_required_value": 0,
-  "comparison_next_action": 4
+  "comparison_next_action": 4,
+  "comparison_agent_rows": 4,
+  "comparison_unique_agents": 4,
+  "comparison_hold_rows": 4,
+  "comparison_unknown_agent_rows": 0,
+  "comparison_missing_agents": 0
 }

@@ -48,7 +48,15 @@ OUTPUT_FILES = (
     "qwen-parsing-report.md",
     "quality-sample-qwen-flash-next.json",
 )
-MISSING_REASON = "No committed privacy-safe per-episode attribution exists for this field."
+REASON_PER_EPISODE = "No committed privacy-safe per-episode attribution exists for this field."
+REASON_ADMIN = "No committed privacy-safe per-job admin response exists for this run."
+REASON_GRAPH = "No privacy-safe graph export with source episode and job identifiers is committed."
+REASON_AUDIT = "The private audit log was not read; only committed aggregate counters are used."
+REASON_SAMPLE = (
+    "The snapshot was hash-verified but not extracted because no committed privacy-safe graph export "
+    "links records to source episode and job identifiers."
+)
+COMPARISON_AGENTS = ("Ontology", "Extractor", "Librarian", "Domain classifier")
 
 
 class ReportError(ValueError):
@@ -155,17 +163,17 @@ def _manifest(root: Path, metrics: dict[str, Any]) -> dict[str, Any]:
         _unavailable(
             "admin_jobs",
             MISSING_ADMIN_PATH,
-            "No committed privacy-safe per-job admin response exists for this run.",
+            REASON_ADMIN,
         ),
         _unavailable(
             "graph_export",
             MISSING_GRAPH_PATH,
-            "No privacy-safe graph export with source episode and job identifiers is committed.",
+            REASON_GRAPH,
         ),
         _unavailable(
             "audit_log",
             "log/agent_actions.log",
-            "The private audit log was not read; only committed aggregate counters are used.",
+            REASON_AUDIT,
         ),
         _available("e2e_manifest", E2E_PATH, _digest(root / E2E_PATH)),
         _available("recall", RECALL_PATH, _digest(root / RECALL_PATH)),
@@ -255,7 +263,7 @@ def _episode(index: int, key: str, metadata: dict[str, Any]) -> dict[str, Any]:
             item = {"pointer": pointer, "status": "MEASURED", "value": value, "source": _source_for_pointer(pointer)}
             if value == "NOT_MEASURED":
                 item["status"] = "NOT_MEASURED"
-                item["reason"] = MISSING_REASON
+                item["reason"] = REASON_PER_EPISODE
             evidence.append(item)
     row["evidence"] = evidence
     return row
@@ -307,10 +315,7 @@ def _sample(metrics: dict[str, Any]) -> dict[str, Any]:
             "sha256": metadata["snapshot_sha256"],
         },
         "missing_input": "graph_export",
-        "reason": (
-            "The snapshot was hash-verified but not extracted because no committed privacy-safe graph export "
-            "links records to source episode and job identifiers."
-        ),
+        "reason": REASON_SAMPLE,
         "consequence": "absolute_quality_fails_closed_all_agents_hold",
     }
 
@@ -324,11 +329,16 @@ def _resolve_pointer(document: Any, pointer: str) -> Any:
 
 
 def _validate_evidence(report: dict[str, Any]) -> int:
-    expected: set[str] = set()
-    actual: set[str] = set()
     for index, row in enumerate(report["episodes"]):
+        prefix = f"/episodes/{index}/"
+        if any(not evidence["pointer"].startswith(prefix) for evidence in row["evidence"]):
+            raise ReportError("evidence pointer belongs to another episode")
+    total = 0
+    for index, row in enumerate(report["episodes"]):
+        expected: set[str] = set()
         for section in ("jobs", "domains", "ontology", "extraction", "librarian", "events", "quality_integrity"):
             expected.update(pointer for pointer, _ in _leaves(row[section], f"/episodes/{index}/{section}"))
+        actual: set[str] = set()
         for evidence in row["evidence"]:
             pointer = evidence["pointer"]
             if pointer in actual:
@@ -341,13 +351,14 @@ def _validate_evidence(report: dict[str, Any]) -> int:
             if pointed_value != evidence["value"]:
                 raise ReportError("evidence value mismatch")
             if pointed_value == "NOT_MEASURED":
-                if evidence["status"] != "NOT_MEASURED" or not evidence.get("reason"):
+                if evidence["status"] != "NOT_MEASURED" or evidence.get("reason") != REASON_PER_EPISODE:
                     raise ReportError("NOT_MEASURED evidence requires a reason")
             elif evidence["status"] != "MEASURED" or "reason" in evidence:
                 raise ReportError("measured evidence metadata is invalid")
-    if actual != expected:
-        raise ReportError("evidence coverage mismatch")
-    return len(actual)
+        if actual != expected:
+            raise ReportError("evidence coverage mismatch")
+        total += len(actual)
+    return total
 
 
 def _privacy_counts(values: list[bytes]) -> dict[str, int]:
@@ -358,6 +369,12 @@ def _privacy_counts(values: list[bytes]) -> dict[str, int]:
         "secret_assignment": rb"(?i)(authorization|api[_-]?key|password|cookie)\s*[:=]\s*[^\s,}]+",
         "forbidden_payload_key": (
             rb'(?i)"(episode_text|prompt|raw_model_output|hidden_reasoning|tool_arguments|schema_name)"\s*:'
+        ),
+        "forbidden_label": (
+            rb"(?i)(?:^|[^A-Za-z0-9_])"
+            rb"(episode_text|prompt|raw_model_output|hidden_reasoning|tool_arguments|schema_name|"
+            rb"domain_value|domain_description|dynamic_schema)"
+            rb"(?:$|[^A-Za-z0-9_])"
         ),
         "sensitive_audit_key": rb'(?i)"(agent_id|endpoint|correlation_id)"\s*:',
         "dynamic_domain_key": rb'(?i)"(domain_value|domain_description|dynamic_schema)"\s*:',
@@ -419,6 +436,13 @@ def _validate_manifest(root: Path, manifest: dict[str, Any]) -> None:
         elif item.get("availability") == "NOT_MEASURED":
             if item.get("sha256") != "NOT_MEASURED" or not item.get("reason"):
                 raise ReportError("unavailable source needs NOT_MEASURED digest and reason")
+            expected_reason = {
+                "admin_jobs": REASON_ADMIN,
+                "graph_export": REASON_GRAPH,
+                "audit_log": REASON_AUDIT,
+            }.get(item["kind"])
+            if item["reason"] != expected_reason:
+                raise ReportError("unavailable source reason is not approved")
         else:
             raise ReportError("source availability is invalid")
 
@@ -434,6 +458,8 @@ def _validate_source_links(plan_dir: Path, manifest: dict[str, Any], report: dic
                 raise ReportError("quality source link is absent from the manifest")
         for evidence in row["evidence"]:
             source = evidence["source"]
+            if source != _source_for_pointer(evidence["pointer"]):
+                raise ReportError("evidence source mismatch")
             if source not in allowed:
                 raise ReportError("evidence source link is absent from the manifest")
             if (
@@ -446,12 +472,27 @@ def _validate_source_links(plan_dir: Path, manifest: dict[str, Any], report: dic
         raise ReportError("report schema source link is missing")
 
 
-def _validate_sample(root: Path, sample: dict[str, Any], schema: dict[str, Any]) -> None:
+def _validate_sample(
+    root: Path,
+    sample: dict[str, Any],
+    schema: dict[str, Any],
+    manifest: dict[str, Any],
+) -> None:
     Draft202012Validator.check_schema(schema)
     Draft202012Validator(schema).validate(sample)
     snapshot = sample["snapshot"]
     _expect(_digest(root / snapshot["path"]), snapshot["sha256"], "sample snapshot digest")
     if sample["status"] == "MEASURED":
+        graph_source = next(item for item in manifest["artifacts"] if item["kind"] == "graph_export")
+        if graph_source["availability"] != "MEASURED":
+            raise ReportError("measured sample requires an available graph export")
+        _expect(graph_source["sha256"], _digest(root / graph_source["path"]), "graph export digest")
+        graph_export = _read_json(root / graph_source["path"])
+        if set(graph_export) != {"schema_version", "status", "snapshot_sha256", "declared_types", "nodes", "edges"}:
+            raise ReportError("graph export fields are invalid")
+        _expect(graph_export["schema_version"], 1, "graph export schema version")
+        _expect(graph_export["status"], "MEASURED", "graph export status")
+        _expect(graph_export["snapshot_sha256"], snapshot["sha256"], "graph export snapshot digest")
         if len(sample["nodes"]) != 20 or len(sample["edges"]) != 20:
             raise ReportError("measured sample must contain exactly 20 nodes and 20 edges")
         node_ids = {node["id"] for node in sample["nodes"]}
@@ -466,10 +507,36 @@ def _validate_sample(root: Path, sample: dict[str, Any], schema: dict[str, Any])
             raise ReportError("measured sample contains an undeclared node type")
         if any(edge["type"] not in declared["edge"] for edge in sample["edges"]):
             raise ReportError("measured sample contains an undeclared edge type")
+        _expect(declared, graph_export["declared_types"], "sample declared types")
+        exported_nodes = {record["id"]: record for record in graph_export["nodes"]}
+        exported_edges = {record["id"]: record for record in graph_export["edges"]}
+        if len(exported_nodes) != len(graph_export["nodes"]) or len(exported_edges) != len(graph_export["edges"]):
+            raise ReportError("graph export record ids are not unique")
+        for node in sample["nodes"]:
+            if exported_nodes.get(node["id"]) != node:
+                raise ReportError("sample node does not match the graph export")
+        for edge in sample["edges"]:
+            if exported_edges.get(edge["id"]) != edge:
+                raise ReportError("sample edge does not match the graph export")
+    elif sample["reason"] != REASON_SAMPLE:
+        raise ReportError("sample reason is not approved")
+
+
+def _derive_report_status(report: dict[str, Any], manifest: dict[str, Any]) -> str:
+    if any(item["availability"] == "NOT_MEASURED" for item in manifest["artifacts"]):
+        return "NOT_MEASURED"
+    for row in report["episodes"]:
+        for section in ("jobs", "domains", "ontology", "extraction", "librarian", "events", "quality_integrity"):
+            if any(value == "NOT_MEASURED" for _, value in _leaves(row[section], "")):
+                return "NOT_MEASURED"
+    return "MEASURED"
 
 
 def validate_artifacts(plan_dir: Path, manifest_path: Path, report_path: Path, sample_path: Path) -> dict[str, Any]:
     root, metrics, _e2e, _recall = _load_sources(plan_dir)
+    expected_manifest = _manifest(root, metrics)
+    expected_report = _report(metrics, expected_manifest)
+    expected_sample = _sample(metrics)
     manifest = _read_json(manifest_path)
     report = _read_json(report_path)
     sample = _read_json(sample_path)
@@ -481,13 +548,11 @@ def validate_artifacts(plan_dir: Path, manifest_path: Path, report_path: Path, s
     except (SchemaError, ValidationError) as exc:
         raise ReportError("report schema validation failed") from exc
     _validate_manifest(root, manifest)
+    _expect(manifest, expected_manifest, "canonical input manifest")
     _expect(report.get("source_artifacts"), manifest["artifacts"], "report source artifacts")
     _expect([row.get("episode_key") for row in report["episodes"]], list(EPISODE_KEYS), "report episode order")
-    _expect(
-        report.get("run", {}).get("source_revision"),
-        metrics["run_metadata"]["source_revision"],
-        "report source revision",
-    )
+    _expect(report.get("run"), expected_report["run"], "report run")
+    _expect(report.get("status"), _derive_report_status(report, manifest), "report status")
     _validate_source_links(plan_dir, manifest, report)
     for row in report["episodes"]:
         _expect(
@@ -502,10 +567,12 @@ def validate_artifacts(plan_dir: Path, manifest_path: Path, report_path: Path, s
         )
     evidence_count = _validate_evidence(report)
     try:
-        _validate_sample(root, sample, sample_schema)
+        _validate_sample(root, sample, sample_schema, manifest)
     except (SchemaError, ValidationError) as exc:
         raise ReportError("sample schema validation failed") from exc
     _validate_safe_content(manifest, report, sample)
+    _expect(report, expected_report, "canonical report")
+    _expect(sample, expected_sample, "canonical sample")
     return {
         "status": "PASS",
         "episodes": len(report["episodes"]),
@@ -624,7 +691,8 @@ def self_check(plan_dir: Path, output: Path) -> dict[str, Any]:
 
 
 def _comparison_counts(comparison: Path) -> dict[str, int]:
-    plan_dir = comparison.parent.parent
+    root = _repo_root(Path(__file__))
+    plan_dir = root / Path(METRICS_PATH).parents[1]
     _root, metrics, e2e, recall = _load_sources(plan_dir)
     text = comparison.read_text()
     jobs = metrics["job_summary"]
@@ -654,9 +722,16 @@ def _comparison_counts(comparison: Path) -> dict[str, int]:
         "Keep the current model defaults.",
     )
     next_action = "Add privacy-safe per-event reason and correlation evidence"
+    verdict_rows = re.findall(r"^\|\s*([^|]+?)\s*\|\s*(HOLD|MIGRATE|BLOCKED)\s*\|", text, flags=re.MULTILINE)
+    parsed_agents = [agent.strip() for agent, _verdict in verdict_rows]
     return {
         "comparison_missing_required_value": sum(value not in text for value in required),
         "comparison_next_action": text.count(next_action),
+        "comparison_agent_rows": len(verdict_rows),
+        "comparison_unique_agents": len(set(parsed_agents)),
+        "comparison_hold_rows": sum(verdict == "HOLD" for _agent, verdict in verdict_rows),
+        "comparison_unknown_agent_rows": sum(agent not in COMPARISON_AGENTS for agent in parsed_agents),
+        "comparison_missing_agents": sum(agent not in parsed_agents for agent in COMPARISON_AGENTS),
     }
 
 
@@ -667,8 +742,16 @@ def privacy_scan(paths: list[Path], output: Path) -> dict[str, Any]:
             raise ReportError(f"privacy input is missing: {path.name}")
         values.append(path.read_bytes())
     counts = _privacy_counts(values)
+    parsed_report = _read_json(paths[1])
+    counts["markdown_canonical_mismatch"] = int(paths[2].read_text() != render_markdown(parsed_report))
     counts.update(_comparison_counts(paths[-1]))
-    expected_nonzero = {"agent_hold_verdict": 4, "comparison_next_action": 4}
+    expected_nonzero = {
+        "agent_hold_verdict": 4,
+        "comparison_next_action": 4,
+        "comparison_agent_rows": 4,
+        "comparison_unique_agents": 4,
+        "comparison_hold_rows": 4,
+    }
     passed = all(count == expected_nonzero.get(name, 0) for name, count in counts.items())
     _write_json(output, counts)
     if not passed:

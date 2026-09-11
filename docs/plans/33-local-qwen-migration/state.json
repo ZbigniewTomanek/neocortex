@@ -280,29 +280,40 @@
       "depends_on": [
         "6b"
       ],
-      "commit": null,
+      "commit": [
+        "27387b0"
+      ],
       "note": null,
       "blocked_by": [],
-      "step": "WRITING",
-      "writer": "codex/gpt-5.6-sol",
+      "step": "FROZEN",
+      "writer": null,
       "implementer": {
         "agent": "codex/gpt-5.6-sol",
         "effort": "high",
         "tier": "strong"
       },
-      "reviewer": null,
+      "reviewer": {
+        "agent": "codex/gpt-5.6-sol",
+        "effort": "high",
+        "tier": "strong"
+      },
       "preReview": {
         "used": true,
         "at": "2026-09-11T13:00:00+02:00",
         "findings": 3
       },
       "review": {
-        "used": false
+        "used": true,
+        "at": "2026-09-11T13:05:00+02:00",
+        "blocking": 7,
+        "backlogged": 0
       },
       "gateFixes": 1,
       "repair": {
         "used": false,
-        "rounds": 0
+        "rounds": 1,
+        "at": "2026-09-11T13:16:12+02:00",
+        "result": "READY_FOR_REVIEW"
       },
       "repairReview": {
         "used": false
@@ -377,8 +388,8 @@
   ],
   "status": "IN_PROGRESS",
   "currentStage": 7,
-  "writesFrozen": false,
-  "writer": "codex/gpt-5.6-sol",
+  "writesFrozen": true,
+  "writer": null,
   "goal": "33-local-qwen-migration",
   "goalId": "none",
   "armed": "2026-09-11",

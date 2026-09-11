@@ -61,7 +61,14 @@
       "properties": {
         "kind": {"enum": ["corpus", "metrics", "snapshot", "admin_jobs", "graph_export", "audit_log", "e2e_manifest", "recall"]},
         "path": {"$ref": "#/$defs/safeReference"}, "sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": "NOT_MEASURED"}]},
-        "availability": {"$ref": "#/$defs/measurement"}, "reason": {"type": "string", "minLength": 1}
+        "availability": {"$ref": "#/$defs/measurement"},
+        "reason": {
+          "enum": [
+            "No committed privacy-safe per-job admin response exists for this run.",
+            "No privacy-safe graph export with source episode and job identifiers is committed.",
+            "The private audit log was not read; only committed aggregate counters are used."
+          ]
+        }
       },
       "allOf": [{
         "if": {"properties": {"availability": {"const": "NOT_MEASURED"}}, "required": ["availability"]},
@@ -128,7 +135,8 @@
       "properties": {
         "pointer": {"type": "string", "pattern": "^/episodes/[0-7]/(jobs|domains|ontology|extraction|librarian|events|quality_integrity)/"},
         "status": {"$ref": "#/$defs/measurement"}, "value": {"$ref": "#/$defs/safeScalar"},
-        "source": {"$ref": "#/$defs/safeReference"}, "reason": {"type": "string", "minLength": 1}
+        "source": {"$ref": "#/$defs/safeReference"},
+        "reason": {"const": "No committed privacy-safe per-episode attribution exists for this field."}
       },
       "allOf": [{
         "if": {"properties": {"status": {"const": "NOT_MEASURED"}}, "required": ["status"]},

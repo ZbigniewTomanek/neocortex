@@ -50,7 +50,8 @@
         "expected_counts": {"type": "object", "additionalProperties": false, "required": ["nodes", "edges"], "properties": {"nodes": {"const": 20}, "edges": {"const": 20}}},
         "observed_counts": {"type": "object", "additionalProperties": false, "required": ["nodes", "edges"], "properties": {"nodes": {"const": "NOT_MEASURED"}, "edges": {"const": "NOT_MEASURED"}}},
         "snapshot": {"$ref": "#/$defs/snapshot"}, "missing_input": {"const": "graph_export"},
-        "reason": {"type": "string", "minLength": 1}, "consequence": {"const": "absolute_quality_fails_closed_all_agents_hold"}
+        "reason": {"const": "The snapshot was hash-verified but not extracted because no committed privacy-safe graph export links records to source episode and job identifiers."},
+        "consequence": {"const": "absolute_quality_fails_closed_all_agents_hold"}
       }
     }
   }
