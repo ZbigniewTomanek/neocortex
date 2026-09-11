@@ -13,8 +13,11 @@ No live model call.
    - Where: new `resources/decision.md`.
    - Details: one row per agent (ontology, extractor, librarian, domain classifier) with the selected level
      from `resources/effort-sweep.json`, the five E2E exit codes, Plan 15 and Plan 17 scores, the sample
-     gate, the skip-attribution gate, and the verdict. `MIGRATE` requires every rubric input measured and
-     passing; any `NOT MEASURED` input is `HOLD`. Each cell cites the artifact path it was read from.
+     result, the skip-attribution result, and the verdict. These arrive as Stage 7 REPORT values (D-7), so
+     this stage always runs and always publishes: `MIGRATE` requires every rubric input measured and
+     passing; any failed or `NOT MEASURED` input is `HOLD`. Each cell cites the artifact path it was read
+     from. If Stage 5's cancellation rule fired, say plainly that the endpoint ignores `reasoning_effort`,
+     that `off` is therefore the only supportable setting, and that no per-agent level was selectable.
 
 2. Defaults and rollback (only for agents with `MIGRATE`).
    - Where: the local Qwen block in `.env.example`; the local-model section of `docs/development.md`;
@@ -30,7 +33,7 @@ No live model call.
 
 4. Plan 33 handoff.
    - Where: `docs/plans/33-local-qwen-migration/backlog.md` item 16 and `journal.md`.
-   - Details: set item 16 to `RESOLVED` with the skip-events and sample paths if the Stage 7 gates were
+   - Details: set item 16 to `RESOLVED` with the skip-events and sample paths if the Stage 7 evidence was
      green, otherwise `DEFERRED → 34` with the reason. Append one journal entry in Plan 33 naming this
      plan's decision file so Stage 9 can consume it. Do not change Plan 33 `state.json` statuses.
 

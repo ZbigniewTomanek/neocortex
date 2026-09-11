@@ -19,9 +19,12 @@ Hosted prompts and profiles do not change.
      instructions inside `build_extractor_agent`.
 
 2. Host merge writes the newer scalar into content.
-   - Where: `_merge_content`, `_decision_for`, and the merge-item construction in
+   - Where: `_merge_content`, `_decision_for`, and **`render_oneshot_items`** in
      `src/neocortex/extraction/oneshot_librarian.py`; `MERGE_CONTENT_CHARS`.
-   - Details: include the incoming entity's `properties` in the merge item the model sees. In the host
+   - Details: `build_oneshot_items` already sets `properties=entity.properties` on the `OneshotItem`; the
+     model never sees them because `render_oneshot_items` emits only
+     `index | name | type_name | description`. Render the scalar properties there — that is the fix, not
+     the item construction. In the host
      default merge, when an incoming scalar property conflicts with an existing property of the same key,
      replace the stale value in content (a "now X, previously Y" sentence) instead of appending, and update
      the property. Content truncation drops the oldest text first so the newest fact survives. Free-text
@@ -33,6 +36,11 @@ Hosted prompts and profiles do not change.
      after merge, content contains `May 1` and not `April 15`; contains `0.62`; contains `94.2`. Run the
      merge test on the pre-fix code first and record its failure in `journal.md`. Hosted prompt and
      profile tests unchanged.
+   - One test must assert the **rendered prompt text**, not just the merged content. The existing
+     convention in `tests/test_oneshot_librarian.py` builds a `FunctionModel` whose `respond()` does
+     `del messages` — it ignores the prompt entirely and returns a hand-authored decision, so a triplet
+     test written to that pattern passes while `render_oneshot_items` is still dropping `properties`.
+     Assert directly that the rendered item text carries the incoming scalar.
 
 4. Bounded live baseline at `off` (the `off` arm of the Stage 6 sweep).
    - Where: `scripts/qwen_speed_probe.py`.

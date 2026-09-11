@@ -23,7 +23,8 @@ If the settings one-liner fails on `extraction_enabled`, the local `.env` has a 
 
 ## Probe pattern (Stages 4–6)
 
-Always the same command with `--test-model` first. Then:
+Always the same command with `--test-model` first. `--max-wall-seconds` below is the Stage 6 per-cell
+value; Stage 4's `off` baseline uses `1200` to stay inside its 20-minute budget. Then:
 
 ```bash
 nohup uv run python scripts/qwen_speed_probe.py \
@@ -90,7 +91,8 @@ OUT=docs/plans/33-local-qwen-migration/resources
 uv run python scripts/export_skip_events.py --run-id "$RUN" --arm "$ARM" --output "$OUT/skip-events-$ARM-$RUN.json"
 uv run python scripts/export_graph_sample.py --run-id "$RUN" --arm "$ARM" --check-temporal "$OUT/skip-events-$ARM-$RUN.json" --sample 20 --output "$OUT/quality-sample-$ARM-$RUN.json"
 uv run python scripts/compute_metrics.py --arm "$ARM" --phase e2e --run-id "$RUN" --skip-events "$OUT/skip-events-$ARM-$RUN.json" --merge
-uv run python scripts/generate_qwen_parsing_report.py --run-id "$RUN" --arm "$ARM"
+uv run python scripts/generate_qwen_parsing_report.py generate \
+  --plan-dir docs/plans/33-local-qwen-migration --output-dir "$OUT" --run-id "$RUN" --arm "$ARM"
 ```
 
 ## Live budgets

@@ -27,18 +27,23 @@ Live budget 2 hours per arm; at most two arms in this plan. Arm name `qwen-flash
    Commit the metrics, recall, E2E manifest, skip-events, sample, and parsing report under
    `docs/plans/33-local-qwen-migration/resources/` next to their swift3 predecessors.
 
-4. One repair arm at most. If a GATE below is red because of a root-caused harness or product defect, fix
-   it, record the decision, and run `-tuned2` once. A third arm is out of scope; leave the gate red and
-   hand the item to `backlog.md`.
+4. One repair arm at most. If an evidence line below fails because of a root-caused harness or product
+   defect, fix it, record the decision, and run `-tuned2` once. A third arm is out of scope: record the
+   failure, hand the item to `backlog.md`, and **continue to Stage 8**. These lines are REPORT, not GATE
+   (D-7) — they feed Stage 8's rubric, where any failed or `NOT MEASURED` input already yields `HOLD`.
+   Stage 7 is `DONE` once the arm has run and its evidence is recorded, green or not; a red evidence line
+   must never leave Stage 8 unreachable, because the truthful `HOLD` the plan exists to publish lives
+   there.
 
 ---
 
 ## Verification
 
-- [ ] GATE terminal stability — all submitted jobs terminal and `(failed+cancelled)/total ≤ 0.10`, read from the captured `/admin/jobs/summary` in `metrics-qwen-flash-next-compact-tuned.json`; a non-terminal queue or a higher ratio turns it red. `NOT MEASURED` blocks.
-- [ ] GATE critical integrity — zero stored reasoning markers, invalid type names, garbage types, or source leaks in the same metrics file's integrity scan.
-- [ ] GATE skip-event attribution — `skip_events_consistent` true for both reason codes and `temporal_survived.total == temporal_survived.survived`, read from the metrics file and `skip-events-*-tuned*.json`; a count mismatch or `survived == false` turns it red. `NOT MEASURED` blocks.
-- [ ] GATE fixed graph sample — `quality-sample-qwen-flash-next-compact-tuned-<run>.json` holds 20 node and 20 edge rows, all `type_valid` and `endpoints_exist` true, validated against the committed schema; a shortfall or padding turns it red. `NOT MEASURED` blocks.
+- [ ] GATE the arm ran and its evidence exists — `metrics-qwen-flash-next-compact-tuned.json`, the recall results, the E2E manifest, `skip-events-*-tuned*.json` and `quality-sample-*-tuned*.json` are all written and committed for this run id. A missing artifact is the one thing that blocks: Stage 8 cannot compute a verdict from nothing. If the 2 h budget expired, record the last summary and the partial artifacts, and say which are `NOT MEASURED`.
+- [ ] REPORT terminal stability — all submitted jobs terminal and `(failed+cancelled)/total ≤ 0.10`, read from the captured `/admin/jobs/summary` in `metrics-qwen-flash-next-compact-tuned.json`; a non-terminal queue or a higher ratio is a failed rubric input, recorded and passed to Stage 8.
+- [ ] REPORT critical integrity — zero stored reasoning markers, invalid type names, garbage types, or source leaks in the same metrics file's integrity scan.
+- [ ] REPORT skip-event attribution — `skip_events_consistent` true for both reason codes and `temporal_survived.total == temporal_survived.survived`, read from the metrics file and `skip-events-*-tuned*.json`; a count mismatch or `survived == false` is recorded with the offending event ids and closes Plan 33 backlog 16 as still open.
+- [ ] REPORT fixed graph sample — `quality-sample-qwen-flash-next-compact-tuned-<run>.json` holds 20 node and 20 edge rows, all `type_valid` and `endpoints_exist` true, validated against `resources/quality-sample-tuned.schema.json`; a shortfall is recorded as a shortfall with its `count`, never padded.
 - [ ] REPORT five E2E outcomes with `failure_step`/`exception_class` for failures, Plan 15 and Plan 17 scores, recall M1–M4, wall time, requests, reasoning and completion tokens, p50/p95 per agent — record in `journal.md`.
 
 ---

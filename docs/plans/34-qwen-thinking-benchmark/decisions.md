@@ -62,3 +62,40 @@ with incremental JSON, `--test-model` before every live command, at most two ser
 **Rationale**: The `.tmp/qwen-harness-tuning` run lost about 10 of 13 hours to unvalidated live probes,
 one uncapped 3 h 18 min call, and full-matrix reruns. The `.tmp/qwen-swift` run finished in 4 h 22 min
 with these rules.
+
+### D-6: Relay every Qwen thinking level to the request
+**Date**: 2026-09-11 - **Stage**: planning (pre-review)
+**Options**: A) sweep as planned B) fix the client relay first, then sweep C) abandon the sweep
+**Chosen**: B.
+**Rationale**: `build_model` wires a plain `OpenAIProvider`, whose profile reports `supports_thinking=False`,
+so `Model.prepare_request` dropped `thinking` and `_get_reasoning_effort` omitted the field. `low`, `medium`
+and `high` put byte-identical requests on the wire; only `off` differed, via its explicit
+`openai_reasoning_effort="none"`. Plan 33's `probe-results-{low,medium,high,xhigh}.json` confirm it (medians
+196 / 229 / 224 / 180, every pair an alias). Stages 5-7 would have measured sampling noise and published a
+false root cause. Fix: `build_model_settings` restates every level through `openai_reasoning_effort` using
+PydanticAI's own `OPENAI_REASONING_EFFORT_MAP`, inside the existing Qwen-only branch, so hosted and
+local-non-Qwen settings are unchanged (guardrail 9 holds). Two exact-equality tests that pinned the old
+shape were updated and three request-level guards added. This fixes the client only; whether the server
+honours `reasoning_effort` is Stage 5's positive control.
+
+### D-7: Stage 7 evidence lines are REPORT, not GATE
+**Date**: 2026-09-11 - **Stage**: planning (pre-review)
+**Options**: A) keep four blocking GATEs B) demote to REPORT, keep one artifact-existence GATE
+**Chosen**: B.
+**Rationale**: PROTOCOL makes a stage with an unmet gate and an essential deferral `BLOCKED`, and `state.json`
+wires Stage 8 `depends_on: [7]`, so a red evidence gate left Stage 8 permanently `PENDING` — no decision
+table, no report, no handoff. Red is the expected case (swift3: 0/5 E2E, failing supersession), and D-3
+already intends a `HOLD` to be publishable. The rubric in Stage 8 treats any failed or `NOT MEASURED` input
+as `HOLD`, so demoting loses no rigour and restores the deliverable. One GATE remains: the arm ran and its
+artifacts exist, because Stage 8 cannot compute a verdict from nothing.
+
+### D-8: Every agent gets its own `off` cell at its pinned upstream configuration
+**Date**: 2026-09-11 - **Stage**: planning (pre-review)
+**Options**: A) reuse Stage 4's all-off baseline for all four agents B) one `off` cell per agent
+**Chosen**: B.
+**Rationale**: Stage 4's baseline ran every agent at `off`, so it is a valid `off` row for the extractor only.
+Steps 2-4 pin upstream agents at `L_ext`/`L_lib`, and the classifier never ran in Stage 4 at all, so three of
+four agents had no `off` row and the selection rule could never choose `off` — against D28. Four extra cells,
+the cheapest in the sweep. The selection rule now ranks triplet passes first (the defect class `facts_found`
+cannot see, because the scorer also matches `properties`), then `facts_found`, then explicitly prefers the
+lowest level within the tie band.

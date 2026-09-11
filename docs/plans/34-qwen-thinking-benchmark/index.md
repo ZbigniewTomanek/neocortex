@@ -30,9 +30,16 @@ and the current process cannot separate them:
   but only to the private audit log, which Stage 7 tooling refuses to read. No privacy-safe graph
   sampler exists; the snapshot is a raw `pg_dump`. Cap-triggered relation drops in
   `cap_extraction_entities` are not counted at all.
-- **The thinking sweep never ran.** Plan 33 Stage 8 was gated on a `MIGRATE` verdict. The speed probe's
-  `THINKING` map stops at `medium`; thinking is disabled with the boolean `false`, not the string
-  `none`; the probe applies one level to all agents.
+- **The thinking sweep never ran, and until now it could not have worked.** Plan 33 Stage 8 was gated on a
+  `MIGRATE` verdict. The speed probe's `THINKING` map stops at `medium`; thinking is disabled with the
+  boolean `false`, not the string `none`; the probe applies one level to all agents. Underneath all of
+  that, the level never reached the server: `build_model` wires a plain `OpenAIProvider`, whose profile
+  reports `supports_thinking=False`, so `Model.prepare_request` dropped `thinking` and
+  `_get_reasoning_effort` omitted the field — `low`, `medium` and `high` put byte-identical requests on
+  the wire. Only `off` differed, because it alone restated itself through `openai_reasoning_effort`. Plan
+  33's own `probe-results-{low,medium,high,xhigh}.json` corroborate this: median reasoning tokens 196 /
+  229 / 224 / 180, every pair an alias under the Stage 5 rule. Fixed in `10dcbb5` (D-6); Stage 5 now
+  carries a positive control so the sweep cannot repeat the mistake.
 
 Two prior autonomous runs tell us how this work fails. The 13-hour run lost about 10 hours to live probes
 launched before mock validation, one uncapped 3 h 18 min model call, and full-matrix reruns after each
@@ -50,8 +57,11 @@ Readiness-based E2E waits and the recall formatter fix. No live model call in Ph
 
 **Phase B — remove the known defect, then identify the levels (Stages 4–5).** Keep scalar facts through
 Qwen extraction and merge, verified deterministically, then one bounded live `off` baseline. A 20-minute
-level-identity probe proves `off` is really off and finds which of `low/medium/high` the endpoint actually
-distinguishes, so the sweep never pays for an alias.
+level-identity probe proves `off` is really off, proves each level reaches the request (the positive
+control: the client-side defect in Context is fixed, but whether the *server* honours `reasoning_effort`
+is still unmeasured), and finds which of `low/medium/high` the endpoint actually distinguishes, so the
+sweep never pays for an alias. If no level separates from `off`, the sweep is cancelled and the plan
+reports that finding instead of buying it again cell by cell.
 
 **Phase C — one sweep, one service run, one decision (Stages 6–8).** Per-agent sweep in the probe with
 cached upstream stages, sequential extractor → librarian → ontology → classifier, hard 4 h budget,
@@ -84,15 +94,17 @@ artifact its value is read from and the defect that turns it red.
 | Metric | Baseline | Target | Kind | If missed | If unmeasurable |
 |--------|----------|--------|------|-----------|-----------------|
 | Every GATE value is derived from a measurement of this run's own inputs | n/a | no status is a literal, a default, a band midpoint, or a row generated to satisfy a count | GATE | block stage | REPORT `NOT MEASURED` and block |
-| Regression suite and lint | 1,283 passed / 7 skipped at `8766e90` | `uv run pytest tests/ -q` and `uv run ruff check .` pass; no test weakened, skipped, or deleted | GATE | block owning stage | n/a |
+| Regression suite and lint | 1,288 passed / 7 skipped at `b47f6ba` | `uv run pytest tests/ -q` and `uv run ruff check .` pass; no test weakened, skipped, or deleted | GATE | block owning stage | n/a |
 | Hosted path identity | hosted prompt/profile tests green | the hosted branches of `build_extractor_agent`, `build_ontology_agent`, `build_librarian_agent` and the `hosted` profile selection in `run_extraction` are byte-identical to `8766e90`, and the hosted tests named in Stage 4 pass | GATE | block owning stage | n/a |
 | Fact-retention scorer sensitivity | no scorer | deleting one fixture fact from a canned graph lowers `facts_found` by exactly one, and a canned graph with only the stale value yields `new_present=false` (Stage 1 mutation tests) | GATE | block Stage 1 | n/a |
+| Thinking level reaches the request | levels were dropped client-side before D-6 | for each swept level, `resources/effort-levels.json` records the resolved `openai_reasoning_effort` equal to that level; a level resolving to `Omit`/absent means the client is dropping it again and turns this red | GATE | block Stage 5, diagnose `build_model_settings` | REPORT `NOT MEASURED` and block |
+| Levels are distinguishable at all | unknown; Plan 33 probes show none | at least one level's median `reasoning_tokens` exceeds `off` by more than the `off` run's own max; if none does, the endpoint ignores effort — record it, cancel the Stage 6 sweep, and report | REPORT | publish and cancel the sweep | publish `NOT MEASURED` and cancel the sweep |
 | Thinking `off` is really off | 0 reasoning tokens in swift3 aggregate | `reasoning_tokens == 0` with `output_tokens > 0` and valid output on 3/3 identity requests, read from `resources/effort-levels.json`; a nonzero count or leaked `<think>` marker turns it red, and a zero-output row is an instrument failure, not a pass | GATE | block Stage 5, diagnose `build_model_settings` | REPORT `NOT MEASURED` and block |
 | Sweep completeness and provenance | no sweep | every planned cell in `resources/effort-sweep.json` links a raw probe JSON under `resources/sweep/` with the expected episode count, or is an explicit `TIMEOUT`/`NOT MEASURED` row; a copied or default row turns it red | GATE | block Stage 6 | REPORT `NOT MEASURED` and block |
-| Terminal stability of the tuned arm | 30/30 in swift3 | all submitted jobs terminal; `(failed+cancelled)/total ≤ 0.10` read from the run's captured `/admin/jobs/summary` in `metrics-qwen-flash-next-compact-tuned.json` | GATE | block Stage 7, root-cause | REPORT `NOT MEASURED` and block |
-| Critical integrity defects | 0 in swift3 | zero stored reasoning markers, invalid type names, garbage types, or source leaks in the metrics integrity scan | GATE | block Stage 7 | REPORT `NOT MEASURED` and block |
-| Skip-event attribution (Plan 33 backlog 16) | 16 + 5 aggregate only | per `reason_code`, exported safe event count == aggregate counter, and every `temporal_pair` conflict has `survived == true` in `skip-events-*.json`; a count mismatch or a lost `SUPERSEDES`/`CORRECTS` edge turns it red | GATE | block Stage 7 | REPORT `NOT MEASURED` and block |
-| Fixed graph sample | `NOT MEASURED` in Plan 33 | 20 real nodes and 20 real edges from the tuned arm's post-run graph in `quality-sample-*-tuned*.json`, all `type_valid` and `endpoints_exist` true; fewer than 20 real rows is a shortfall, never padded | GATE | block Stage 7 | REPORT `NOT MEASURED` and block |
+| Terminal stability of the tuned arm | 30/30 in swift3 | all submitted jobs terminal; `(failed+cancelled)/total ≤ 0.10` read from the run's captured `/admin/jobs/summary` in `metrics-qwen-flash-next-compact-tuned.json` | REPORT | publish, root-cause, feed Stage 8 as a failed rubric input | publish `NOT MEASURED`; Stage 8 reads it as `HOLD` |
+| Critical integrity defects | 0 in swift3 | zero stored reasoning markers, invalid type names, garbage types, or source leaks in the metrics integrity scan | REPORT | publish, root-cause, feed Stage 8 as a failed rubric input | publish `NOT MEASURED`; Stage 8 reads it as `HOLD` |
+| Skip-event attribution (Plan 33 backlog 16) | 16 + 5 aggregate only | per `reason_code`, exported safe event count == aggregate counter, and every `temporal_pair` conflict has `survived == true` in `skip-events-*.json`; a count mismatch or a lost `SUPERSEDES`/`CORRECTS` edge turns it red | REPORT | publish, root-cause, feed Stage 8 as a failed rubric input | publish `NOT MEASURED`; Stage 8 reads it as `HOLD` |
+| Fixed graph sample | `NOT MEASURED` in Plan 33 | 20 real nodes and 20 real edges from the tuned arm's post-run graph in `quality-sample-*-tuned*.json`, all `type_valid` and `endpoints_exist` true; fewer than 20 real rows is a shortfall, never padded | REPORT | publish, root-cause, feed Stage 8 as a failed rubric input | publish `NOT MEASURED`; Stage 8 reads it as `HOLD` |
 | Absolute quality rubric (ship gate, per agent) | 0/5 E2E; Plan 15 9/14; Plan 17 12/14 + 1 FAIL | `MIGRATE` only when all five E2E children exit 0, Plan 15 ≥ 11/14 `PASS`, Plan 17 ≥ 13/14 `ACCEPTABLE` with 0 `FAIL`, and the sample gate is green. Any `NOT MEASURED` input means `HOLD`. | REPORT | publish `HOLD` per agent and continue | publish `NOT MEASURED`; never `MIGRATE` |
 | Fact retention per level | not measured | per cell: compact `facts_found/facts_total`, triplet `new_present`/`old_absent`/`temporal_edge_present` | REPORT | publish and continue | publish `NOT MEASURED` |
 | Level identity and aliasing | unknown | median reasoning tokens per level; levels within 20% with overlapping ranges are one alias and the sweep runs the distinct set only | REPORT | publish and continue | publish `NOT MEASURED`, sweep all four |
@@ -105,8 +117,11 @@ artifact its value is read from and the defect that turns it red.
   `scripts/export_skip_events.py`, `scripts/export_graph_sample.py`, `scripts/e2e_common.py` — harness.
 - `scripts/e2e_*.py`, `scripts/run_e2e.sh`, `scripts/model_bakeoff.sh`, `scripts/compute_metrics.py`,
   `scripts/e2e_manifest.py`, `scripts/generate_qwen_parsing_report.py` — E2E reliability and evidence.
-- `src/neocortex/extraction/agents.py` (Qwen prompt, cap counter), `oneshot_librarian.py` (merge),
-  `pipeline.py` (event fields), `src/neocortex/tools/recall.py` (formatter) — Qwen path and one bug fix.
+- `src/neocortex/extraction/agents.py` (Qwen prompt, cap counter), `oneshot_librarian.py` (merge and
+  `render_oneshot_items`), `pipeline.py` (event fields), `src/neocortex/tools/recall.py` (formatter) —
+  Qwen path and one bug fix.
+- `src/neocortex/model_factory.py` — only if Stage 5's positive control shows a level is still dropped.
+  The client-side relay was fixed in pre-review (D-6); do not re-open it without a red Stage 5 gate.
 - `tests/` — new and updated tests only; no assertion weakened.
 - `.env.example`, `docs/development.md` — Qwen effort defaults and local setup text; never secrets.
 - `docs/plans/34-qwen-thinking-benchmark/` — this plan; `docs/plans/33-local-qwen-migration/backlog.md`
