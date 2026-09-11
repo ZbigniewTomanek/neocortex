@@ -16,6 +16,7 @@ from neocortex.extraction.schemas import ExtractedEntity, ExtractedRelation, Ext
 
 AGENT = "qwen_speed_probe"
 TEST_CONFIG = AgentInferenceConfig(use_test_model=True)
+FIXTURE_PATH = Path(__file__).resolve().parents[2] / "docs/plans/34-qwen-thinking-benchmark/resources/fact-fixture.json"
 
 
 def _record(event: str, **fields: Any) -> dict[str, Any]:
@@ -139,6 +140,54 @@ def test_cache_key_is_setup_specific() -> None:
     assert base != probe.cache_key("E04", "local:qwen3.8-flash-next", False, "abc", test_model=False)
     assert base != probe.cache_key("E04", "local:qwen3.8-flash-next", "low", "def", test_model=False)
     assert base != probe.cache_key("E04", "local:qwen3.8-flash-next", "low", "abc", test_model=True)
+    # A cache entry holds the ontology and extractor agents' output, so both of
+    # their levels separate keys; omitting either would let a rerun reuse an
+    # extraction produced at a different level.
+    assert base == probe.cache_key(
+        "E04", "local:qwen3.8-flash-next", "low", "abc", test_model=False, ontology_thinking="low"
+    )
+    assert base != probe.cache_key(
+        "E04", "local:qwen3.8-flash-next", "low", "abc", test_model=False, ontology_thinking="high"
+    )
+    assert base != probe.cache_key(
+        "E04", "local:qwen3.8-flash-next", "low", "abc", test_model=False, extractor_thinking="high"
+    )
+
+
+def test_cache_key_ignores_the_librarian_and_classifier_levels() -> None:
+    """Stage 6's librarian sweep reuses one extraction across librarian levels.
+
+    The librarian never influences the cached artifacts (an ``ExtractionResult``
+    plus the ontology snapshot it was produced against), and a single-valued
+    ``--cache-thinking`` cannot express a per-agent key — so folding the
+    librarian level in would miss the cache at every cell and re-run extraction.
+    The requirement that a librarian-only rerun cannot silently reuse a foreign
+    extraction is met by the *extractor* level being in the key.
+    """
+    import inspect
+
+    parameters = inspect.signature(probe.cache_key).parameters
+    assert "librarian_thinking" not in parameters
+    assert "classifier_thinking" not in parameters
+
+    def key_for(argv: list[str]) -> str:
+        args = probe.build_parser().parse_args(argv)
+        levels = probe.resolve_thinking_levels(args)
+        return probe.cache_key(
+            "E04",
+            args.model,
+            probe.THINKING[args.cache_thinking or args.thinking],
+            "abc",
+            test_model=args.test_model,
+            ontology_thinking=probe.THINKING[levels["ontology"]],
+            extractor_thinking=probe.THINKING[levels["extractor"]],
+        )
+
+    base = key_for(["--thinking", "low"])
+    assert key_for(["--thinking", "low", "--thinking-librarian", "high"]) == base
+    assert key_for(["--thinking", "low", "--thinking-classifier", "high"]) == base
+    assert key_for(["--thinking", "low", "--thinking-extractor", "high"]) != base
+    assert key_for(["--thinking", "low", "--thinking-ontology", "high"]) != base
 
 
 def test_cache_round_trip(tmp_path: Path) -> None:
@@ -273,6 +322,14 @@ def test_cli_defaults() -> None:
     assert args.test_model is False
     assert args.profile is None
     assert args.classify is False
+    assert args.corpus == "episodes"
+    assert args.fixture is None
+    assert args.per_call_timeout == 300.0
+    assert args.max_wall_seconds is None
+    assert args.thinking_ontology is None
+    assert args.thinking_extractor is None
+    assert args.thinking_librarian is None
+    assert args.thinking_classifier is None
 
 
 def test_thinking_off_maps_to_false() -> None:
@@ -295,6 +352,114 @@ def test_local_endpoint_defaults_to_the_probe_endpoint(monkeypatch: pytest.Monke
     assert endpoint.base_url == "http://127.0.0.1:24000/v1"
     assert endpoint.api_key_env == "LITELLM_API_KEY"
     assert endpoint.timeout_s == 1500.0
+
+
+def test_thinking_high_is_available() -> None:
+    """``high`` is a level the sweep must be able to ask for; ``xhigh`` is not."""
+    args = probe.build_parser().parse_args(["--thinking", "high"])
+
+    assert args.thinking == "high"
+    assert probe.THINKING["high"] == "high"
+    assert "xhigh" not in probe.THINKING
+
+
+def test_per_agent_thinking_flags_parse_and_fall_back(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each per-agent flag defaults to None and resolves to --thinking."""
+    del monkeypatch
+    default = probe.build_parser().parse_args(["--thinking", "medium"])
+
+    assert probe.resolve_thinking_levels(default) == {
+        "ontology": "medium",
+        "extractor": "medium",
+        "librarian": "medium",
+        "classifier": "medium",
+    }
+
+    overridden = probe.build_parser().parse_args(
+        ["--thinking", "off", "--thinking-extractor", "high", "--thinking-classifier", "low"]
+    )
+
+    assert probe.resolve_thinking_levels(overridden) == {
+        "ontology": "off",
+        "extractor": "high",
+        "librarian": "off",
+        "classifier": "low",
+    }
+
+
+def test_per_agent_levels_reach_three_separate_agent_configs() -> None:
+    """The resolved levels build one AgentInferenceConfig per agent."""
+    args = probe.build_parser().parse_args(["--test-model", "--thinking", "off", "--thinking-extractor", "high"])
+    configs = probe.build_configs(args, probe.resolve_thinking_levels(args), None)
+
+    assert configs["ontology"].thinking_effort is False
+    assert configs["extractor"].thinking_effort == "high"
+    assert configs["librarian"].thinking_effort is False
+    assert configs["classifier"].thinking_effort is False
+
+
+def test_per_call_timeout_bounds_one_model_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``--per-call-timeout`` reaches LocalEndpoint; ``--episode-timeout`` keeps its own default."""
+    monkeypatch.delenv("NEOCORTEX_LOCAL_MODEL_BASE_URL", raising=False)
+    monkeypatch.delenv("NEOCORTEX_LOCAL_MODEL_API_KEY_ENV", raising=False)
+    args = probe.build_parser().parse_args([])
+
+    assert args.per_call_timeout == 300.0
+    assert args.episode_timeout == 900.0
+    assert probe.resolve_local_endpoint(args.per_call_timeout).timeout_s == 300.0
+
+    explicit = probe.build_parser().parse_args(["--per-call-timeout", "45"])
+    assert probe.resolve_local_endpoint(explicit.per_call_timeout).timeout_s == 45.0
+    assert explicit.episode_timeout == 900.0
+
+
+# ── Unit selection ──
+
+
+def _corpus() -> dict[int, dict[str, object]]:
+    from scripts.corpus_loader import load_corpus  # ty: ignore[unresolved-import]
+
+    return {int(str(record["number"])): record for record in load_corpus(profile="compact")}
+
+
+def test_corpus_modes_select_the_right_units() -> None:
+    from scripts.fact_retention import load_fixture  # ty: ignore[unresolved-import]
+
+    fixture = load_fixture(FIXTURE_PATH)
+    corpus = _corpus()
+
+    def keys(argv: list[str]) -> list[str]:
+        args = probe.build_parser().parse_args(argv)
+        return [unit.key for unit in probe.select_units(args, corpus, fixture)]
+
+    assert keys([]) == ["E04", "E05"]
+    assert keys(["--corpus", "compact"]) == ["E02", "E04", "E05", "E10", "E18", "E20", "E26", "E27"]
+    assert keys(["--corpus", "supersession"]) == ["S05", "S11", "S07"]
+    both = keys(["--corpus", "both"])
+    assert len(both) == 11
+    assert both[-3:] == ["S05", "S11", "S07"]
+
+
+def test_a_triplet_unit_carries_both_texts_at_the_triplet_importance() -> None:
+    from scripts.fact_retention import load_fixture  # ty: ignore[unresolved-import]
+
+    args = probe.build_parser().parse_args(["--corpus", "supersession"])
+    units = probe.select_units(args, _corpus(), load_fixture(FIXTURE_PATH))
+
+    assert [label for label, _ in units[0].texts] == ["S05-1", "S05-2"]
+    assert units[0].kind == "triplet"
+    assert units[0].importance == 0.5
+
+
+@pytest.mark.parametrize("corpus_mode", ["supersession", "both"])
+@pytest.mark.asyncio
+async def test_triplet_corpora_require_a_fixture(corpus_mode: str, capsys: pytest.CaptureFixture[str]) -> None:
+    """Without --fixture there are no triplets to run, so the run must not start."""
+    with pytest.raises(SystemExit) as caught:
+        await probe.main(["--test-model", "--corpus", corpus_mode])
+
+    assert caught.value.code == 2
+    assert "--fixture" in capsys.readouterr().err
 
 
 # ── End to end with TestModel ──
@@ -338,3 +503,152 @@ async def test_test_model_run_over_two_episodes(tmp_path: Path) -> None:
     assert all(episode["status"] == "ok" for episode in payload["episodes"])
     assert {row["stage"] for row in payload["stages"]} == {"ontology", "extractor", "librarian"}
     assert all(episode["words"] > 0 for episode in payload["episodes"])
+
+
+@pytest.mark.asyncio
+async def test_test_model_run_over_the_full_corpus_and_triplets(tmp_path: Path) -> None:
+    """``--corpus both`` writes eleven rows, each with a fact_score key.
+
+    TestModel returns stub entities, so a low or zero ``facts_found`` is the
+    correct result here: this proves the plumbing, not the model's quality.
+    """
+    import sys
+
+    from loguru import logger
+
+    output = tmp_path / "both.json"
+    try:
+        exit_code = await probe.main(
+            [
+                "--test-model",
+                "--corpus",
+                "both",
+                "--fixture",
+                str(FIXTURE_PATH),
+                "--cache-dir",
+                str(tmp_path / "cache"),
+                "--output",
+                str(output),
+            ]
+        )
+    finally:
+        logger.remove()
+        logger.add(sys.stderr)
+
+    assert exit_code == 0
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    keys = [episode["episode"] for episode in payload["episodes"]]
+    assert keys == ["E02", "E04", "E05", "E10", "E18", "E20", "E26", "E27", "S05", "S11", "S07"]
+    assert all("fact_score" in episode for episode in payload["episodes"])
+    compact = payload["episodes"][:8]
+    triplets = payload["episodes"][8:]
+    assert all(isinstance(episode["fact_score"], dict) for episode in compact)
+    assert all(set(episode["fact_score"]) == {"facts_total", "facts_found", "missing_keys"} for episode in compact)
+    assert all(episode["supersession"] is None for episode in compact)
+    # A triplet has no facts[] in the fixture, so a zero-valued score there would
+    # read as a measured full-marks result; it must stay null.
+    assert all(episode["fact_score"] is None for episode in triplets)
+    assert all(
+        set(episode["supersession"]) == {"new_present", "old_absent", "temporal_edge_present"} for episode in triplets
+    )
+    assert payload["run"]["corpus"] == "both"
+    assert payload["run"]["chain"] == {"status": "NOT MEASURED", "reason": "repo_mode=fresh"}
+    assert payload["run"]["wall_budget_exhausted"] is False
+
+
+@pytest.mark.asyncio
+async def test_chain_is_measured_on_a_shared_repository(tmp_path: Path) -> None:
+    """``--corpus compact --repo shared`` records the chain expectation, measured."""
+    import sys
+
+    from loguru import logger
+
+    output = tmp_path / "chain.json"
+    try:
+        await probe.main(
+            [
+                "--test-model",
+                "--corpus",
+                "compact",
+                "--repo",
+                "shared",
+                "--fixture",
+                str(FIXTURE_PATH),
+                "--cache-dir",
+                str(tmp_path / "cache"),
+                "--output",
+                str(output),
+            ]
+        )
+    finally:
+        logger.remove()
+        logger.add(sys.stderr)
+
+    chain = json.loads(output.read_text(encoding="utf-8"))["run"]["chain"]
+    assert chain["episodes"] == ["E18", "E20", "E26"]
+    assert chain["min_temporal_edges"] == 1
+    assert isinstance(chain["temporal_edges"], int)
+    assert chain["satisfied"] == (chain["temporal_edges"] >= 1)
+
+
+@pytest.mark.asyncio
+async def test_max_wall_seconds_zero_launches_nothing_and_still_writes(tmp_path: Path) -> None:
+    """An exhausted budget records every unit as NOT MEASURED, never as a zero row."""
+    import sys
+
+    from loguru import logger
+
+    output = tmp_path / "budget.json"
+    try:
+        exit_code = await probe.main(
+            [
+                "--test-model",
+                "--max-wall-seconds",
+                "0",
+                "--cache-dir",
+                str(tmp_path / "cache"),
+                "--output",
+                str(output),
+            ]
+        )
+    finally:
+        logger.remove()
+        logger.add(sys.stderr)
+
+    assert exit_code == 1
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert [episode["episode"] for episode in payload["episodes"]] == ["E04", "E05"]
+    assert all(episode["status"] == "NOT MEASURED" for episode in payload["episodes"])
+    assert all(episode["reason"] == "wall_budget" for episode in payload["episodes"])
+    assert all(episode["seconds_total"] is None for episode in payload["episodes"])
+    assert all(episode["words"] is None for episode in payload["episodes"])
+    assert payload["stages"] == []
+    assert payload["run"]["wall_budget_exhausted"] is True
+    assert payload["run"]["chain"] == {"status": "NOT MEASURED", "reason": "wall_budget"}
+
+
+@pytest.mark.asyncio
+async def test_the_output_file_is_written_after_every_unit(tmp_path: Path) -> None:
+    """A killed run must leave valid JSON holding every unit that finished."""
+    import sys
+
+    from loguru import logger
+
+    output = tmp_path / "incremental.json"
+    seen: list[int] = []
+    original = probe.write_output
+
+    def spy(path: Path, run_meta: Any, summaries: list[dict[str, Any]], rows: list[dict[str, Any]]) -> None:
+        original(path, run_meta, summaries, rows)
+        seen.append(len(json.loads(path.read_text(encoding="utf-8"))["episodes"]))
+
+    probe.write_output = spy
+    try:
+        await probe.main(["--test-model", "--cache-dir", str(tmp_path / "cache"), "--output", str(output)])
+    finally:
+        probe.write_output = original
+        logger.remove()
+        logger.add(sys.stderr)
+
+    # One write after each of the two episodes, plus the final write.
+    assert seen == [1, 2, 2]

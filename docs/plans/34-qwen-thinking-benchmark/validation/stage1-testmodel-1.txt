@@ -1,0 +1,56 @@
+run: model=test-model thinking=off stage=all repo=fresh
+ep    stage         seconds  reqs  tools    in_tok   out_tok     think  ents  rels  status
+E02   ontology         0.01     2      3       878        30         0     -     -  ok
+E02   extractor         0.0     1      0       332         2         0     0     0  ok
+E02   librarian         0.0     2      9      1543       118         0     -     -  ok
+E02   TOTAL            0.02     5                                          0     0  ok  words=76
+E04   ontology          0.0     2      3       878        30         0     -     -  ok
+E04   extractor         0.0     1      0       332         2         0     0     0  ok
+E04   librarian         0.0     2      9      1543       118         0     -     -  ok
+E04   TOTAL            0.01     5                                          0     0  ok  words=69
+E05   ontology          0.0     2      3       878        30         0     -     -  ok
+E05   extractor         0.0     1      0       332         2         0     0     0  ok
+E05   librarian         0.0     2      9      1543       118         0     -     -  ok
+E05   TOTAL            0.01     5                                          0     0  ok  words=103
+E10   ontology          0.0     2      3       878        30         0     -     -  ok
+E10   extractor         0.0     1      0       332         2         0     0     0  ok
+E10   librarian         0.0     2      9      1543       118         0     -     -  ok
+E10   TOTAL            0.01     5                                          0     0  ok  words=85
+E18   ontology          0.0     2      3       878        30         0     -     -  ok
+E18   extractor         0.0     1      0       332         2         0     0     0  ok
+E18   librarian         0.0     2      9      1543       118         0     -     -  ok
+E18   TOTAL            0.01     5                                          0     0  ok  words=104
+E20   ontology          0.0     2      3       878        30         0     -     -  ok
+E20   extractor         0.0     1      0       332         2         0     0     0  ok
+E20   librarian         0.0     2      9      1543       118         0     -     -  ok
+E20   TOTAL            0.01     5                                          0     0  ok  words=95
+E26   ontology          0.0     2      3       878        30         0     -     -  ok
+E26   extractor         0.0     1      0       332         2         0     0     0  ok
+E26   librarian         0.0     2      9      1543       118         0     -     -  ok
+E26   TOTAL            0.01     5                                          0     0  ok  words=108
+E27   ontology          0.0     2      3       878        30         0     -     -  ok
+E27   extractor         0.0     1      0       332         2         0     0     0  ok
+E27   librarian         0.0     2      9      1543       118         0     -     -  ok
+E27   TOTAL            0.01     5                                          0     0  ok  words=102
+S05-1 ontology          0.0     2      3       878        30         0     -     -  ok
+S05-1 extractor         0.0     1      0       332         2         0     0     0  ok
+S05-1 librarian         0.0     2      9      1543       118         0     -     -  ok
+S05-2 ontology          0.0     2      3       878        30         0     -     -  ok
+S05-2 extractor         0.0     1      0       332         2         0     0     0  ok
+S05-2 librarian         0.0     2      9      1543       118         0     -     -  ok
+S05   TOTAL            0.02    10                                          0     0  ok  words=46
+S11-1 ontology          0.0     2      3       878        30         0     -     -  ok
+S11-1 extractor         0.0     1      0       332         2         0     0     0  ok
+S11-1 librarian         0.0     2      9      1543       118         0     -     -  ok
+S11-2 ontology          0.0     2      3       878        30         0     -     -  ok
+S11-2 extractor         0.0     1      0       332         2         0     0     0  ok
+S11-2 librarian         0.0     2      9      1543       118         0     -     -  ok
+S11   TOTAL            0.02    10                                          0     0  ok  words=43
+S07-1 ontology          0.0     2      3       878        30         0     -     -  ok
+S07-1 extractor         0.0     1      0       332         2         0     0     0  ok
+S07-1 librarian         0.0     2      9      1543       118         0     -     -  ok
+S07-2 ontology          0.0     2      3       878        30         0     -     -  ok
+S07-2 extractor         0.0     1      0       332         2         0     0     0  ok
+S07-2 librarian         0.0     2      9      1543       118         0     -     -  ok
+S07   TOTAL            0.02    10                                          0     0  ok  words=78
+run total: 0.15s, 11/11 episodes ok, summary written to .tmp/plan34/stage1-testmodel.json

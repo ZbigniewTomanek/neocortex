@@ -280,6 +280,20 @@ class InMemoryRepository:
             for et in sorted(self._edge_types.values(), key=lambda t: t.name)
         ]
 
+    def graph_snapshot(self) -> tuple[list[Node], list[Edge], dict[int, str], dict[int, str]]:
+        """Return active nodes, edges, and the type-id tables for offline scoring.
+
+        Test-only surface for the speed probe's fact-retention scorer.  Deliberately
+        not on ``MemoryRepository``: production callers must not enumerate a graph.
+        Takes no ``agent_id`` because the mock holds a single graph.
+        """
+        return (
+            [node for node in self._nodes.values() if not node.forgotten],
+            list(self._edges.values()),
+            {nt.id: nt.name for nt in self._node_types.values()},
+            {et.id: et.name for et in self._edge_types.values()},
+        )
+
     async def get_stats(self, agent_id: str | None = None) -> GraphStats:
         count = sum(1 for e in self._episodes if agent_id is None or e["agent_id"] == agent_id)
         forgotten_nodes = sum(1 for n in self._nodes.values() if n.forgotten)

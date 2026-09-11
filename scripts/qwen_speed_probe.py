@@ -21,6 +21,7 @@ import os
 import subprocess
 import sys
 import time
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -40,8 +41,24 @@ from neocortex.schemas.memory import TypeInfo
 
 try:  # Direct ``python scripts/qwen_speed_probe.py`` invocation.
     from corpus_loader import corpus_path, load_corpus  # ty: ignore[unresolved-import]
+    from fact_retention import (  # ty: ignore[unresolved-import]
+        Fixture,
+        count_temporal_edges,
+        load_fixture,
+        score_episode,
+        score_supersession,
+        snapshot_graph,
+    )
 except ModuleNotFoundError:  # Imported as ``scripts.qwen_speed_probe``.
     from scripts.corpus_loader import corpus_path, load_corpus  # ty: ignore[unresolved-import]
+    from scripts.fact_retention import (  # ty: ignore[unresolved-import]
+        Fixture,
+        count_temporal_edges,
+        load_fixture,
+        score_episode,
+        score_supersession,
+        snapshot_graph,
+    )
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENT_ID = "qwen_speed_probe"
@@ -51,9 +68,20 @@ DEFAULT_API_KEY_ENV = "LITELLM_API_KEY"
 CACHE_DIR = ROOT / ".tmp/qwen-swift/cache"
 VALIDATION_DIR = ROOT / ".tmp/qwen-swift/validation"
 EPISODE_KEYS: dict[str, int] = {f"E{number:02d}": number for number in (2, 4, 5, 10, 18, 20, 26, 27)}
-THINKING: dict[str, ThinkingLevel] = {"off": False, "minimal": "minimal", "low": "low", "medium": "medium"}
+THINKING: dict[str, ThinkingLevel] = {
+    "off": False,
+    "minimal": "minimal",
+    "low": "low",
+    "medium": "medium",
+    "high": "high",
+}
 PROFILES = ("hosted", "qwen_legacy", "qwen_finite", "qwen_bounded", "qwen_oneshot")
 AGENTS = ("ontology", "extractor", "librarian")
+# Agents whose thinking level the CLI can set independently.  The classifier is
+# not a pipeline stage but runs under ``--classify`` from the same harness.
+TUNABLE_AGENTS = (*AGENTS, "classifier")
+CORPUS_CHOICES = ("episodes", "compact", "supersession", "both")
+TRIPLET_IMPORTANCE = 0.5
 # ``stage`` on pipeline events carries the ``_agent`` suffix; ``agent`` on agent
 # lifecycle and usage events does not.  Both map to one probe stage name.
 STAGE_NAMES = {name: name for name in AGENTS} | {f"{name}_agent": name for name in AGENTS}
@@ -143,9 +171,37 @@ def aggregate_stage_rows(episode: str, records: list[dict[str, Any]], *, outcome
     return [rows[stage] for stage in STAGE_ORDER if stage in rows]
 
 
-def cache_key(episode: str, model: str, thinking: ThinkingLevel, corpus_sha256: str, *, test_model: bool) -> str:
-    """Return the cache file stem for one episode under one inference setup."""
-    preimage = f"{model}|{thinking}|{corpus_sha256}|{'test' if test_model else 'live'}"
+def cache_key(
+    episode: str,
+    model: str,
+    thinking: ThinkingLevel,
+    corpus_sha256: str,
+    *,
+    test_model: bool,
+    ontology_thinking: ThinkingLevel | None = None,
+    extractor_thinking: ThinkingLevel | None = None,
+) -> str:
+    """Return the cache file stem for one episode under one inference setup.
+
+    A cache entry holds an ``ExtractionResult`` plus the ontology snapshot it was
+    produced against — artifacts the ontology and extractor agents produce and
+    the librarian never influences.  Both of their levels therefore belong in the
+    key: a librarian-only rerun must not silently reuse an extraction produced at
+    another extractor level.
+
+    The librarian and classifier levels are deliberately **out** of the key.  The
+    thinking sweep's librarian pass reuses one extraction cached at a pinned
+    extractor level across every librarian level; a single-valued
+    ``--cache-thinking`` cannot express a per-agent key, so folding the librarian
+    level in would miss the cache at every cell and re-run extraction each time.
+    Excluding it still satisfies the requirement above, because the extractor
+    level *is* in the key.
+
+    ``ontology_thinking`` and ``extractor_thinking`` default to ``thinking``.
+    """
+    ontology = thinking if ontology_thinking is None else ontology_thinking
+    extractor = thinking if extractor_thinking is None else extractor_thinking
+    preimage = f"{model}|{thinking}|{ontology}|{extractor}|{corpus_sha256}|{'test' if test_model else 'live'}"
     return f"{episode}-{hashlib.sha256(preimage.encode()).hexdigest()[:12]}"
 
 
@@ -209,6 +265,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--episodes", nargs="+", choices=tuple(EPISODE_KEYS), default=["E04", "E05"])
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--thinking", choices=tuple(THINKING), default="low")
+    for agent in TUNABLE_AGENTS:
+        parser.add_argument(
+            f"--thinking-{agent}",
+            choices=tuple(THINKING),
+            default=None,
+            help=f"thinking level for the {agent} agent; falls back to --thinking",
+        )
     parser.add_argument(
         "--cache-thinking",
         choices=tuple(THINKING),
@@ -217,6 +280,21 @@ def build_parser() -> argparse.ArgumentParser:
         "so a librarian-only run can reuse an extraction produced at another level",
     )
     parser.add_argument("--episode-timeout", type=float, default=900.0)
+    parser.add_argument(
+        "--per-call-timeout",
+        type=float,
+        default=300.0,
+        help="bound on a single model call (reaches LocalEndpoint.timeout_s); --episode-timeout still "
+        "bounds the whole episode",
+    )
+    parser.add_argument(
+        "--max-wall-seconds",
+        type=float,
+        default=None,
+        help="stop launching units once this much wall time has passed; unlaunched units are recorded as NOT MEASURED",
+    )
+    parser.add_argument("--corpus", choices=CORPUS_CHOICES, default="episodes")
+    parser.add_argument("--fixture", type=Path, default=None, help="fact fixture for offline quality scoring")
     parser.add_argument("--repo", choices=("fresh", "shared"), default="fresh")
     parser.add_argument("--stage", choices=("all", "librarian"), default="all")
     parser.add_argument("--cache-dir", type=Path, default=CACHE_DIR)
@@ -293,28 +371,139 @@ async def _classify(
     return round(time.monotonic() - started, 2), status, matched, proposed
 
 
-async def run_episode(
-    episode: str,
+@dataclass(frozen=True)
+class Unit:
+    """One measured run unit: a compact episode or a supersession triplet.
+
+    A triplet is two texts on one shared repository that produce a single
+    summary row, so the probe measures the same before/after defect the E2E
+    children measure.
+    """
+
+    key: str
+    kind: str  # "episode" | "triplet"
+    texts: tuple[tuple[str, str], ...]  # (stage-row label, text)
+    importance: float
+
+
+def resolve_thinking_levels(args: argparse.Namespace) -> dict[str, str]:
+    """Return the resolved CLI level name per agent, falling back to ``--thinking``."""
+    return {agent: (getattr(args, f"thinking_{agent}") or args.thinking) for agent in TUNABLE_AGENTS}
+
+
+def build_configs(
+    args: argparse.Namespace, levels: dict[str, str], endpoint: LocalEndpoint | None
+) -> dict[str, AgentInferenceConfig]:
+    """Build one :class:`AgentInferenceConfig` per tunable agent."""
+    if args.test_model:
+        # The hosted default model name keeps TestModel free of endpoint requirements.
+        return {
+            agent: AgentInferenceConfig(use_test_model=True, thinking_effort=THINKING[levels[agent]])
+            for agent in TUNABLE_AGENTS
+        }
+    return {
+        agent: AgentInferenceConfig(
+            model_name=args.model, thinking_effort=THINKING[levels[agent]], local_endpoint=endpoint
+        )
+        for agent in TUNABLE_AGENTS
+    }
+
+
+def select_units(args: argparse.Namespace, corpus: dict[int, dict[str, object]], fixture: Fixture | None) -> list[Unit]:
+    """Expand ``--corpus`` into the ordered run units."""
+    keys: list[str] = []
+    if args.corpus == "episodes":
+        keys = list(args.episodes)
+    elif args.corpus in ("compact", "both"):
+        keys = list(EPISODE_KEYS)
+    units = [
+        Unit(
+            key=key,
+            kind="episode",
+            texts=((key, str(corpus[EPISODE_KEYS[key]]["text"])),),
+            importance=float(str(corpus[EPISODE_KEYS[key]]["importance"])),
+        )
+        for key in keys
+    ]
+    if args.corpus in ("supersession", "both") and fixture is not None:
+        units.extend(
+            Unit(
+                key=triplet.id,
+                kind="triplet",
+                texts=((f"{triplet.id}-1", triplet.initial_text), (f"{triplet.id}-2", triplet.update_text)),
+                importance=TRIPLET_IMPORTANCE,
+            )
+            for triplet in fixture.supersession
+        )
+    return units
+
+
+def blank_summary(key: str, status: str, reason: str) -> dict[str, Any]:
+    """A never-launched unit: nulls, never zeros that would read as measured."""
+    return {
+        "episode": key,
+        "words": None,
+        "seconds_total": None,
+        "requests_total": None,
+        "nodes_after": None,
+        "edges_after": None,
+        "edge_types_after": None,
+        "fact_score": None,
+        "supersession": None,
+        "status": status,
+        "reason": reason,
+    }
+
+
+def write_output(
+    output: Path, run_meta: dict[str, Any], summaries: list[dict[str, Any]], rows: list[dict[str, Any]]
+) -> None:
+    """Write the summary file.  Called after every unit so a kill leaves valid JSON."""
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps({"run": run_meta, "episodes": summaries, "stages": rows}, indent=2), encoding="utf-8")
+
+
+def chain_result(args: argparse.Namespace, fixture: Fixture | None, repo: InMemoryRepository) -> dict[str, Any]:
+    """Evaluate the fixture's chain expectation, or say why it was not measured."""
+    if args.corpus not in ("compact", "both"):
+        return {"status": "NOT MEASURED", "reason": f"corpus={args.corpus}"}
+    if fixture is None or fixture.chain is None:
+        return {"status": "NOT MEASURED", "reason": "no_fixture"}
+    if args.repo != "shared":
+        return {"status": "NOT MEASURED", "reason": f"repo_mode={args.repo}"}
+    measured = count_temporal_edges(snapshot_graph(repo))
+    return {
+        "episodes": list(fixture.chain.episodes),
+        "min_temporal_edges": fixture.chain.min_temporal_edges,
+        "temporal_edges": measured,
+        "satisfied": measured >= fixture.chain.min_temporal_edges,
+    }
+
+
+async def run_text(
+    label: str,
+    text: str,
+    importance: float,
     repo: InMemoryRepository,
-    corpus: dict[int, dict[str, object]],
     args: argparse.Namespace,
     collector: ActionLogCollector,
-    config: AgentInferenceConfig,
+    configs: dict[str, AgentInferenceConfig],
+    levels: dict[str, str],
     embeddings: Any,
     corpus_sha256: str,
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Run one episode end to end and return its summary plus stage rows."""
-    record = corpus[EPISODE_KEYS[episode]]
-    text = str(record["text"])
+) -> tuple[float, str, list[dict[str, Any]]]:
+    """Run one text end to end and return (seconds, outcome, stage rows)."""
     episode_id = await repo.store_episode(
-        AGENT_ID, text, importance=float(str(record["importance"])), metadata={"importance_hint": record["importance"]}
+        AGENT_ID, text, importance=importance, metadata={"importance_hint": importance}
     )
     key = cache_key(
-        episode,
+        label,
         args.model,
         THINKING[args.cache_thinking or args.thinking],
         corpus_sha256,
         test_model=args.test_model,
+        ontology_thinking=THINKING[levels["ontology"]],
+        extractor_thinking=THINKING[levels["extractor"]],
     )
     collector.reset()
 
@@ -340,9 +529,15 @@ async def run_episode(
     classifier_row: dict[str, Any] | None = None
     if args.classify:
         seconds, status, matched, proposed = await _classify(
-            text, episode, episode_id, config, THINKING[args.thinking], args.episode_timeout, args.cache_dir
+            text,
+            label,
+            episode_id,
+            configs["classifier"],
+            THINKING[levels["classifier"]],
+            args.episode_timeout,
+            args.cache_dir,
         )
-        classifier_row = _blank_row(episode, "classifier", status)
+        classifier_row = _blank_row(label, "classifier", status)
         classifier_row["seconds"] = seconds
         classifier_row["matched_domains"] = matched
         classifier_row["proposed_domains"] = proposed
@@ -356,9 +551,9 @@ async def run_episode(
                 embeddings=embeddings,
                 agent_id=AGENT_ID,
                 episode_ids=[episode_id],
-                ontology_config=config,
-                extractor_config=config,
-                librarian_config=config,
+                ontology_config=configs["ontology"],
+                extractor_config=configs["extractor"],
+                librarian_config=configs["librarian"],
                 librarian_profile=args.profile,
                 precomputed=precomputed,
                 on_extracted=on_extracted,
@@ -371,7 +566,7 @@ async def run_episode(
         outcome = f"error:{type(exc).__name__}"
     seconds_total = round(time.monotonic() - started, 2)
 
-    rows = aggregate_stage_rows(episode, collector.records, outcome=outcome)
+    rows = aggregate_stage_rows(label, collector.records, outcome=outcome)
     if classifier_row is not None:
         # The classifier runs outside run_extraction, so the harness owns its timing.
         collected = next((row for row in rows if row["stage"] == "classifier"), None)
@@ -383,11 +578,56 @@ async def run_episode(
             collected["matched_domains"] = classifier_row["matched_domains"]
             collected["proposed_domains"] = classifier_row["proposed_domains"]
 
+    return seconds_total, outcome, rows
+
+
+async def run_unit(
+    unit: Unit,
+    repo: InMemoryRepository,
+    args: argparse.Namespace,
+    collector: ActionLogCollector,
+    configs: dict[str, AgentInferenceConfig],
+    levels: dict[str, str],
+    embeddings: Any,
+    corpus_sha256: str,
+    fixture: Fixture | None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Run one unit's texts in order and return its summary plus stage rows.
+
+    ``fact_score`` is ``None`` wherever nothing was measured — for a triplet, and
+    for an episode the fixture says nothing about.  A zero-valued score there
+    would read as a measured full-marks result.
+    """
+    seconds_total = 0.0
+    rows: list[dict[str, Any]] = []
+    outcome = "ok"
+    for label, text in unit.texts:
+        seconds, text_outcome, text_rows = await run_text(
+            label, text, unit.importance, repo, args, collector, configs, levels, embeddings, corpus_sha256
+        )
+        seconds_total += seconds
+        rows.extend(text_rows)
+        if text_outcome != "ok" and outcome == "ok":
+            outcome = text_outcome
+
+    fact_score: dict[str, Any] | None = None
+    supersession: dict[str, Any] | None = None
+    if fixture is not None:
+        graph = snapshot_graph(repo)
+        if unit.kind == "episode":
+            episode_fixture = fixture.episode(unit.key)
+            if episode_fixture is not None:
+                fact_score = asdict(score_episode(graph, episode_fixture))
+        else:
+            triplet = fixture.triplet(unit.key)
+            if triplet is not None:
+                supersession = asdict(score_supersession(graph, triplet))
+
     ontology_summary = await repo.get_ontology_summary(AGENT_ID)
     summary = {
-        "episode": episode,
-        "words": len(text.split()),
-        "seconds_total": seconds_total,
+        "episode": unit.key,
+        "words": sum(len(text.split()) for _, text in unit.texts),
+        "seconds_total": round(seconds_total, 2),
         "requests_total": sum(int(row["requests"]) for row in rows),
         "nodes_after": int(ontology_summary["total_nodes"]),
         "edges_after": int(ontology_summary["total_edges"]),
@@ -396,6 +636,8 @@ async def run_episode(
             for item in ontology_summary["edge_types"]
             if int(item["usage_count"]) > 0
         },
+        "fact_score": fact_score,
+        "supersession": supersession,
         "status": outcome,
     }
     return summary, rows
@@ -426,37 +668,49 @@ def print_rows(summary: dict[str, Any], rows: list[dict[str, Any]]) -> None:
         summary["nodes_after"],
         summary["edges_after"],
     )
-    print(_line(totals, summary["status"], f"  words={summary['words']}"))
+    words = summary["words"]
+    print(_line(totals, summary["status"], f"  words={'-' if words is None else words}"))
 
 
 async def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    thinking = THINKING[args.thinking]
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.corpus in ("supersession", "both") and args.fixture is None:
+        parser.error(f"--corpus {args.corpus} runs the supersession triplets, which live in --fixture; pass --fixture")
+    levels = resolve_thinking_levels(args)
     corpus = {int(record["number"]): record for record in load_corpus(profile="compact")}
     corpus_sha256 = hashlib.sha256(corpus_path("compact").read_bytes()).hexdigest()
+    fixture = load_fixture(args.fixture) if args.fixture is not None else None
+    units = select_units(args, corpus, fixture)
 
     collector = install_collector()
     if args.test_model:
-        # The hosted default model name keeps TestModel free of endpoint requirements.
-        config = AgentInferenceConfig(use_test_model=True, thinking_effort=thinking)
-        embeddings, embeddings_mode = None, "none"
+        endpoint, embeddings, embeddings_mode = None, None, "none"
     else:
         # The model comes from the CLI, never from MCPSettings, so .env cannot override it.
-        endpoint = resolve_local_endpoint(args.episode_timeout)
-        config = AgentInferenceConfig(model_name=args.model, thinking_effort=thinking, local_endpoint=endpoint)
+        endpoint = resolve_local_endpoint(args.per_call_timeout)
         embeddings, embeddings_mode = resolve_embeddings()
+    configs = build_configs(args, levels, endpoint)
 
     output = args.output or (VALIDATION_DIR / f"speed-{datetime.now(UTC):%Y%m%dT%H%M%SZ}.json")
     run_meta: dict[str, Any] = {
         "model": "test-model" if args.test_model else args.model,
         "thinking": args.thinking,
+        **{f"thinking_{agent}": levels[agent] for agent in TUNABLE_AGENTS},
         "cache_thinking": args.cache_thinking or args.thinking,
         "corpus_sha256": corpus_sha256,
+        "corpus": args.corpus,
         "episodes": list(args.episodes),
+        "units": [unit.key for unit in units],
+        "fixture": str(args.fixture) if args.fixture is not None else None,
         "repo_mode": args.repo,
         "stage": args.stage,
         "profile": args.profile,
         "episode_timeout_s": args.episode_timeout,
+        "per_call_timeout_s": args.per_call_timeout,
+        "max_wall_seconds": args.max_wall_seconds,
+        "wall_budget_exhausted": False,
+        "chain": {"status": "NOT MEASURED", "reason": "run_incomplete"},
         "embeddings": embeddings_mode,
         "started_at": datetime.now(UTC).isoformat(),
         "git_head": git_head(),
@@ -469,21 +723,37 @@ async def main(argv: list[str] | None = None) -> int:
     summaries: list[dict[str, Any]] = []
     all_rows: list[dict[str, Any]] = []
     wall_started = time.monotonic()
-    for episode in args.episodes:
-        repo = shared_repo if args.repo == "shared" else InMemoryRepository()
-        summary, rows = await run_episode(episode, repo, corpus, args, collector, config, embeddings, corpus_sha256)
+    for index, unit in enumerate(units):
+        if args.max_wall_seconds is not None and time.monotonic() - wall_started >= args.max_wall_seconds:
+            # Stop launching, but record every unlaunched unit rather than dropping it.
+            run_meta["wall_budget_exhausted"] = True
+            for pending in units[index:]:
+                summary = blank_summary(pending.key, "NOT MEASURED", "wall_budget")
+                summaries.append(summary)
+                print_rows(summary, [])
+            write_output(output, run_meta, summaries, all_rows)
+            break
+        # A triplet always runs its two texts on one repository of its own, so
+        # ``--repo`` cannot separate the update from the text it corrects.
+        repo = InMemoryRepository() if unit.kind == "triplet" or args.repo == "fresh" else shared_repo
+        summary, rows = await run_unit(unit, repo, args, collector, configs, levels, embeddings, corpus_sha256, fixture)
         summaries.append(summary)
         all_rows.extend(rows)
         print_rows(summary, rows)
+        write_output(output, run_meta, summaries, all_rows)
 
-    run_meta["wall_seconds"] = round(time.monotonic() - wall_started, 2)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        json.dumps({"run": run_meta, "episodes": summaries, "stages": all_rows}, indent=2), encoding="utf-8"
+    # A budget cut leaves the shared graph short of the chain's episodes, so the
+    # count it would report is not the chain expectation.
+    run_meta["chain"] = (
+        {"status": "NOT MEASURED", "reason": "wall_budget"}
+        if run_meta["wall_budget_exhausted"]
+        else chain_result(args, fixture, shared_repo)
     )
+    run_meta["wall_seconds"] = round(time.monotonic() - wall_started, 2)
+    write_output(output, run_meta, summaries, all_rows)
     ok = sum(1 for summary in summaries if summary["status"] == "ok")
     print(f"run total: {run_meta['wall_seconds']}s, {ok}/{len(summaries)} episodes ok, summary written to {output}")
-    return 0 if ok == len(summaries) else 1
+    return 0 if summaries and ok == len(summaries) else 1
 
 
 if __name__ == "__main__":

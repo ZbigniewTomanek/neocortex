@@ -2,13 +2,304 @@
   "plan": "34-qwen-thinking-benchmark",
   "created": "2026-09-11",
   "stages": [
-    {"id": 1, "title": "Fact-retention scorer and probe extension", "file": "stages/01-fact-retention-scorer.md", "status": "PENDING", "depends_on": [], "commit": null, "note": null, "blocked_by": []},
-    {"id": 2, "title": "Privacy-safe integrity evidence export", "file": "stages/02-integrity-evidence-export.md", "status": "PENDING", "depends_on": [], "commit": null, "note": null, "blocked_by": []},
-    {"id": 3, "title": "E2E harness reliability and recall formatter", "file": "stages/03-e2e-harness-reliability.md", "status": "PENDING", "depends_on": [], "commit": null, "note": null, "blocked_by": []},
-    {"id": 4, "title": "Numeric-fact preservation in the Qwen path", "file": "stages/04-numeric-fact-preservation.md", "status": "PENDING", "depends_on": [1], "commit": null, "note": null, "blocked_by": []},
-    {"id": 5, "title": "Thinking-level identity probe", "file": "stages/05-effort-level-identity.md", "status": "PENDING", "depends_on": [1], "commit": null, "note": null, "blocked_by": []},
-    {"id": 6, "title": "Per-agent thinking-level sweep", "file": "stages/06-per-agent-effort-sweep.md", "status": "PENDING", "depends_on": [4, 5], "commit": null, "note": null, "blocked_by": []},
-    {"id": 7, "title": "Tuned compact service run", "file": "stages/07-combined-compact-run.md", "status": "PENDING", "depends_on": [2, 3, 6], "commit": null, "note": null, "blocked_by": []},
-    {"id": 8, "title": "Decision, report, and Plan 33 handoff", "file": "stages/08-decision-and-handoff.md", "status": "PENDING", "depends_on": [7], "commit": null, "note": null, "blocked_by": []}
-  ]
+    {
+      "id": 1,
+      "title": "Fact-retention scorer and probe extension",
+      "file": "stages/01-fact-retention-scorer.md",
+      "status": "IN_PROGRESS",
+      "depends_on": [],
+      "commit": null,
+      "note": null,
+      "blocked_by": [],
+      "step": "WRITING",
+      "writer": "claude/opus",
+      "implementer": "claude/opus, effort high",
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
+    },
+    {
+      "id": 2,
+      "title": "Privacy-safe integrity evidence export",
+      "file": "stages/02-integrity-evidence-export.md",
+      "status": "PENDING",
+      "depends_on": [],
+      "commit": null,
+      "note": null,
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
+    },
+    {
+      "id": 3,
+      "title": "E2E harness reliability and recall formatter",
+      "file": "stages/03-e2e-harness-reliability.md",
+      "status": "PENDING",
+      "depends_on": [],
+      "commit": null,
+      "note": null,
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
+    },
+    {
+      "id": 4,
+      "title": "Numeric-fact preservation in the Qwen path",
+      "file": "stages/04-numeric-fact-preservation.md",
+      "status": "PENDING",
+      "depends_on": [
+        1
+      ],
+      "commit": null,
+      "note": null,
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
+    },
+    {
+      "id": 5,
+      "title": "Thinking-level identity probe",
+      "file": "stages/05-effort-level-identity.md",
+      "status": "PENDING",
+      "depends_on": [
+        1
+      ],
+      "commit": null,
+      "note": null,
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
+    },
+    {
+      "id": 6,
+      "title": "Per-agent thinking-level sweep",
+      "file": "stages/06-per-agent-effort-sweep.md",
+      "status": "PENDING",
+      "depends_on": [
+        4,
+        5
+      ],
+      "commit": null,
+      "note": null,
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
+    },
+    {
+      "id": 7,
+      "title": "Tuned compact service run",
+      "file": "stages/07-combined-compact-run.md",
+      "status": "PENDING",
+      "depends_on": [
+        2,
+        3,
+        6
+      ],
+      "commit": null,
+      "note": null,
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
+    },
+    {
+      "id": 8,
+      "title": "Decision, report, and Plan 33 handoff",
+      "file": "stages/08-decision-and-handoff.md",
+      "status": "PENDING",
+      "depends_on": [
+        7
+      ],
+      "commit": null,
+      "note": null,
+      "blocked_by": [],
+      "step": null,
+      "writer": null,
+      "implementer": null,
+      "reviewer": null,
+      "preReview": {
+        "used": false
+      },
+      "review": {
+        "used": false
+      },
+      "gateFixes": 0,
+      "repair": {
+        "used": false,
+        "rounds": 0
+      },
+      "repairReview": {
+        "used": false
+      },
+      "gates": {},
+      "evidence": []
+    }
+  ],
+  "goal": "34-qwen-thinking-benchmark",
+  "goalId": "none",
+  "armed": "2026-09-11",
+  "status": "IN_PROGRESS",
+  "modes": {
+    "preset": "custom",
+    "placement": "review-each-stage-after",
+    "budget": "one-review-one-fix",
+    "stop": "never-stop"
+  },
+  "roles": {
+    "orchestrator": "current-session",
+    "implementer": {
+      "agent": "claude/opus",
+      "effort": "high",
+      "command": null
+    },
+    "reviewer": {
+      "agent": "claude/opus",
+      "effort": "high",
+      "command": null
+    },
+    "helper": {
+      "agent": "claude/sonnet",
+      "effort": "medium",
+      "command": null
+    }
+  },
+  "currentStage": 1,
+  "writesFrozen": false,
+  "writer": "claude/opus",
+  "runReview": {
+    "preReview": {
+      "used": false
+    },
+    "review": {
+      "used": false
+    },
+    "repair": {
+      "used": false,
+      "rounds": 0
+    },
+    "repairReview": {
+      "used": false
+    }
+  }
 }

@@ -1,0 +1,156 @@
+{
+  "revision": 1,
+  "episodes": [
+    {
+      "key": "E02",
+      "facts": [
+        "Tomek Zbigniew",
+        "Anya Kowalski",
+        "Jonas Weber",
+        "Sarah Kim",
+        "TDD-first",
+        "pytest",
+        "Poetry",
+        "Precision, Recall, F1"
+      ]
+    },
+    {
+      "key": "E04",
+      "facts": [
+        "~15 normalized tables",
+        "person_normalized_data",
+        "phones_normalized",
+        "E.164",
+        "addresses_normalized",
+        "Libpostal",
+        "identifiers_normalized",
+        "ORDER BY + SEGMENTED BY",
+        "entity_object_id"
+      ]
+    },
+    {
+      "key": "E05",
+      "facts": [
+        "39 atomic features",
+        "27 for organization",
+        "15 composite features",
+        "NAMEPHONE",
+        "NAMEDATE",
+        "phonetic_family_name + phone_e164"
+      ]
+    },
+    {
+      "key": "E10",
+      "facts": [
+        "IdentifierLinkNormalizationService",
+        "db/quoting.py",
+        "quote_identifier",
+        "phone_link_service.py",
+        "address_link_service.py"
+      ]
+    },
+    {
+      "key": "E18",
+      "facts": [
+        "Metaphone3",
+        "Soundex",
+        ">98% accuracy",
+        "~70%",
+        "4-character",
+        "252M entities",
+        "XMT0"
+      ]
+    },
+    {
+      "key": "E20",
+      "facts": [
+        "8-character",
+        "maxCodeLen=8",
+        "approximately 60%",
+        "P1-P8",
+        "O1-O5",
+        "DoubleMetaphone",
+        "vertica-functions-datawalk-library.jar",
+        "encodeVowels",
+        "1M scale"
+      ]
+    },
+    {
+      "key": "E26",
+      "facts": [
+        "HYBRID APPROACH",
+        "8-character Metaphone3 for Latin-script",
+        "4-character Metaphone3 for non-Latin",
+        "Korean, Chinese, and Arabic",
+        "3-4 different 8-char codes",
+        "language detection"
+      ]
+    },
+    {
+      "key": "E27",
+      "facts": [
+        "Jonas Weber",
+        "Security team",
+        "Sarah Kim",
+        "Anya Kowalski",
+        "three people instead of four",
+        "deferred to Q3"
+      ]
+    }
+  ],
+  "chain": {
+    "episodes": [
+      "E18",
+      "E20",
+      "E26"
+    ],
+    "min_temporal_edges": 1
+  },
+  "supersession": [
+    {
+      "id": "S05",
+      "initial_text": "The Project Zenith deadline is April 15, 2026. The team is targeting a beta release by that date.",
+      "update_text": "The Project Zenith deadline has been pushed back from April 15 to May 1, 2026 due to the merge freeze. The April 15 deadline is no longer valid.",
+      "anchor_names": [
+        "zenith"
+      ],
+      "new_tokens": [
+        "may 1",
+        "may"
+      ],
+      "old_tokens": [
+        "april 15",
+        "april"
+      ]
+    },
+    {
+      "id": "S11",
+      "initial_text": "The Plan 42 benchmark showed a scaling exponent of b=0.57, fitted from 1M and 5M data points.",
+      "update_text": "UPDATE: After running the 10M benchmark, the Plan 42 scaling exponent was refined to b=0.62. The previous b=0.57 value is outdated and should not be used.",
+      "anchor_names": [
+        "plan 42",
+        "scaling exponent"
+      ],
+      "new_tokens": [
+        "0.62"
+      ],
+      "old_tokens": [
+        "0.57"
+      ]
+    },
+    {
+      "id": "S07",
+      "initial_text": "Team Atlas is working on Project Nexus, a next-generation data processing platform. The team consists of Maya Chen (Tech Lead), Jonas Weber (Backend Engineer), and Sarah Kim (Data Pipeline Specialist). They use DataForge as their primary data transformation tool. The project launch is targeted for June 2025.",
+      "update_text": "The NLP model precision for DataForge was previously reported as 87%. After re-evaluation with the updated test suite, the actual measured precision is 94.2%, a significant improvement over the initial estimate.",
+      "anchor_names": [
+        "dataforge",
+        "nlp",
+        "precision"
+      ],
+      "new_tokens": [
+        "94.2"
+      ],
+      "old_tokens": []
+    }
+  ]
+}

@@ -99,3 +99,86 @@ four agents had no `off` row and the selection rule could never choose `off` —
 the cheapest in the sweep. The selection rule now ranks triplet passes first (the defect class `facts_found`
 cannot see, because the scorer also matches `properties`), then `facts_found`, then explicitly prefers the
 lowest level within the tie band.
+
+### D-9: `--corpus` gains an `episodes` default instead of changing `--episodes`
+**Date**: 2026-09-11 - **Stage**: 1
+**Options**: A) `--corpus {compact,supersession,both}` as the plan writes it, with `--episodes` defaulting
+to all eight B) add a fourth value `episodes` and make it the default
+**Chosen**: B.
+**Rationale**: `test_cli_defaults` pins `--episodes` to `["E04","E05"]`. Option A would have to change
+that assertion to make the stage pass, which the protocol forbids. `--corpus episodes` (default) keeps
+every existing invocation and the test byte-identical; `compact` and `both` select all eight keys, which
+is what Stage 4's and Stage 6's commands need (Stage 6 counts 14 model runs = 8 compact + 3 triplets x 2).
+
+### D-10: The extraction cache key covers the ontology and extractor levels, not the librarian's
+**Date**: 2026-09-11 - **Stage**: 1
+**Options**: A) all four per-agent levels in the key, as "each agent's level" reads literally
+B) only the levels that produce the cached artifact
+**Chosen**: B.
+**Rationale**: The cache holds an `ExtractionResult` plus its ontology snapshot — artifacts the librarian
+never influences. Option A breaks Stage 6 step 2, whose design is a librarian sweep reusing one
+extraction cached at the pinned `L_ext`: a single-valued `--cache-thinking` cannot express a per-agent
+key, so every librarian cell would miss the cache and re-run extraction, multiplying the 4 h budget.
+Option B satisfies the stage's stated requirement — "a librarian-only rerun cannot silently reuse an
+extraction produced at another extractor level" — because the extractor level is in the key. The
+invariant is asserted in `test_cache_key_is_setup_specific` rather than left to the docstring.
+
+### D-11: A triplet row's `fact_score` is `null`, not a zero-valued score
+**Date**: 2026-09-11 - **Stage**: 1
+**Options**: A) emit `{"facts_total": 0, "facts_found": 0}` for supersession rows so every row has a
+numeric score B) emit `null`
+**Chosen**: B.
+**Rationale**: The fixture defines no `facts[]` for triplets. A `0/0` row serializes as a measured
+full-marks score and would inflate any later aggregate; `null` says "not scored here", and the triplet's
+real measurement is its `supersession` object. Stage 1's gate reads the presence of the `fact_score` key,
+which `null` satisfies. Consistent with the `goal.md` invariant against rows generated to satisfy a count.
+
+### D-12: The two new JSON Schemas live in this plan's `resources/`, not Plan 33's
+**Date**: 2026-09-11 - **Stage**: 2
+**Options**: A) ship `skip-events.schema.json` beside the existing report schemas in
+`docs/plans/33-local-qwen-migration/resources/` as the stage text says B) both new schemas in
+`docs/plans/34-qwen-thinking-benchmark/resources/`
+**Chosen**: B.
+**Rationale**: Stage 2's own gate G2 proves Plan 33's `resources/` is byte-unchanged, and the stage
+already routes `quality-sample-tuned.schema.json` to this plan's `resources/`. Splitting the two schemas
+across directories would leave one of them in a tree the stage is simultaneously proving frozen. Stage 7
+still writes its *evidence* into Plan 33's `resources/`, which is what the owner granted.
+
+### D-13: The cap-drop audit event carries counts only, never endpoint names
+**Date**: 2026-09-11 - **Stage**: 2
+**Options**: A) log the dropped relations "with their endpoints" as the stage text says
+B) log integer counts; return the endpoint pairs from a pure function for tests only
+**Chosen**: B.
+**Rationale**: At cap time no node ids exist yet, so the only available endpoints are entity *names* —
+graph text. `log/agent_actions.log` is privacy-scanned and every other skip event carries integer ids
+only; writing names there would create the leak Stage 2 exists to prevent. `count_capped_relations`
+returns the pairs so the drop is still unit-testable, and `extractor_cardinality_capped` gains
+`relations_dropped_by_cap`, `relations_before`, `relations_after`. Also chosen over changing
+`cap_extraction_entities`'s return type, which would churn its existing tests and the identity check at
+`pipeline.py:483` for no gain.
+
+### D-14: Stage 3's structural gate checks all seven children, not the `= 120` literal
+**Date**: 2026-09-11 - **Stage**: 3 - **Type**: strengthened gate, not an amendment
+**Original gate**: "`git grep -n \"JOB_WAIT_TIMEOUT = 120\" scripts/` returns nothing, and each of the five
+children imports `e2e_common`"
+**As written in the brief**: `git grep -n "JOB_WAIT_TIMEOUT" scripts/` returns nothing, and all **seven**
+files import `e2e_common`.
+**Evidence**: only `e2e_cognitive_recall_test.py:70` and `e2e_weight_stability_test.py:75` carry the
+literal `120`. The other five carry 300 or 600 (`e2e_extraction_pipeline_test.py:83`,
+`e2e_episodic_memory_test.py:48`, `e2e_plan15_scenarios_test.py:57`, `e2e_plan17_validation.py:48`,
+`e2e_content_update_test.py:47`). The original grep therefore goes green after changing two of seven
+files, while five children keep a hosted-tuned constant.
+**Rationale**: this tightens a gate rather than relaxing one, so the four-part amendment rule does not
+apply. A gate that cannot fail on the defect it names is not a gate (PROTOCOL, Gates).
+
+### D-15: `failure_step` prefers the scenario docstring over the phase banner
+**Date**: 2026-09-11 - **Stage**: 2
+**Options**: A) last banner printed wins, as the stage implies B) precedence: scenario docstring first,
+then `=== Step`/`=== Stage`/`PHASE`
+**Chosen**: B.
+**Rationale**: inventory found a fourth convention the stage text does not mention —
+`e2e_plan15_scenarios_test.py:852-855` and `e2e_plan17_validation.py` print `PHASE X:` banners **as well
+as** `--- docstring ---` ones (`:951`, `:959`). Under "last wins", the two children whose failures the
+rubric most needs attributed would resolve to a coarse phase name. The docstring localizes the failure to
+one scenario. The matched convention is recorded as `failure_step_kind` so a coarse attribution is
+visible as coarse.
