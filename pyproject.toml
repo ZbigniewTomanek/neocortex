@@ -63,6 +63,9 @@ ty = "*"
 line-length = 120
 target-version = "py313"
 src = ["src"]
+# Sample agent scripts, not part of the server; already excluded from the type
+# checker below.  Keeps `ruff check .` a usable gate for the code we own.
+exclude = ["test_agents"]
 
 [tool.ruff.lint]
 select = [
