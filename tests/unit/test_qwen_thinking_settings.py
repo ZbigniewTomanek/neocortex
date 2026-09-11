@@ -5,15 +5,19 @@ The cause is in PydanticAI 1.72.0: ``openai_model_profile`` reports
 ``supports_thinking=False`` for an unrecognised model name, so
 ``Model.prepare_request`` drops the unified thinking setting and
 ``OpenAIChatModel`` omits ``reasoning_effort`` from the request — leaving the
-server on its thinking default.  These tests pin the fix at the settings level
-and at the PydanticAI boundary where the leak happened.
+server on its thinking default.  The same drop applies to every effort value,
+not only ``False``: before the relay was made explicit, ``low``, ``medium`` and
+``high`` reached the server as identical requests, which is why Plan 33's four
+effort probes are statistically indistinguishable.  These tests pin the fix at
+the settings level and at the PydanticAI boundary where the leak happened, for
+``none`` and for each positive level.
 """
 
 from __future__ import annotations
 
 import pytest
 from pydantic_ai.models import Model, ModelRequestParameters
-from pydantic_ai.settings import ModelSettings
+from pydantic_ai.settings import ModelSettings, ThinkingLevel
 
 from neocortex.mcp_settings import MCPSettings
 from neocortex.model_factory import (
@@ -83,15 +87,40 @@ def test_qwen_nothink_settings_carry_the_reasoning_switches(endpoint: LocalEndpo
     }
 
 
-def test_qwen_thinking_on_keeps_thinking_sampling_and_no_switches(endpoint: LocalEndpoint) -> None:
+def test_qwen_thinking_on_carries_the_effort_and_thinking_sampling(endpoint: LocalEndpoint) -> None:
+    """A positive level needs the same explicit relay as ``none``.
+
+    The profile drops ``thinking`` for every value, so without
+    ``openai_reasoning_effort`` the request carries no effort at all and
+    ``low``/``medium``/``high`` are indistinguishable on the wire.
+    """
     settings = build_model_settings("low", QWEN, endpoint, max_output_tokens=2500)
+    assert settings is not None
     assert settings == {
         "thinking": "low",
         "temperature": 0.6,
         "top_p": 0.95,
         "timeout": 600.0,
         "max_tokens": 2500,
+        "openai_reasoning_effort": "low",
     }
+    # The nothink chat-template kwarg stays off the thinking-on path.
+    assert "extra_body" not in settings
+
+
+@pytest.mark.parametrize(("level", "expected"), [("low", "low"), ("medium", "medium"), ("high", "high")])
+def test_each_qwen_thinking_level_reaches_the_request(
+    endpoint: LocalEndpoint, monkeypatch: pytest.MonkeyPatch, level: ThinkingLevel, expected: str
+) -> None:
+    """The regression guard for the sweep: levels must differ at the PydanticAI boundary."""
+    monkeypatch.setenv("LITELLM_API_KEY", "test-key")
+    model = build_model(QWEN, endpoint)
+    assert isinstance(model, Model)
+    settings = build_model_settings(level, QWEN, endpoint)
+    resolved_settings, params = model.prepare_request(settings, ModelRequestParameters())
+    assert model._get_reasoning_effort(resolved_settings or {}, params) == expected  # ty: ignore[unresolved-attribute]
+    # Sampling parameters stay on the thinking pair, not the nothink pair.
+    assert (resolved_settings or {}).get("temperature") == 0.6
 
 
 def test_hosted_settings_ignore_the_qwen_ceiling(endpoint: LocalEndpoint) -> None:

@@ -8,9 +8,11 @@ from dataclasses import dataclass
 from typing import cast
 
 from openai.types import chat
+from openai.types.shared import ReasoningEffort
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models import Model, ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
+from pydantic_ai.profiles.openai import OPENAI_REASONING_EFFORT_MAP
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings, ThinkingLevel
 
@@ -170,7 +172,13 @@ def build_model_settings(
         return settings
     if max_output_tokens is not None:
         settings["max_tokens"] = max_output_tokens
+    # ``supports_thinking=False`` drops ``thinking`` for every effort value, not
+    # only ``False`` (see ``qwen_nothink_extra_body``), so every level has to be
+    # restated through ``openai_reasoning_effort`` or the request carries no
+    # effort at all and ``low``/``medium``/``high`` reach the server identical.
+    # The map is PydanticAI's own, so the wire value matches what the profile
+    # would have produced had it recognised the model.
+    settings["openai_reasoning_effort"] = cast(ReasoningEffort, OPENAI_REASONING_EFFORT_MAP[thinking_effort])
     if not thinking_on:
-        settings["openai_reasoning_effort"] = "none"
         settings["extra_body"] = qwen_nothink_extra_body()
     return settings

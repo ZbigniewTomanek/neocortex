@@ -178,7 +178,15 @@ def test_model_settings_preserve_hosted_and_none_behaviour(endpoint: LocalEndpoi
 
 def test_local_model_settings_include_sampling_and_timeout(endpoint: LocalEndpoint) -> None:
     settings = build_model_settings("xhigh", "local:qwen3.8-flash-next", endpoint)
-    assert settings == ModelSettings(thinking="xhigh", temperature=0.6, top_p=0.95, timeout=600.0)
+    # The Qwen route restates the effort explicitly: PydanticAI drops the unified
+    # thinking flag for model names its profile does not know, on every level.
+    assert settings == {
+        "thinking": "xhigh",
+        "temperature": 0.6,
+        "top_p": 0.95,
+        "timeout": 600.0,
+        "openai_reasoning_effort": "xhigh",
+    }
 
     nothink_endpoint = LocalEndpoint(
         base_url=endpoint.base_url,
