@@ -551,3 +551,21 @@ question -- whether the local endpoint honours `reasoning_effort` at all -- is S
 - Coordinator read complete probe/runner/test changes including final source-status/model safeguards and classifier7/8 rejection test. Own focused69/0.95s, full1485 passed/7 skipped/46.30s, lint PASS.
 - Own exact mock sweep at14400s configured budget finished7.208s:16 cells, reused mockoff +15 launches; raw16 files reopened. Both cells11units/14sources, compact8/8; all synthetic0/56 facts, no observed defects/timeouts; classifier8/8 each. Lowestoff chosen by the rule, not a live quality conclusion.
 - Actual raw and aggregates live under validation/stage6-mock-coordinator-attempt1 for committed review evidence. Separate mockcache; no live calls. Source lock released; commit and single post-review next.
+
+## 2026-09-13 -- Stage6 committed review; Stage7 preparation starts
+
+- Commit80f2b98 exists; hooks pass after final-newline-only normalization of raw mockJSON. Single independent Sol/high post-review dispatched on frozen commit, including actual repository evidence; no live Stage6 yet.
+- Stage7 preparation brief frozen: sole Sol/high writer owns harness/scripts/model_bakeoff, run_e2e, tests/model_bakeoff and new validation supervisor. These are disjoint from Stage6 probe/runner/tests, so protocol's committed-review exception applies.
+- Preparation makes no service/Docker/DB/embedding/inference writes. Live arm waits Stage6 selections and its own gates/review. If Stage6 fix is owed, Stage7 pauses at an atomic checkpoint before fix writer starts.
+
+## 2026-09-13 -- Stage6 single review and repair
+
+- Complete review saved to validation/stage6-review.md and review.used spent before triage. F1 accepted: ordinary timeout/error with no agent_usage starts with invented zero counters, polluting cell reasoning median. Coordinator traced blank initialization, normal timeout path and runner median.
+- Stage7 writer paused at atomic checkpoint and released source lock. Stage6 sole Sol/high implementer receives complete single-fix section and regression/fullmock gates. No re-review, no live calls before deterministic fix acceptance.
+
+## 2026-09-13 -- Stage6 single fix accepted
+
+- Coordinator read complete104+/14- diff: absent usage on ordinary timeout/error nulls every counter; summary requests_total propagatesnull; measured0/nonzero and completed-stage observations retained. Actual timeout regressions and analyse_raw bridge prove allowed timeout cannot invent a reasoning median.
+- Initial fix verification found downstream int(None), corrected within same round; failures retained. Own focused74/0.89s, full1498/7/55.44s, lintPASS; full includes8 paused Stage7 tests. HooksPASS from implementer; no Stage7 source included in fix.
+- Own exact14400s-configured mock finished7.316s,16raw reopened: both11units/14sources, compact8/8; allsynthetic0/56facts,0timeouts/critical, classifier8/8. Evidence validation/stage6-fix1-mock-coordinator-attempt1 with baseline from stage6-fix1-mock-attempt1.
+- Review/single repair spent. No re-review. Stage7 paused until fixcommit exists; its brief now explicitly requires durable planned provenance before childlaunch, found during coordinator checkpoint inspection.

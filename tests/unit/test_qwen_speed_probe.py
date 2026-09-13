@@ -81,7 +81,59 @@ def test_aggregate_stage_rows_two_stages_one_timeout() -> None:
     }
     assert extractor["status"] == "timeout"
     assert extractor["seconds"] is None
-    assert extractor["requests"] == 0
+    assert all(extractor[field] is None for field in probe.COUNT_FIELDS)
+
+
+def test_aggregate_stage_rows_nulls_usage_for_error_without_usage_event() -> None:
+    """An incomplete ordinary error cannot certify zero usage."""
+    [ontology] = probe.aggregate_stage_rows(
+        "E04",
+        [_record("agent_run_started", agent="ontology")],
+        outcome="error:ModelHTTPError",
+    )
+
+    assert ontology["status"] == "error:ModelHTTPError"
+    assert all(ontology[field] is None for field in probe.COUNT_FIELDS)
+
+
+@pytest.mark.parametrize("reasoning_tokens", [0, 37])
+def test_aggregate_stage_rows_preserves_observed_usage_on_incomplete_stage(reasoning_tokens: int) -> None:
+    """An emitted usage event establishes both zero and nonzero values."""
+    [ontology] = probe.aggregate_stage_rows(
+        "E04",
+        [
+            _record("agent_run_started", agent="ontology"),
+            _record(
+                "agent_usage",
+                stage="ontology_agent",
+                requests=1,
+                tool_calls=0,
+                input_tokens=12,
+                output_tokens=3,
+                reasoning_tokens=reasoning_tokens,
+            ),
+        ],
+        outcome="error:ModelHTTPError",
+    )
+
+    assert ontology["status"] == "error:ModelHTTPError"
+    assert ontology["reasoning_tokens"] == reasoning_tokens
+    assert ontology["tool_calls"] == 0
+
+
+def test_aggregate_stage_rows_preserves_completed_zero_usage() -> None:
+    """Stage completion establishes zero usage even without a usage event."""
+    [extractor] = probe.aggregate_stage_rows(
+        "E04",
+        [
+            _record("agent_run_started", agent="extractor"),
+            _record("stage_timing", stage="extractor_agent", elapsed_s=0.2),
+        ],
+        outcome="error:LaterStageError",
+    )
+
+    assert extractor["status"] == "ok"
+    assert all(extractor[field] == 0 for field in probe.COUNT_FIELDS)
 
 
 def test_aggregate_stage_rows_records_host_ontology_proposal_counts() -> None:
@@ -287,6 +339,7 @@ async def test_episode_timeout_is_not_a_critical_agent_failure(monkeypatch: pyte
 
     assert outcome == "timeout"
     assert [(row["stage"], row["status"]) for row in rows] == [("ontology", "timeout")]
+    assert all(rows[0][field] is None for field in probe.COUNT_FIELDS)
     assert defects == []
     assert any(
         record["event"] == "agent_run_failed" and record["fields"]["error_type"] == "CancelledError"
@@ -309,6 +362,7 @@ async def test_provider_timeout_is_normalized_and_not_a_critical_failure(monkeyp
 
     assert outcome == "timeout"
     assert [(row["stage"], row["status"]) for row in rows] == [("ontology", "timeout")]
+    assert all(rows[0][field] is None for field in probe.COUNT_FIELDS)
     assert defects == []
     assert {
         (record["event"], record["fields"].get("error_type"))
@@ -903,6 +957,7 @@ async def test_librarian_cache_misses_are_recorded_and_remaining_units_continue(
         "error:FileNotFoundError",
     ]
     assert [row["critical_defects"] for row in payload["episodes"]] == [["unit_error"], ["unit_error"]]
+    assert [row["requests_total"] for row in payload["episodes"]] == [None, None]
     assert [(row["episode"], row["stage"], row["status"]) for row in payload["stages"]] == [
         ("E04", "librarian", "error:FileNotFoundError"),
         ("E05", "librarian", "error:FileNotFoundError"),
@@ -1000,6 +1055,7 @@ async def test_classifier_failure_remains_the_unit_outcome(tmp_path: Path, monke
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["episodes"][0]["status"] == "error:UnexpectedModelBehavior"
     assert payload["episodes"][0]["critical_defects"] == ["unit_error"]
+    assert payload["episodes"][0]["requests_total"] is None
     classifier_row = next(row for row in payload["stages"] if row["stage"] == "classifier")
     assert classifier_row["status"] == "error:UnexpectedModelBehavior"
     assert classifier_row["valid_result"] is False

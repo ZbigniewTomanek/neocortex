@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from scripts import qwen_speed_probe as probe  # ty: ignore[unresolved-import]
 
 RUNNER_PATH = (
     Path(__file__).resolve().parents[2] / "docs/plans/34-qwen-thinking-benchmark/validation/effort_sweep_runner.py"
@@ -211,6 +212,26 @@ def test_analyse_raw_counts_distinct_timeout_labels_and_disqualifies_two(tmp_pat
 
     assert cell["timeouts"] == 2
     assert cell["status"] == "DISQUALIFIED"
+
+
+def test_analyse_raw_one_timeout_with_unavailable_usage_has_null_median(tmp_path: Path) -> None:
+    """One allowed timeout stays eligible but cannot invent a reasoning-token median."""
+    spec = runner.make_spec("extractor", "low", {})
+    raw = _raw(spec)
+    [timeout_row] = probe.aggregate_stage_rows(
+        "E02",
+        [{"event": "agent_run_started", "fields": {"agent": "extractor"}}],
+        outcome="timeout",
+    )
+    raw["stages"][0] = timeout_row
+    path = tmp_path / "raw.json"
+    _write_json(path, raw)
+
+    cell = runner.analyse_raw(spec, path, test_model=True)
+
+    assert cell["timeouts"] == 1
+    assert cell["status"] == "PASS"
+    assert cell["median_reasoning_tokens"] is None
 
 
 def test_analyse_raw_requires_each_stage_status_for_timeout_evidence(tmp_path: Path) -> None:

@@ -158,3 +158,21 @@ makes no live launch. Save raw attempts under validation/stage6-*.
 Run focused tests, full regression and lint, scoped hooks. Verify final resources
 by reopening every raw_path and recomputing statistics, not by inspecting exit codes.
 Report all measurement gaps and exact total live wall time.
+
+## Single review fix — F1
+
+Read validation/stage6-review.md complete finding set and triage. This is the
+only review fix round; no re-review. Scope scripts/qwen_speed_probe.py,
+tests/unit/test_qwen_speed_probe.py, tests/unit/test_effort_sweep_runner.py;
+runner only if directly necessary for F1. No other source or raw evidence edits.
+Incomplete ordinary timeout/error rows without agent_usage must carry null usage
+counts, just like hard-wall cancellation; do not convert established zero usage
+to unknown. Preserve already observed counts and completed-stage measurements.
+Extend reachable episode/provider timeout tests, error-without-usage and observed
+zero/nonzero regressions. Feed the timeout result through analyse_raw to prove
+one allowed timeout cannot publish a reasoning median based on invented zero.
+Run focused probe+runner tests, full pytest tests/ -q, ruff check ., scoped hooks.
+Run the exact full16-cell TestModel sweep in fresh validation/stage6-fix1-mock-
+attempt1 and isolated mock cache, preparing its baseline if needed. Save each
+check separately as validation/stage6-fix1-<check>-attempt<n>.txt. No live calls.
+Report full diff, observed per-finding proof and any remaining unavailable values.

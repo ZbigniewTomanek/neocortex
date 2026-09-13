@@ -168,6 +168,19 @@ def _blank_row(episode: str, stage: str, status: str) -> dict[str, Any]:
     return result
 
 
+def _null_unobserved_usage(rows: list[dict[str, Any]], records: list[dict[str, Any]]) -> None:
+    """Mark usage unavailable for incomplete stages that emitted no usage event."""
+    stages_with_usage = {
+        STAGE_NAMES.get(str(record["fields"].get("stage") or record["fields"].get("agent") or ""))
+        for record in records
+        if record["event"] == "agent_usage"
+    }
+    for current in rows:
+        if current["status"] != "ok" and current["stage"] not in stages_with_usage:
+            for field in COUNT_FIELDS:
+                current[field] = None
+
+
 def aggregate_stage_rows(episode: str, records: list[dict[str, Any]], *, outcome: str = "ok") -> list[dict[str, Any]]:
     """Fold collected action-log records into one row per pipeline stage.
 
@@ -237,7 +250,9 @@ def aggregate_stage_rows(episode: str, records: list[dict[str, Any]], *, outcome
         elif event == "librarian_trajectory":
             row("librarian")["trajectory"] = {name: fields.get(name) for name in TRAJECTORY_FIELDS if name in fields}
 
-    return [rows[stage] for stage in STAGE_ORDER if stage in rows]
+    ordered_rows = [rows[stage] for stage in STAGE_ORDER if stage in rows]
+    _null_unobserved_usage(ordered_rows, records)
+    return ordered_rows
 
 
 def partial_stage_rows(episode: str, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -247,17 +262,7 @@ def partial_stage_rows(episode: str, records: list[dict[str, Any]]) -> list[dict
     usage.  During cancellation, absence of ``agent_usage`` is not such proof,
     so those counters remain null rather than becoming invented zeros.
     """
-    rows = aggregate_stage_rows(episode, records, outcome="timeout")
-    stages_with_usage = {
-        STAGE_NAMES.get(str(record["fields"].get("stage") or record["fields"].get("agent") or ""))
-        for record in records
-        if record["event"] == "agent_usage"
-    }
-    for current in rows:
-        if current["stage"] not in stages_with_usage:
-            for field in COUNT_FIELDS:
-                current[field] = None
-    return rows
+    return aggregate_stage_rows(episode, records, outcome="timeout")
 
 
 def cache_key(
@@ -866,6 +871,10 @@ async def run_text(
             collected["domain_keys"] = classifier_row["domain_keys"]
             collected["valid_result"] = classifier_row["valid_result"]
 
+    # A classifier may fail before its lifecycle hooks create an aggregate row.
+    # Normalize again after merging the probe-owned classifier observation.
+    _null_unobserved_usage(rows, collector.records)
+
     defects = detect_critical_defects(graph_before, snapshot_graph(repo), collector.records, outcome)
     return seconds_total, outcome, rows, defects
 
@@ -928,11 +937,15 @@ async def run_unit(
                 supersession = asdict(score_supersession(graph, triplet))
 
     ontology_summary = await repo.get_ontology_summary(AGENT_ID)
+    request_counts = [row["requests"] for row in rows]
+    requests_total = (
+        sum(int(value) for value in request_counts) if all(isinstance(value, int) for value in request_counts) else None
+    )
     summary = {
         "episode": unit.key,
         "words": sum(len(text.split()) for _, text in unit.texts),
         "seconds_total": round(seconds_total, 2),
-        "requests_total": sum(int(row["requests"]) for row in rows),
+        "requests_total": requests_total,
         "nodes_after": int(ontology_summary["total_nodes"]),
         "edges_after": int(ontology_summary["total_edges"]),
         "edge_types_after": {

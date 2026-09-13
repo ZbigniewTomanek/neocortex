@@ -2,8 +2,13 @@
 
 Implementer: `codex/gpt-5.6-sol`, effort high, strong tier.
 Reviewer: `codex/gpt-5.6-sol`, effort high, strong tier.
-Status: DRAFT; finalize selected levels and evidence filenames after Stages 2–6.
+Status: FROZEN for preparation; live dispatch waits Stage6 selected levels.
 Authority: `stages/07-combined-compact-run.md`, `goal.md`, `PROTOCOL.md`.
+
+Current assignment is preparation only: implement/gate harness and supervisor,
+no real service starts/stops, Docker/DB writes, embeddings or inference. Live
+levels and run identity are runtime inputs from finalized Stage6, not guessed.
+Use off/mock values solely in tests/dry-run. Do not commit or edit run records.
 
 ## Required preparation before live launch
 
@@ -48,6 +53,10 @@ Fake-service tests: short deadline terminates blocking child while unrelated
 sentinel survives; child manage-stop completes before exactly one snapshot-load;
 no later start--fresh; diagnostics retained; restore failure returns3 aftertimeout;
 direct run_e2e TERM cleans once/exits143. Tests must not run real services or inference.
+The planned child-reset provenance event must be durable before starting the
+background E2E wrapper, not only before waiting for it. Have the fake child read
+and assert that planned event before its first reset/write. A final event-order
+assertion alone does not prove write-ahead ordering across processes.
 
 Read existing scripts/tests first. Run focused harness tests, `bash -n` on modified
 shell, full pytest/ruff, and the documented --dry-run. Save raw outputs per attempt.

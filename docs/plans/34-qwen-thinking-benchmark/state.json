@@ -192,46 +192,48 @@
         4,
         5
       ],
-      "commit": null,
-      "note": "Implementation gates PASS: coordinator69 focused/full1485/7/lint, fullmock16 cells/7.208s with repository raw evidence. Source frozen for commit/review; no live sweep yet.",
+      "commit": ["80f2b98"],
+      "note": "F1 single fix verified: unknown timeout/error usage and requests_total null; own74/full1498/7/lint/mock16 PASS. Review/fix spent, no rereview; commit then live sweep.",
       "blocked_by": [],
-      "step": "WRITING",
+      "step": "REVIEWED",
       "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
-      "reviewer": null,
+      "reviewer": "codex/gpt-5.6-sol, effort high",
       "preReview": {
         "used": false
       },
       "review": {
-        "used": false
+        "used": true,
+        "blocking": 1,
+        "file": "validation/stage6-review.md"
       },
       "gateFixes": 0,
       "repair": {
-        "used": false,
-        "rounds": 0
+        "used": true,
+        "rounds": 1
       },
       "repairReview": {
         "used": false
       },
-      "gates": {"focused unit": "PASS", "full suite": "PASS", "lint": "PASS", "full mock cells and provenance": "PASS", "live sweep": "NOT MEASURED"},
-      "evidence": ["validation/stage6-focused-coordinator-attempt1.txt", "validation/stage6-suite-coordinator-attempt1.txt", "validation/stage6-ruff-coordinator-attempt1.txt", "validation/stage6-mock-coordinator-attempt1/effort-sweep.json", "validation/stage6-instruments-testmodel-attempt1.json"]
+      "gates": {"focused unit": "PASS", "full suite": "PASS", "lint": "PASS", "full mock cells and provenance": "PASS", "unknown usage null semantics": "PASS", "live sweep": "NOT MEASURED"},
+      "evidence": ["validation/stage6-focused-coordinator-attempt1.txt", "validation/stage6-suite-coordinator-attempt1.txt", "validation/stage6-ruff-coordinator-attempt1.txt", "validation/stage6-mock-coordinator-attempt1/effort-sweep.json", "validation/stage6-instruments-testmodel-attempt1.json", "validation/stage6-review.md", "validation/stage6-fix1-focused-coordinator-attempt1.txt", "validation/stage6-fix1-suite-coordinator-attempt1.txt", "validation/stage6-fix1-ruff-coordinator-attempt1.txt", "validation/stage6-fix1-mock-coordinator-attempt1/effort-sweep.json"]
     },
     {
       "id": 7,
       "title": "Tuned compact service run",
       "file": "stages/07-combined-compact-run.md",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "depends_on": [
         2,
         3,
         6
       ],
       "commit": null,
-      "note": null,
+      "note": "Preparation paused at atomic checkpoint for Stage6 single fix; no services/live arm until selected levels and preparation gates.",
       "blocked_by": [],
-      "step": null,
+      "step": "WRITING",
       "writer": null,
-      "implementer": null,
+      "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": null,
       "preReview": {
         "used": false
@@ -312,7 +314,7 @@
     }
   },
   "currentStage": 6,
-  "writesFrozen": false,
+  "writesFrozen": true,
   "writer": null,
   "runReview": {
     "preReview": {
