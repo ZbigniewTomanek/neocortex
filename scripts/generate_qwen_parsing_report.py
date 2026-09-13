@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Generate and validate the privacy-safe Stage 7 compact parsing report."""
+"""Generate and validate the privacy-safe Stage 7 compact parsing report.
+
+Normalized ontology type names are an explicit safe-value exemption: they are
+structural labels constrained by NeoCortex's node/edge normalization regexes,
+not entity names or model prose.  Arbitrary unnormalized type text is not
+covered by that exemption.
+"""
 
 from __future__ import annotations
 
@@ -32,14 +38,19 @@ QUALITY_CHECKS = (
 )
 REPORT_SCHEMA = "resources/qwen-parsing-report-compact.schema.json"
 SAMPLE_SCHEMA = "resources/quality-sample-qwen-flash-next.schema.json"
+TUNED_REPORT_SCHEMA = "docs/plans/34-qwen-thinking-benchmark/resources/qwen-parsing-report-tuned.schema.json"
+TUNED_SAMPLE_SCHEMA = "docs/plans/34-qwen-thinking-benchmark/resources/quality-sample-tuned.schema.json"
 CORPUS_PATH = "docs/plans/33-local-qwen-migration/resources/compact-corpus.md"
-METRICS_PATH = "docs/plans/33-local-qwen-migration/resources/metrics-qwen-flash-next-compact.json"
-E2E_PATH = (
-    "docs/plans/33-local-qwen-migration/resources/e2e-manifest-qwen-flash-next-compact-20260911T001509Z-swift3.json"
-)
-RECALL_PATH = (
-    "docs/plans/33-local-qwen-migration/resources/recall-results-qwen-flash-next-compact-20260911T001509Z-swift3.json"
-)
+PLAN33_RESOURCES = "docs/plans/33-local-qwen-migration/resources"
+METRICS_TEMPLATE = PLAN33_RESOURCES + "/metrics-{arm}.json"
+E2E_TEMPLATE = PLAN33_RESOURCES + "/e2e-manifest-{arm}-{run_id}.json"
+RECALL_TEMPLATE = PLAN33_RESOURCES + "/recall-results-{arm}-{run_id}.json"
+SKIP_EVENTS_TEMPLATE = "skip-events-{arm}-{run_id}.json"
+GRAPH_SAMPLE_TEMPLATE = "quality-sample-{arm}-{run_id}.json"
+METRICS_PATH = METRICS_TEMPLATE.format(arm=ARM)
+E2E_PATH = E2E_TEMPLATE.format(arm=ARM, run_id=RUN_ID)
+RECALL_PATH = RECALL_TEMPLATE.format(arm=ARM, run_id=RUN_ID)
+AUDIT_LOG_PATH = "log/agent_actions.log"
 MISSING_ADMIN_PATH = "NOT_MEASURED/admin_jobs"
 MISSING_GRAPH_PATH = "NOT_MEASURED/graph_export"
 OUTPUT_FILES = (
@@ -47,6 +58,11 @@ OUTPUT_FILES = (
     "qwen-parsing-report.json",
     "qwen-parsing-report.md",
     "quality-sample-qwen-flash-next.json",
+)
+TUNED_OUTPUT_TEMPLATES = (
+    "qwen-parsing-inputs-{arm}-{run_id}.json",
+    "qwen-parsing-report-{arm}-{run_id}.json",
+    "qwen-parsing-report-{arm}-{run_id}.md",
 )
 REASON_PER_EPISODE = "No committed privacy-safe per-episode attribution exists for this field."
 REASON_ADMIN = "No committed privacy-safe per-job admin response exists for this run."
@@ -70,6 +86,46 @@ COMPARISON_COLUMNS = (
 
 class ReportError(ValueError):
     """Raised when evidence cannot support a deterministic safe report."""
+
+
+def _is_default_run(run_id: str, arm: str) -> bool:
+    return run_id == RUN_ID and arm == ARM
+
+
+def output_files(run_id: str, arm: str, *, graph_sample_present: bool = False) -> tuple[str, str, str, str]:
+    """Return collision-free outputs while preserving all historical names."""
+    if _is_default_run(run_id, arm):
+        return OUTPUT_FILES
+    inputs_template, report_template, markdown_template = TUNED_OUTPUT_TEMPLATES
+    sample = (
+        GRAPH_SAMPLE_TEMPLATE.format(arm=arm, run_id=run_id)
+        if graph_sample_present
+        else f"quality-sample-report-placeholder-{arm}-{run_id}.json"
+    )
+    return (
+        inputs_template.format(arm=arm, run_id=run_id),
+        report_template.format(arm=arm, run_id=run_id),
+        markdown_template.format(arm=arm, run_id=run_id),
+        sample,
+    )
+
+
+def _schema_path(root: Path, plan_dir: Path, reference: str) -> Path:
+    return root / reference if reference.startswith("docs/") else plan_dir / reference
+
+
+def _efforts(metadata: dict[str, Any]) -> dict[str, str]:
+    """Return the exact four-agent effort map from measured metadata."""
+    raw = metadata.get("efforts")
+    if not isinstance(raw, dict) or set(raw) != set(AGENT_NAMES):
+        raise ReportError("metrics effort map mismatch")
+    values = {name: raw[name] for name in AGENT_NAMES}
+    if any(
+        not isinstance(value, str) or value not in {"false", "off", "low", "medium", "high"}
+        for value in values.values()
+    ):
+        raise ReportError("metrics effort value is invalid")
+    return values
 
 
 def _repo_root(plan_dir: Path) -> Path:
@@ -116,15 +172,36 @@ def _expect(actual: Any, expected: Any, label: str) -> None:
         raise ReportError(f"{label} mismatch")
 
 
-def _load_sources(plan_dir: Path) -> tuple[Path, dict[str, Any], dict[str, Any], dict[str, Any]]:
+def _sources_for(run_id: str, arm: str) -> tuple[str, str, str]:
+    """Return the metrics, E2E manifest and recall paths for one run and arm.
+
+    The module constants remain the swift3 defaults and are read at call time,
+    so the default invocation is byte-identical and a test may still patch a
+    constant to simulate a missing source.
+    """
+    if run_id == RUN_ID and arm == ARM:
+        return METRICS_PATH, E2E_PATH, RECALL_PATH
+    return (
+        METRICS_TEMPLATE.format(arm=arm),
+        E2E_TEMPLATE.format(arm=arm, run_id=run_id),
+        RECALL_TEMPLATE.format(arm=arm, run_id=run_id),
+    )
+
+
+def _load_sources(
+    plan_dir: Path, *, run_id: str | None = None, arm: str | None = None
+) -> tuple[Path, dict[str, Any], dict[str, Any], dict[str, Any]]:
+    run_id = RUN_ID if run_id is None else run_id
+    arm = ARM if arm is None else arm
+    metrics_path, e2e_path, recall_path = _sources_for(run_id, arm)
     root = _repo_root(plan_dir)
-    metrics = _read_json(root / METRICS_PATH)
-    e2e = _read_json(root / E2E_PATH)
-    recall = _read_json(root / RECALL_PATH)
+    metrics = _read_json(root / metrics_path)
+    e2e = _read_json(root / e2e_path)
+    recall = _read_json(root / recall_path)
     metadata = metrics.get("run_metadata", {})
 
-    _expect(metadata.get("run_id"), RUN_ID, "metrics run id")
-    _expect(metrics.get("arm"), ARM, "metrics arm")
+    _expect(metadata.get("run_id"), run_id, "metrics run id")
+    _expect(metrics.get("arm"), arm, "metrics arm")
     _expect(metadata.get("corpus_profile"), "compact", "metrics corpus profile")
     _expect(metadata.get("corpus_episode_ids"), list(EPISODE_IDS), "metrics episode set")
     _expect(metadata.get("corpus_size"), len(EPISODE_IDS), "metrics corpus size")
@@ -132,22 +209,25 @@ def _load_sources(plan_dir: Path) -> tuple[Path, dict[str, Any], dict[str, Any],
     _expect(metadata.get("source_paths", {}).get("corpus"), CORPUS_PATH, "metrics corpus path")
     _expect(tuple(metadata.get("model_ids", {})), AGENT_NAMES, "metrics agent set")
     _expect(tuple(metadata.get("efforts", {})), AGENT_NAMES, "metrics effort agent set")
+    _expect(set(metadata.get("model_ids", {})), set(AGENT_NAMES), "metrics model agent set")
     _expect(set(metadata.get("model_ids", {}).values()), {f"local:{MODEL}"}, "metrics model ids")
-    _expect(set(metadata.get("efforts", {}).values()), {EFFORT}, "metrics effort profile")
+    efforts = _efforts(metadata)
+    if _is_default_run(run_id, arm):
+        _expect(set(efforts.values()), {EFFORT}, "metrics effort profile")
 
-    metrics_digest = _digest(root / METRICS_PATH)
-    _expect(e2e.get("run_id"), RUN_ID, "E2E run id")
-    _expect(e2e.get("arm"), ARM, "E2E arm")
-    _expect(e2e.get("corpus_metrics", {}).get("path"), METRICS_PATH, "E2E metrics path")
+    metrics_digest = _digest(root / metrics_path)
+    _expect(e2e.get("run_id"), run_id, "E2E run id")
+    _expect(e2e.get("arm"), arm, "E2E arm")
+    _expect(e2e.get("corpus_metrics", {}).get("path"), metrics_path, "E2E metrics path")
     _expect(e2e.get("corpus_metrics", {}).get("sha256"), metrics_digest, "E2E metrics digest")
     _expect(e2e.get("status"), "MEASURED", "E2E status")
     _expect(e2e.get("e2e", {}).get("total"), 5, "E2E child count")
 
-    _expect(recall.get("run_id"), RUN_ID, "recall run id")
+    _expect(recall.get("run_id"), run_id, "recall run id")
     _expect(recall.get("status"), "MEASURED", "recall status")
     _expect(recall.get("query_set", {}).get("corpus_profile"), "compact", "recall profile")
-    _expect(e2e.get("recall", {}).get("path"), RECALL_PATH, "E2E recall path")
-    _expect(e2e.get("recall", {}).get("sha256"), _digest(root / RECALL_PATH), "E2E recall digest")
+    _expect(e2e.get("recall", {}).get("path"), recall_path, "E2E recall path")
+    _expect(e2e.get("recall", {}).get("sha256"), _digest(root / recall_path), "E2E recall digest")
 
     snapshot_path = metadata.get("source_paths", {}).get("graph_snapshot")
     snapshot_digest = metadata.get("snapshot_sha256")
@@ -162,32 +242,80 @@ def _load_sources(plan_dir: Path) -> tuple[Path, dict[str, Any], dict[str, Any],
     return root, metrics, e2e, recall
 
 
-def _manifest(root: Path, metrics: dict[str, Any]) -> dict[str, Any]:
+def find_exports(root: Path, output_dir: Path, run_id: str, arm: str) -> dict[str, str]:
+    """Return the committed Stage 2 exports for one run, keyed by artifact kind.
+
+    Plan 33 had to declare ``graph_export`` and ``audit_log`` unavailable
+    because the only per-event skip evidence lived in the private action log and
+    the only graph dump was a raw ``pg_dump``.  ``export_skip_events.py`` and
+    ``export_graph_sample.py`` publish privacy-safe replacements; when both are
+    present beside the report they become the named sources instead, and
+    ``REASON_AUDIT`` / ``REASON_GRAPH`` are no longer emitted.
+
+    Both must exist: a manifest that named one and not the other would mix two
+    evidence generations in one report.  Note that neither export carries a
+    corpus episode key — the skip events carry a database ``episode_id`` and the
+    sample carries a ``_source_episode`` row id — so the per-episode leaf values
+    stay ``NOT_MEASURED`` with ``REASON_PER_EPISODE``.  Only the source links
+    move.
+    """
+    candidates = {
+        "audit_log": output_dir / SKIP_EVENTS_TEMPLATE.format(arm=arm, run_id=run_id),
+        "graph_export": output_dir / GRAPH_SAMPLE_TEMPLATE.format(arm=arm, run_id=run_id),
+    }
+    if not all(path.is_file() for path in candidates.values()):
+        return {}
+    exports: dict[str, str] = {}
+    for kind, path in candidates.items():
+        document = _read_json(path)
+        expected_kind = "neocortex-skip-events" if kind == "audit_log" else "neocortex-graph-sample"
+        _expect(document.get("kind"), expected_kind, f"{kind} export kind")
+        _expect(document.get("run_id"), run_id, f"{kind} export run id")
+        _expect(document.get("arm"), arm, f"{kind} export arm")
+        _expect(document.get("status"), "MEASURED", f"{kind} export status")
+        try:
+            exports[kind] = path.resolve().relative_to(root).as_posix()
+        except ValueError as exc:
+            raise ReportError(f"{kind} export is outside the repository") from exc
+    return exports
+
+
+def _manifest(
+    root: Path,
+    metrics: dict[str, Any],
+    *,
+    run_id: str | None = None,
+    arm: str | None = None,
+    exports: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    run_id = RUN_ID if run_id is None else run_id
+    arm = ARM if arm is None else arm
+    metrics_path, e2e_path, recall_path = _sources_for(run_id, arm)
+    exports = exports or {}
     metadata = metrics["run_metadata"]
     snapshot_path = metadata["source_paths"]["graph_snapshot"]
+
+    def _export_or_missing(kind: str, missing_path: str, reason: str) -> dict[str, str]:
+        path = exports.get(kind)
+        if path is None:
+            return _unavailable(kind, missing_path, reason)
+        return _available(kind, path, _digest(root / path))
+
     artifacts = [
         _available("corpus", CORPUS_PATH, _digest(root / CORPUS_PATH)),
-        _available("metrics", METRICS_PATH, _digest(root / METRICS_PATH)),
+        _available("metrics", metrics_path, _digest(root / metrics_path)),
         _available("snapshot", snapshot_path, _digest(root / snapshot_path)),
         _unavailable(
             "admin_jobs",
             MISSING_ADMIN_PATH,
             REASON_ADMIN,
         ),
-        _unavailable(
-            "graph_export",
-            MISSING_GRAPH_PATH,
-            REASON_GRAPH,
-        ),
-        _unavailable(
-            "audit_log",
-            "log/agent_actions.log",
-            REASON_AUDIT,
-        ),
-        _available("e2e_manifest", E2E_PATH, _digest(root / E2E_PATH)),
-        _available("recall", RECALL_PATH, _digest(root / RECALL_PATH)),
+        _export_or_missing("graph_export", MISSING_GRAPH_PATH, REASON_GRAPH),
+        _export_or_missing("audit_log", AUDIT_LOG_PATH, REASON_AUDIT),
+        _available("e2e_manifest", e2e_path, _digest(root / e2e_path)),
+        _available("recall", recall_path, _digest(root / recall_path)),
     ]
-    return {"schema_version": 1, "run_id": RUN_ID, "artifacts": artifacts}
+    return {"schema_version": 1, "run_id": run_id, "artifacts": artifacts}
 
 
 def _available(kind: str, path: str, digest: str) -> dict[str, str]:
@@ -213,23 +341,47 @@ def _leaves(value: Any, pointer: str) -> Iterator[tuple[str, Any]]:
         yield pointer, value
 
 
-def _source_for_pointer(pointer: str) -> str:
+def _pointer_sources(manifest: dict[str, Any]) -> dict[str, str]:
+    """Map each evidence family to the manifest path that now backs it.
+
+    Derived from the manifest so an evidence link can never name a path the
+    manifest does not list, whichever generation of exports produced it.
+    """
+    paths = {item["kind"]: item["path"] for item in manifest["artifacts"]}
+    return {
+        "e2e_manifest": paths.get("e2e_manifest", E2E_PATH),
+        "audit_log": paths.get("audit_log", AUDIT_LOG_PATH),
+        "admin_jobs": paths.get("admin_jobs", MISSING_ADMIN_PATH),
+        "metrics": paths.get("metrics", METRICS_PATH),
+        "graph_export": paths.get("graph_export", MISSING_GRAPH_PATH),
+    }
+
+
+def _source_for_pointer(pointer: str, sources: dict[str, str], report_schema: str = REPORT_SCHEMA) -> str:
     if pointer.endswith("/kind"):
-        return REPORT_SCHEMA
+        return report_schema
     if "/quality_integrity/" in pointer:
-        return E2E_PATH
+        return sources["e2e_manifest"]
     if "/events/" in pointer:
-        return "log/agent_actions.log"
+        return sources["audit_log"]
     if "/jobs/" in pointer:
-        return MISSING_ADMIN_PATH
+        return sources["admin_jobs"]
     if "/domains/" in pointer:
-        return METRICS_PATH
+        return sources["metrics"]
     if "/ontology/" in pointer or "/extraction/" in pointer or "/librarian/" in pointer:
-        return MISSING_GRAPH_PATH
-    return REPORT_SCHEMA
+        return sources["graph_export"]
+    return report_schema
 
 
-def _episode(index: int, key: str, metadata: dict[str, Any]) -> dict[str, Any]:
+def _episode(
+    index: int,
+    key: str,
+    metadata: dict[str, Any],
+    sources: dict[str, str],
+    run_id: str,
+    *,
+    tuned: bool = False,
+) -> dict[str, Any]:
     missing_collection = {
         "count": "NOT_MEASURED",
         "stable_ids": "NOT_MEASURED",
@@ -244,8 +396,8 @@ def _episode(index: int, key: str, metadata: dict[str, Any]) -> dict[str, Any]:
         ],
         "run_provenance": {
             "model": MODEL,
-            "effort": EFFORT,
-            "run_id": RUN_ID,
+            ("efforts" if tuned else "effort"): _efforts(metadata) if tuned else EFFORT,
+            "run_id": run_id,
             "snapshot_path": metadata["source_paths"]["graph_snapshot"],
             "source_revision": metadata["source_revision"],
         },
@@ -263,13 +415,20 @@ def _episode(index: int, key: str, metadata: dict[str, Any]) -> dict[str, Any]:
         "events": {"retries": "NOT_MEASURED", "timeouts": "NOT_MEASURED", "rejections": "NOT_MEASURED"},
         "quality_integrity": {
             "status": "NOT_MEASURED",
-            "checks": [{"name": name, "status": "NOT_MEASURED", "source": E2E_PATH} for name in QUALITY_CHECKS],
+            "checks": [
+                {"name": name, "status": "NOT_MEASURED", "source": sources["e2e_manifest"]} for name in QUALITY_CHECKS
+            ],
         },
     }
     evidence = []
     for section in ("jobs", "domains", "ontology", "extraction", "librarian", "events", "quality_integrity"):
         for pointer, value in _leaves(row[section], f"/episodes/{index}/{section}"):
-            item = {"pointer": pointer, "status": "MEASURED", "value": value, "source": _source_for_pointer(pointer)}
+            item = {
+                "pointer": pointer,
+                "status": "MEASURED",
+                "value": value,
+                "source": _source_for_pointer(pointer, sources, TUNED_REPORT_SCHEMA if tuned else REPORT_SCHEMA),
+            }
             if value == "NOT_MEASURED":
                 item["status"] = "NOT_MEASURED"
                 item["reason"] = REASON_PER_EPISODE
@@ -278,16 +437,18 @@ def _episode(index: int, key: str, metadata: dict[str, Any]) -> dict[str, Any]:
     return row
 
 
-def _report(metrics: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]:
+def _report(metrics: dict[str, Any], manifest: dict[str, Any], *, tuned: bool = False) -> dict[str, Any]:
     metadata = metrics["run_metadata"]
     snapshot_path = metadata["source_paths"]["graph_snapshot"]
+    run_id = manifest["run_id"]
+    sources = _pointer_sources(manifest)
     return {
         "schema_version": 1,
         "status": "NOT_MEASURED",
         "run": {
-            "run_id": RUN_ID,
+            "run_id": run_id,
             "model": MODEL,
-            "effort": EFFORT,
+            ("efforts" if tuned else "effort"): _efforts(metadata) if tuned else EFFORT,
             "source_revision": metadata["source_revision"],
             "corpus_profile": "compact",
             "corpus_revision": 1,
@@ -297,7 +458,9 @@ def _report(metrics: dict[str, Any], manifest: dict[str, Any]) -> dict[str, Any]
             "snapshot_sha256": metadata["snapshot_sha256"],
         },
         "source_artifacts": manifest["artifacts"],
-        "episodes": [_episode(index, key, metadata) for index, key in enumerate(EPISODE_KEYS)],
+        "episodes": [
+            _episode(index, key, metadata, sources, run_id, tuned=tuned) for index, key in enumerate(EPISODE_KEYS)
+        ],
         "checks": {
             "episode_set": ",".join(EPISODE_KEYS),
             "source_links": "PASS",
@@ -397,11 +560,12 @@ def _validate_safe_content(*documents: Any) -> None:
         raise ReportError("privacy or safe-value scan failed")
 
 
-def _validate_manifest(root: Path, manifest: dict[str, Any]) -> None:
+def _validate_manifest(root: Path, manifest: dict[str, Any], *, run_id: str | None = None) -> None:
+    run_id = RUN_ID if run_id is None else run_id
     if set(manifest) != {"schema_version", "run_id", "artifacts"}:
         raise ReportError("input manifest fields are invalid")
     _expect(manifest.get("schema_version"), 1, "input manifest schema version")
-    _expect(manifest.get("run_id"), RUN_ID, "input manifest run id")
+    _expect(manifest.get("run_id"), run_id, "input manifest run id")
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, list):
         raise ReportError("input manifest artifacts are invalid")
@@ -451,9 +615,17 @@ def _validate_manifest(root: Path, manifest: dict[str, Any]) -> None:
             raise ReportError("source availability is invalid")
 
 
-def _validate_source_links(plan_dir: Path, manifest: dict[str, Any], report: dict[str, Any]) -> None:
+def _validate_source_links(
+    root: Path,
+    plan_dir: Path,
+    manifest: dict[str, Any],
+    report: dict[str, Any],
+    *,
+    report_schema: str = REPORT_SCHEMA,
+) -> None:
     artifacts = {item["path"]: item for item in manifest["artifacts"]}
-    allowed = {*artifacts, REPORT_SCHEMA}
+    allowed = {*artifacts, report_schema}
+    sources = _pointer_sources(manifest)
     for row in report["episodes"]:
         if row["source"]["path"] not in artifacts:
             raise ReportError("episode source link is absent from the manifest")
@@ -462,18 +634,39 @@ def _validate_source_links(plan_dir: Path, manifest: dict[str, Any], report: dic
                 raise ReportError("quality source link is absent from the manifest")
         for evidence in row["evidence"]:
             source = evidence["source"]
-            if source != _source_for_pointer(evidence["pointer"]):
+            if source != _source_for_pointer(evidence["pointer"], sources, report_schema):
                 raise ReportError("evidence source mismatch")
             if source not in allowed:
                 raise ReportError("evidence source link is absent from the manifest")
             if (
                 evidence["status"] == "MEASURED"
-                and source != REPORT_SCHEMA
+                and source != report_schema
                 and artifacts[source]["availability"] != "MEASURED"
             ):
                 raise ReportError("measured evidence links to an unavailable source")
-    if not (plan_dir / REPORT_SCHEMA).is_file():
+    if not _schema_path(root, plan_dir, report_schema).is_file():
         raise ReportError("report schema source link is missing")
+
+
+def _validate_tuned_sample(
+    root: Path,
+    sample: dict[str, Any],
+    schema: dict[str, Any],
+    manifest: dict[str, Any],
+    *,
+    run_id: str,
+    arm: str,
+) -> None:
+    """Validate the Stage 2 graph export as an input; never regenerate it."""
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(sample)
+    _expect(sample.get("run_id"), run_id, "tuned sample run id")
+    _expect(sample.get("arm"), arm, "tuned sample arm")
+    _expect(sample.get("status"), "MEASURED", "tuned sample status")
+    graph_source = next(item for item in manifest["artifacts"] if item["kind"] == "graph_export")
+    _expect(graph_source.get("availability"), "MEASURED", "tuned graph export availability")
+    _expect(graph_source.get("sha256"), _digest(root / graph_source["path"]), "tuned graph export digest")
+    _expect(sample, _read_json(root / graph_source["path"]), "tuned sample source")
 
 
 def _validate_sample(
@@ -536,28 +729,43 @@ def _derive_report_status(report: dict[str, Any], manifest: dict[str, Any]) -> s
     return "MEASURED"
 
 
-def validate_artifacts(plan_dir: Path, manifest_path: Path, report_path: Path, sample_path: Path) -> dict[str, Any]:
-    root, metrics, _e2e, _recall = _load_sources(plan_dir)
-    expected_manifest = _manifest(root, metrics)
-    expected_report = _report(metrics, expected_manifest)
-    expected_sample = _sample(metrics)
+def validate_artifacts(
+    plan_dir: Path,
+    manifest_path: Path,
+    report_path: Path,
+    sample_path: Path,
+    *,
+    run_id: str | None = None,
+    arm: str | None = None,
+    exports: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    run_id = RUN_ID if run_id is None else run_id
+    arm = ARM if arm is None else arm
+    tuned = not _is_default_run(run_id, arm)
+    root, metrics, _e2e, _recall = _load_sources(plan_dir, run_id=run_id, arm=arm)
+    expected_manifest = _manifest(root, metrics, run_id=run_id, arm=arm, exports=exports)
+    expected_report = _report(metrics, expected_manifest, tuned=tuned)
+    graph_sample_present = bool(exports and exports.get("graph_export"))
+    expected_sample = _read_json(sample_path) if tuned and graph_sample_present else _sample(metrics)
     manifest = _read_json(manifest_path)
     report = _read_json(report_path)
     sample = _read_json(sample_path)
-    report_schema = _read_json(plan_dir / REPORT_SCHEMA)
-    sample_schema = _read_json(plan_dir / SAMPLE_SCHEMA)
+    report_schema_ref = TUNED_REPORT_SCHEMA if tuned else REPORT_SCHEMA
+    sample_schema_ref = TUNED_SAMPLE_SCHEMA if tuned and graph_sample_present else SAMPLE_SCHEMA
+    report_schema = _read_json(_schema_path(root, plan_dir, report_schema_ref))
+    sample_schema = _read_json(_schema_path(root, plan_dir, sample_schema_ref))
     try:
         Draft202012Validator.check_schema(report_schema)
         Draft202012Validator(report_schema).validate(report)
     except (SchemaError, ValidationError) as exc:
         raise ReportError("report schema validation failed") from exc
-    _validate_manifest(root, manifest)
+    _validate_manifest(root, manifest, run_id=run_id)
     _expect(manifest, expected_manifest, "canonical input manifest")
     _expect(report.get("source_artifacts"), manifest["artifacts"], "report source artifacts")
     _expect([row.get("episode_key") for row in report["episodes"]], list(EPISODE_KEYS), "report episode order")
     _expect(report.get("run"), expected_report["run"], "report run")
     _expect(report.get("status"), _derive_report_status(report, manifest), "report status")
-    _validate_source_links(plan_dir, manifest, report)
+    _validate_source_links(root, plan_dir, manifest, report, report_schema=report_schema_ref)
     for row in report["episodes"]:
         _expect(
             tuple(job["kind"] for job in row["jobs"]),
@@ -571,10 +779,22 @@ def validate_artifacts(plan_dir: Path, manifest_path: Path, report_path: Path, s
         )
     evidence_count = _validate_evidence(report)
     try:
-        _validate_sample(root, sample, sample_schema, manifest)
+        if tuned and graph_sample_present:
+            _validate_tuned_sample(root, sample, sample_schema, manifest, run_id=run_id, arm=arm)
+        else:
+            _validate_sample(root, sample, sample_schema, manifest)
     except (SchemaError, ValidationError) as exc:
         raise ReportError("sample schema validation failed") from exc
-    _validate_safe_content(manifest, report, sample)
+    # The tuned graph sample has its own fail-closed schema: it deliberately
+    # publishes validated graph schema labels and normalized ontology type
+    # names as structural metadata.  Those are explicit exemptions from this
+    # historical report scanner's blanket dynamic-schema rule; names, content,
+    # descriptions, and property values remain absent by construction.
+    (
+        _validate_safe_content(manifest, report)
+        if tuned and graph_sample_present
+        else _validate_safe_content(manifest, report, sample)
+    )
     _expect(report, expected_report, "canonical report")
     _expect(sample, expected_sample, "canonical sample")
     return {
@@ -611,7 +831,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         ("Report status", report["status"]),
         ("Schema version", report["schema_version"]),
         ("Model", run["model"]),
-        ("Effort", run["effort"]),
+        ("Effort", run["effort"] if "effort" in run else _markdown_value(run["efforts"])),
         ("Run id", run["run_id"]),
         ("Snapshot", run["snapshot_path"]),
         ("Source revision", run["source_revision"]),
@@ -660,21 +880,33 @@ def render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def generate(plan_dir: Path, output_dir: Path) -> dict[str, Any]:
-    root, metrics, _e2e, _recall = _load_sources(plan_dir)
-    manifest = _manifest(root, metrics)
-    manifest_path = output_dir / OUTPUT_FILES[0]
+def generate(plan_dir: Path, output_dir: Path, *, run_id: str | None = None, arm: str | None = None) -> dict[str, Any]:
+    run_id = RUN_ID if run_id is None else run_id
+    arm = ARM if arm is None else arm
+    root, metrics, _e2e, _recall = _load_sources(plan_dir, run_id=run_id, arm=arm)
+    exports = find_exports(root, output_dir, run_id, arm)
+    tuned = not _is_default_run(run_id, arm)
+    graph_sample_present = "graph_export" in exports
+    manifest = _manifest(root, metrics, run_id=run_id, arm=arm, exports=exports)
+    filenames = output_files(run_id, arm, graph_sample_present=graph_sample_present)
+    manifest_path = output_dir / filenames[0]
     _write_json(manifest_path, manifest)
-    report = _report(metrics, manifest)
-    sample = _sample(metrics)
-    _validate_safe_content(manifest, report, sample)
-    report_path = output_dir / OUTPUT_FILES[1]
-    markdown_path = output_dir / OUTPUT_FILES[2]
-    sample_path = output_dir / OUTPUT_FILES[3]
+    report = _report(metrics, manifest, tuned=tuned)
+    sample_path = output_dir / filenames[3]
+    sample = _read_json(sample_path) if tuned and graph_sample_present else _sample(metrics)
+    if tuned and graph_sample_present:
+        _validate_safe_content(manifest, report)
+    else:
+        _validate_safe_content(manifest, report, sample)
+    report_path = output_dir / filenames[1]
+    markdown_path = output_dir / filenames[2]
     _write_json(report_path, report)
     markdown_path.write_text(render_markdown(report))
-    _write_json(sample_path, sample)
-    return validate_artifacts(plan_dir, manifest_path, report_path, sample_path)
+    if not (tuned and graph_sample_present):
+        _write_json(sample_path, sample)
+    return validate_artifacts(
+        plan_dir, manifest_path, report_path, sample_path, run_id=run_id, arm=arm, exports=exports
+    )
 
 
 def self_check(plan_dir: Path, output: Path) -> dict[str, Any]:
@@ -824,6 +1056,10 @@ def _parser() -> argparse.ArgumentParser:
     generate_parser = commands.add_parser("generate")
     generate_parser.add_argument("--plan-dir", type=Path, required=True)
     generate_parser.add_argument("--output-dir", type=Path, required=True)
+    # The other three subcommands do not take these; the defaults keep every
+    # existing invocation byte-identical.
+    generate_parser.add_argument("--run-id", default=RUN_ID)
+    generate_parser.add_argument("--arm", default=ARM)
     validate_parser = commands.add_parser("validate")
     validate_parser.add_argument("--plan-dir", type=Path, required=True)
     validate_parser.add_argument("--input-manifest", type=Path, required=True)
@@ -846,7 +1082,7 @@ def main() -> int:
     args = _parser().parse_args()
     try:
         if args.command == "generate":
-            generate(args.plan_dir, args.output_dir)
+            generate(args.plan_dir, args.output_dir, run_id=args.run_id, arm=args.arm)
         elif args.command == "validate":
             print(
                 json.dumps(

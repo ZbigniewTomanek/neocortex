@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neocortex.local/schemas/quality-sample-tuned.schema.json",
+  "title": "NeoCortex tuned-arm graph sample",
+  "description": "Deterministic privacy-safe graph sample written by scripts/export_graph_sample.py. Shape only: identifiers, type names, lengths, counts and booleans. This is NOT Plan 33's quality-sample-qwen-flash-next.schema.json, which requires name/source_job_id/source_episode_key and forbids these fields.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "run_id",
+    "arm",
+    "status",
+    "schema_source",
+    "schemas",
+    "requested",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "neocortex-graph-sample"},
+    "run_id": {"type": "string", "minLength": 1},
+    "arm": {"type": "string", "minLength": 1},
+    "status": {"const": "MEASURED"},
+    "schema_source": {"enum": ["metrics", "information_schema"]},
+    "schemas": {"type": "array", "items": {"type": "string", "pattern": "^ncx_[a-z0-9]+__[a-z0-9_]+$"}},
+    "requested": {"type": "integer", "minimum": 1},
+    "nodes": {"$ref": "#/$defs/nodeSample"},
+    "edges": {"$ref": "#/$defs/edgeSample"}
+  },
+  "$defs": {
+    "nodeSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "sampled", "shortfall", "rows"],
+      "properties": {
+        "count": {"type": "integer", "minimum": 0},
+        "sampled": {"type": "integer", "minimum": 0},
+        "shortfall": {"type": "boolean"},
+        "rows": {"type": "array", "items": {"$ref": "#/$defs/nodeRow"}}
+      }
+    },
+    "edgeSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "sampled", "shortfall", "rows"],
+      "properties": {
+        "count": {"type": "integer", "minimum": 0},
+        "sampled": {"type": "integer", "minimum": 0},
+        "shortfall": {"type": "boolean"},
+        "rows": {"type": "array", "items": {"$ref": "#/$defs/edgeRow"}}
+      }
+    },
+    "nodeRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "id",
+        "type",
+        "name_length",
+        "content_length",
+        "property_key_count",
+        "source_episode",
+        "type_valid"
+      ],
+      "properties": {
+        "schema": {"type": "string", "pattern": "^ncx_[a-z0-9]+__[a-z0-9_]+$"},
+        "id": {"type": "integer"},
+        "type": {"type": "string", "minLength": 1, "maxLength": 200},
+        "name_length": {"type": ["integer", "null"], "minimum": 0},
+        "content_length": {"type": ["integer", "null"], "minimum": 0},
+        "property_key_count": {"type": "integer", "minimum": 0},
+        "source_episode": {"type": ["integer", "null"]},
+        "type_valid": {"type": "boolean"}
+      }
+    },
+    "edgeRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "source_id",
+        "target_id",
+        "weight",
+        "source_episode",
+        "endpoints_exist",
+        "type_valid"
+      ],
+      "properties": {
+        "id": {"type": "integer"},
+        "type": {"type": "string", "minLength": 1, "maxLength": 200},
+        "source_id": {"type": ["integer", "null"]},
+        "target_id": {"type": ["integer", "null"]},
+        "weight": {"type": ["number", "null"]},
+        "source_episode": {"type": ["integer", "null"]},
+        "endpoints_exist": {"type": "boolean"},
+        "type_valid": {"type": "boolean"}
+      }
+    }
+  }
+}

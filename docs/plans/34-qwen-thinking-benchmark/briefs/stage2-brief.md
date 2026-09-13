@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Implementer | `claude/opus`, effort `high` (strong tier) |
-| Reviewer | `claude/opus`, effort `high` (strong tier) |
+| Implementer | `codex/gpt-5.6-sol`, effort `high` (strong tier; resumed on Codex) |
+| Reviewer | `codex/gpt-5.6-sol`, effort `high` (strong tier) |
 | Tier reason | Two new exporters, a privacy contract, a SQL access path, and a byte-identity constraint on a historical artifact. Nothing mechanical. |
 | Plan stage | [stages/02-integrity-evidence-export.md](../stages/02-integrity-evidence-export.md) |
 | Run contract | [goal.md](../goal.md) · [PROTOCOL.md](../PROTOCOL.md) |
@@ -84,6 +84,7 @@ From an inventory of the current tree:
 - `scripts/export_graph_sample.py` (new)
 - `docs/plans/34-qwen-thinking-benchmark/resources/skip-events.schema.json` (new)
 - `docs/plans/34-qwen-thinking-benchmark/resources/quality-sample-tuned.schema.json` (new)
+- `docs/plans/34-qwen-thinking-benchmark/resources/qwen-parsing-report-tuned.schema.json` (new; nondefault runs only)
 - `scripts/compute_metrics.py`
 - `scripts/generate_qwen_parsing_report.py`
 - `scripts/e2e_manifest.py`
@@ -266,6 +267,20 @@ subcommands do not take them.
 When a skip-events file and a sample file for that run id exist in the output directory, the per-episode
 skip and graph fields read from them instead of emitting `REASON_AUDIT` / `REASON_GRAPH`. When they do
 not exist, the existing `NOT MEASURED` reasons stay exactly as they are today.
+
+**Resume correction (2026-09-13):** nondefault runs need a new tuned report schema because
+the frozen historical schema requires effort `false`. Emit exact four-agent `efforts`
+maps from measured metadata in run and episode provenance, validate with the new schema,
+and use arm/run-suffixed output filenames. Existing tuned graph sample is an input,
+never overwritten by a placeholder. Keep default generation byte-identical. Validate
+source artifact identities and measurement status before deriving any measured value;
+unavailable episode attribution remains explicitly NOT MEASURED.
+
+For temporal annotation, permit atomic annotation of this run's skip file when input
+and output share a directory, as the Stage 7 command specifies; do not reject that
+documented command. Never certify survival from an unrelated schema sharing numeric
+node ids. If existing safe metadata cannot identify the graph, retain `survived: null`
+and record the unresolved attribution instead of guessing.
 
 ---
 

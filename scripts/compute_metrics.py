@@ -455,6 +455,10 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
     # before PydanticAI rejects a later call batch.  Unless a separate
     # rollback/cleanliness proof exists, any such run is not certifiable.
     unproven_librarian_failures = 0
+    # Relations the Qwen entity cap dropped.  ``cap_extraction_entities`` filters
+    # them silently, so without this sum a run can lose edges with nothing in the
+    # evidence saying so.  Only the integer is logged; endpoint names are not.
+    relations_dropped_by_cap = 0
     for line in lines:
         try:
             record = json.loads(line)
@@ -505,6 +509,10 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
                 stage_timings.append(extra)
             if event == "librarian_failed" or (event == "agent_run_failed" and extra.get("agent") == "librarian"):
                 unproven_librarian_failures += 1
+            if event == "extractor_cardinality_capped":
+                dropped = extra.get("relations_dropped_by_cap")
+                if isinstance(dropped, int) and not isinstance(dropped, bool):
+                    relations_dropped_by_cap += dropped
         except (ValueError, TypeError, AttributeError):
             malformed_lines += 1
     attempts = counts.get("entity_attempt", 0) + counts.get("extraction_entity_attempt", 0)
@@ -527,6 +535,7 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
         "matched_records": matched_records,
         "malformed_lines": malformed_lines,
         "unproven_librarian_failures": unproven_librarian_failures,
+        "relations_dropped_by_cap": relations_dropped_by_cap,
     }
     if not audit_paths:
         return {**result, "status": "NOT_MEASURED", "reason": "missing_audit_log"}
@@ -546,6 +555,83 @@ def audit_metrics(*, run_id: str | None = None, correlation_id: str | None = Non
     return result
 
 
+NOT_MEASURED_FLAG = "NOT MEASURED"
+# Skip-event reason codes and the audit counter each one must agree with.
+SKIP_EVENT_COUNTERS = {
+    "missing_node": "edge_skipped_missing_node",
+    "temporal_pair": "edge_skipped_temporal_pair",
+}
+
+
+def skip_event_consistency(document: object, audit: dict[str, object]) -> dict[str, object]:
+    """Compare an exported skip-events document with the aggregate counters.
+
+    A flag is ``true`` only when two measured, run-identical artifacts agree.
+    An absent aggregate key with zero exported rows agrees; an absent key with
+    exported rows does not.  Missing or malformed evidence is never treated as
+    an empty measured artifact: nothing was compared, so nothing may be claimed.
+    """
+    not_measured: dict[str, object] = {
+        "skip_events_consistent": {reason: NOT_MEASURED_FLAG for reason in SKIP_EVENT_COUNTERS},
+        "temporal_survived": NOT_MEASURED_FLAG,
+    }
+    if not isinstance(document, dict):
+        return not_measured
+    document_map = cast(dict[str, object], document)
+    if document_map.get("status") != "MEASURED" or audit.get("status") != "MEASURED":
+        return not_measured
+    document_run_id = document_map.get("run_id")
+    audit_run_id = audit.get("run_id")
+    if (
+        not isinstance(document_run_id, str)
+        or not document_run_id
+        or not isinstance(audit_run_id, str)
+        or document_run_id != audit_run_id
+    ):
+        return not_measured
+    events = document_map.get("events")
+    declared_counts = document_map.get("counts")
+    aggregate = audit.get("audit_event_counts")
+    if not isinstance(events, list) or not all(isinstance(row, dict) for row in events):
+        return not_measured
+    if not isinstance(declared_counts, dict) or not isinstance(aggregate, dict):
+        return not_measured
+    event_rows = cast(list[dict[str, object]], events)
+    declared_count_map = cast(dict[str, object], declared_counts)
+    aggregate_map = cast(dict[str, object], aggregate)
+    exported = {reason: sum(row.get("reason_code") == reason for row in event_rows) for reason in SKIP_EVENT_COUNTERS}
+    if any(
+        not isinstance(declared_count_map.get(reason), int)
+        or isinstance(declared_count_map.get(reason), bool)
+        or declared_count_map[reason] != exported[reason]
+        for reason in SKIP_EVENT_COUNTERS
+    ):
+        # A document whose own counts disagree with its rows is not a measured
+        # comparison input, even if one of the inconsistent values happens to
+        # equal an audit counter.
+        return not_measured
+    if any(
+        counter in aggregate_map
+        and (not isinstance(aggregate_map[counter], int) or isinstance(aggregate_map[counter], bool))
+        for counter in SKIP_EVENT_COUNTERS.values()
+    ):
+        return not_measured
+    consistent = {
+        reason: exported[reason] == aggregate_map.get(counter, 0) for reason, counter in SKIP_EVENT_COUNTERS.items()
+    }
+    temporal = [row for row in event_rows if row.get("reason_code") == "temporal_pair"]
+    return {
+        "skip_events_consistent": consistent,
+        "temporal_survived": {
+            "total": len(temporal),
+            "survived": sum(row.get("survived") is True for row in temporal),
+            # A pair whose survival was never queried is neither survived nor
+            # lost.  Counting it as lost would invent a defect.
+            "unresolved": sum(row.get("survived") is None for row in temporal),
+        },
+    }
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--arm", required=True)
@@ -562,6 +648,7 @@ async def main() -> int:
         "--ingestion-url", default=os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001")
     )
     parser.add_argument("--run-id", default=os.environ.get("NEOCORTEX_BAKEOFF_RUN_ID"))
+    parser.add_argument("--skip-events", type=Path)
     args = parser.parse_args()
     effective_run_id = resolve_run_id(args.run_id)
     destination = PLAN_RESOURCES / f"metrics-{args.arm}.json"
@@ -611,6 +698,15 @@ async def main() -> int:
         print("librarian failure may have mutated the graph; quality metrics not written", file=sys.stderr)
         return 2
     output["audit"] = audit
+    if args.skip_events is not None:
+        try:
+            skip_document: object = json.loads(args.skip_events.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            # An unreadable export proves nothing either way; say so rather
+            # than letting the metrics claim a comparison that never ran.
+            skip_document = None
+        output["skip_events_path"] = _relative_path(args.skip_events)
+        output.update(skip_event_consistency(skip_document, audit))
     if args.merge and destination.exists():
         old = json.loads(destination.read_text())
         old.setdefault("phases", {})[args.phase] = output

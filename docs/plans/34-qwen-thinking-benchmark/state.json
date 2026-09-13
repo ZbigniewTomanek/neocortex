@@ -58,11 +58,11 @@
       "status": "IN_PROGRESS",
       "depends_on": [],
       "commit": null,
-      "note": "PAUSED MID-WRITE. A claude/opus implementer was running against briefs/stage2-brief.md when the session ended and left UNCOMMITTED, UNGATED work: M scripts/compute_metrics.py, M src/neocortex/extraction/agents.py, M src/neocortex/extraction/pipeline.py, ?? scripts/export_skip_events.py, ?? scripts/export_graph_sample.py (more may have landed after). No validation/stage2-* evidence exists, so no gate has been run. Resume: diff the tree against the brief, then either gate+commit it or reset and re-dispatch. Do not commit it ungated. See journal.md 'RESUME HERE'.",
+      "note": "All deterministic gates pass after Docker recovery; commit and single post-review next.",
       "blocked_by": [],
       "step": "WRITING",
-      "writer": "claude/opus",
-      "implementer": "claude/opus, effort high",
+      "writer": null,
+      "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": null,
       "preReview": {
         "used": false
@@ -70,7 +70,7 @@
       "review": {
         "used": false
       },
-      "gateFixes": 0,
+      "gateFixes": 1,
       "repair": {
         "used": false,
         "rounds": 0
@@ -78,8 +78,8 @@
       "repairReview": {
         "used": false
       },
-      "gates": {},
-      "evidence": []
+      "gates": {"G1 focused": "PASS", "G2 historical identity": "PASS", "G3 full suite": "PASS", "G4 ruff": "PASS"},
+      "evidence": ["validation/stage2-unit-coordinator-attempt1.txt", "validation/stage2-byteidentity-coordinator-attempt1.txt", "validation/stage2-suite-coordinator-attempt1.txt", "validation/stage2-postgres-coordinator-attempt3.txt", "validation/stage2-ruff-coordinator-attempt1.txt"]
     },
     {
       "id": 3,
@@ -147,16 +147,16 @@
       "id": 5,
       "title": "Thinking-level identity probe",
       "file": "stages/05-effort-level-identity.md",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "depends_on": [
         1
       ],
       "commit": null,
-      "note": null,
+      "note": "Independent offline implementation while Stage 2 waits for PostgreSQL; no live calls until mock gates and readiness pass.",
       "blocked_by": [],
-      "step": null,
-      "writer": null,
-      "implementer": null,
+      "step": "WRITING",
+      "writer": "codex/gpt-5.6-sol",
+      "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": null,
       "preReview": {
         "used": false
@@ -278,7 +278,7 @@
   "goal": "34-qwen-thinking-benchmark",
   "goalId": "none",
   "armed": "2026-09-11",
-  "status": "PAUSED",
+  "status": "IN_PROGRESS",
   "modes": {
     "preset": "custom",
     "placement": "review-each-stage-after",
@@ -303,9 +303,9 @@
       "command": null
     }
   },
-  "currentStage": 2,
+  "currentStage": 5,
   "writesFrozen": false,
-  "writer": null,
+  "writer": "codex/gpt-5.6-sol",
   "runReview": {
     "preReview": {
       "used": false

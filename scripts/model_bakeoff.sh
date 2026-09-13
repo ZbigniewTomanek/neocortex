@@ -359,8 +359,11 @@ run_e2e_with_test_tokens() {
       uv run python "$ROOT/scripts/e2e_manifest.py" write-missing-result \
         --path "$result_path" --script "$test_script" --child-run-id "$child_run_id" --exit-code "$status"
     else
+      # Banners go to stdout and tracebacks to stderr; both are needed to say
+      # where a child recorded by exit status only actually died.
       uv run python "$ROOT/scripts/e2e_manifest.py" write-exit-result \
-        --path "$result_path" --script "$test_script" --child-run-id "$child_run_id" --exit-code "$status"
+        --path "$result_path" --script "$test_script" --child-run-id "$child_run_id" --exit-code "$status" \
+        --stdout-path "$stdout_path" --stderr-path "$stderr_path"
     fi
   fi
   printf '%s\t%s\t%s\t%s\n' "$test_script" "$child_run_id" "$status" "$result_path" >>"$E2E_STATUS_PATH"

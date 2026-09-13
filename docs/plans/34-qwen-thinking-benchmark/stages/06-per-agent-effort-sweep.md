@@ -28,7 +28,7 @@ select `off` for all four agents, and continue. Do not spend the budget confirmi
    --per-call-timeout 300 --episode-timeout 600 --max-wall-seconds 3600 --cache-dir .tmp/plan34/cache`.
    Ontology and librarian stay `off`. Select `L_ext` by the rule below.
 
-2. Librarian sweep. Run `off` first at the pinned `L_ext`, then for each level in `L*`: `--stage librarian --cache-thinking <L_ext cache>
+2. Librarian sweep. Run `off` first at the pinned `L_ext`, then for each level in `L*`: `--stage librarian --cache-thinking <L_ext cache> --thinking off --thinking-ontology off --thinking-extractor <L_ext>
    --thinking-librarian <level>` on `--corpus both`, fresh in-memory repo per episode plus the shared
    triplet repos. The one-shot profile makes at most one request per episode, so this is cheap. Select
    `L_lib`.

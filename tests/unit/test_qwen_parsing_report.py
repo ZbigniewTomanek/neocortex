@@ -523,3 +523,247 @@ def test_f7_evidence_cannot_be_moved_between_episode_arrays(tmp_path: Path) -> N
             output / "qwen-parsing-report.json",
             output / "quality-sample-qwen-flash-next.json",
         )
+
+
+# ── Run-id / arm parametrization and the Stage 2 exports ──
+
+_STANDIN_SKIP_EVENTS = "docs/plans/34-qwen-thinking-benchmark/resources/skip-events.schema.json"
+_STANDIN_GRAPH_SAMPLE = "docs/plans/34-qwen-thinking-benchmark/resources/quality-sample-tuned.schema.json"
+
+
+def test_explicit_default_run_and_arm_reproduce_the_implicit_output(tmp_path: Path) -> None:
+    implicit = tmp_path / "implicit"
+    explicit = tmp_path / "explicit"
+    report.generate(PLAN, implicit)
+    report.generate(PLAN, explicit, run_id=report.RUN_ID, arm=report.ARM)
+    for filename in report.OUTPUT_FILES:
+        assert (implicit / filename).read_bytes() == (explicit / filename).read_bytes()
+
+
+def test_a_non_default_run_and_arm_resolve_their_own_source_paths() -> None:
+    metrics, e2e, recall = report._sources_for("20260912T000000Z-tuned", "qwen-flash-next-compact-tuned")
+    assert metrics.endswith("metrics-qwen-flash-next-compact-tuned.json")
+    assert e2e.endswith("e2e-manifest-qwen-flash-next-compact-tuned-20260912T000000Z-tuned.json")
+    assert recall.endswith("recall-results-qwen-flash-next-compact-tuned-20260912T000000Z-tuned.json")
+    # The defaults are unchanged, so every existing invocation still resolves
+    # the swift3 artifacts.
+    assert report._sources_for(report.RUN_ID, report.ARM) == (
+        report.METRICS_PATH,
+        report.E2E_PATH,
+        report.RECALL_PATH,
+    )
+
+
+def test_exports_are_discovered_only_when_both_are_present(tmp_path: Path) -> None:
+    output = tmp_path / "resources"
+    output.mkdir()
+    run_id, arm = "run-1", "arm-1"
+    skip = output / f"skip-events-{arm}-{run_id}.json"
+    sample = output / f"quality-sample-{arm}-{run_id}.json"
+
+    assert report.find_exports(tmp_path, output, run_id, arm) == {}
+    skip.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "neocortex-skip-events",
+                "run_id": run_id,
+                "arm": arm,
+                "status": "MEASURED",
+            }
+        )
+    )
+    # One without the other would mix two evidence generations in one report.
+    assert report.find_exports(tmp_path, output, run_id, arm) == {}
+    sample.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "kind": "neocortex-graph-sample",
+                "run_id": run_id,
+                "arm": arm,
+                "status": "MEASURED",
+            }
+        )
+    )
+    assert report.find_exports(tmp_path, output, run_id, arm) == {
+        "audit_log": f"resources/skip-events-{arm}-{run_id}.json",
+        "graph_export": f"resources/quality-sample-{arm}-{run_id}.json",
+    }
+
+
+def test_an_export_outside_the_repository_is_refused(tmp_path: Path) -> None:
+    output = tmp_path / "outside"
+    output.mkdir()
+    (output / "skip-events-a-r.json").write_text(
+        json.dumps({"kind": "neocortex-skip-events", "run_id": "r", "arm": "a", "status": "MEASURED"})
+    )
+    (output / "quality-sample-a-r.json").write_text(
+        json.dumps({"kind": "neocortex-graph-sample", "run_id": "r", "arm": "a", "status": "MEASURED"})
+    )
+    with pytest.raises(report.ReportError, match="outside the repository"):
+        report.find_exports(tmp_path / "elsewhere", output, "r", "a")
+
+
+@pytest.mark.parametrize("field", ["run_id", "arm", "status"])
+def test_export_identity_or_measurement_mismatch_is_rejected(tmp_path: Path, field: str) -> None:
+    output = tmp_path / "resources"
+    output.mkdir()
+    skip = {"kind": "neocortex-skip-events", "run_id": "r", "arm": "a", "status": "MEASURED"}
+    sample = {"kind": "neocortex-graph-sample", "run_id": "r", "arm": "a", "status": "MEASURED"}
+    if field == "status":
+        skip[field] = "NOT MEASURED"
+    else:
+        skip[field] = "other"
+    (output / "skip-events-a-r.json").write_text(json.dumps(skip))
+    (output / "quality-sample-a-r.json").write_text(json.dumps(sample))
+    with pytest.raises(report.ReportError, match=f"audit_log export {field.replace('_', ' ')} mismatch"):
+        report.find_exports(tmp_path, output, "r", "a")
+
+
+def test_present_exports_replace_the_audit_and_graph_not_measured_reasons(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    exports = {"audit_log": _STANDIN_SKIP_EVENTS, "graph_export": _STANDIN_GRAPH_SAMPLE}
+    monkeypatch.setattr(report, "find_exports", lambda *_args, **_kwargs: dict(exports))
+    output = tmp_path / "generated"
+    result = report.generate(PLAN, output)
+    assert result["status"] == "PASS"
+
+    manifest = json.loads((output / "qwen-parsing-inputs.json").read_text())
+    by_kind = {item["kind"]: item for item in manifest["artifacts"]}
+    for kind, path in (("audit_log", _STANDIN_SKIP_EVENTS), ("graph_export", _STANDIN_GRAPH_SAMPLE)):
+        assert by_kind[kind]["availability"] == "MEASURED"
+        assert by_kind[kind]["path"] == path
+        assert "reason" not in by_kind[kind]
+    assert report.REASON_AUDIT not in (output / "qwen-parsing-inputs.json").read_text()
+    assert report.REASON_GRAPH not in (output / "qwen-parsing-inputs.json").read_text()
+
+    parsed = json.loads((output / "qwen-parsing-report.json").read_text())
+    sources = {item["source"] for row in parsed["episodes"] for item in row["evidence"]}
+    assert _STANDIN_SKIP_EVENTS in sources and _STANDIN_GRAPH_SAMPLE in sources
+    assert report.MISSING_GRAPH_PATH not in sources
+    # admin_jobs is still unavailable, so no export may flip the report to
+    # MEASURED, and no per-episode leaf became measured: neither export carries
+    # a corpus episode key.
+    assert parsed["status"] == "NOT_MEASURED"
+    from_exports = [
+        item
+        for row in parsed["episodes"]
+        for item in row["evidence"]
+        if item["source"] in {_STANDIN_SKIP_EVENTS, _STANDIN_GRAPH_SAMPLE}
+    ]
+    assert from_exports
+    assert all(item["status"] == "NOT_MEASURED" for item in from_exports)
+    assert all(item["reason"] == report.REASON_PER_EPISODE for item in from_exports)
+
+
+def test_tuned_generation_preserves_mixed_efforts_and_existing_sample(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_id = "20260913T120000Z-tuned1"
+    arm = "qwen-flash-next-compact-tuned"
+    root = tmp_path
+    output = root / "docs/plans/33-local-qwen-migration/resources"
+    output.mkdir(parents=True)
+    corpus = root / report.CORPUS_PATH
+    corpus.parent.mkdir(parents=True, exist_ok=True)
+    corpus.write_text("safe compact fixture")
+    snapshot = root / "backups/tuned-snapshot.tar.gz"
+    snapshot.parent.mkdir()
+    snapshot.write_bytes(b"snapshot")
+    for reference in (report.TUNED_REPORT_SCHEMA, report.TUNED_SAMPLE_SCHEMA):
+        copied_schema = root / reference
+        copied_schema.parent.mkdir(parents=True, exist_ok=True)
+        copied_schema.write_bytes((ROOT / reference).read_bytes())
+    efforts = {"ontology": "low", "extractor": "medium", "librarian": "off", "domain_classifier": "high"}
+    metrics = {
+        "arm": arm,
+        "run_metadata": {
+            "run_id": run_id,
+            "corpus_profile": "compact",
+            "corpus_episode_ids": list(report.EPISODE_IDS),
+            "corpus_size": len(report.EPISODE_IDS),
+            "corpus_sha256": report._digest(corpus),
+            "source_revision": "e" * 40,
+            "source_paths": {
+                "corpus": report.CORPUS_PATH,
+                "graph_snapshot": "backups/tuned-snapshot.tar.gz",
+                "graph_snapshot_sha256": report._digest(snapshot),
+            },
+            "snapshot_sha256": report._digest(snapshot),
+            "model_ids": {name: f"local:{report.MODEL}" for name in report.AGENT_NAMES},
+            "efforts": efforts,
+        },
+    }
+    metrics_path, e2e_path, recall_path = report._sources_for(run_id, arm)
+    for relative, value in (
+        (metrics_path, metrics),
+        (e2e_path, {"fixture": "e2e"}),
+        (recall_path, {"fixture": "recall"}),
+    ):
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _write(path, value)
+
+    skip_path = output / f"skip-events-{arm}-{run_id}.json"
+    _write(
+        skip_path,
+        {
+            "schema_version": 1,
+            "kind": "neocortex-skip-events",
+            "run_id": run_id,
+            "arm": arm,
+            "status": "MEASURED",
+            "counts": {"missing_node": 0, "temporal_pair": 0},
+            "events": [],
+        },
+    )
+    sample_path = output / f"quality-sample-{arm}-{run_id}.json"
+    _write(
+        sample_path,
+        {
+            "schema_version": 1,
+            "kind": "neocortex-graph-sample",
+            "run_id": run_id,
+            "arm": arm,
+            "status": "MEASURED",
+            "schema_source": "metrics",
+            "schemas": [],
+            "requested": 20,
+            "nodes": {"count": 0, "sampled": 0, "shortfall": True, "rows": []},
+            "edges": {"count": 0, "sampled": 0, "shortfall": True, "rows": []},
+        },
+    )
+    original_sample = sample_path.read_bytes()
+    monkeypatch.setattr(report, "_load_sources", lambda *_args, **_kwargs: (root, metrics, {}, {}))
+
+    result = report.generate(PLAN, output, run_id=run_id, arm=arm)
+    names = report.output_files(run_id, arm, graph_sample_present=True)
+    assert result["status"] == "PASS"
+    assert sample_path.read_bytes() == original_sample
+    assert all((output / name).is_file() for name in names)
+    assert not (output / "qwen-parsing-report.json").exists()
+    parsed = json.loads((output / names[1]).read_text())
+    assert parsed["run"]["efforts"] == efforts
+    assert all(row["run_provenance"]["efforts"] == efforts for row in parsed["episodes"])
+
+
+def test_normalized_ontology_type_names_are_an_explicit_privacy_exemption() -> None:
+    values = [b'{"edge_types_after":{"RELATES_TO":2,"CORRECTS":1}}']
+    assert not any(report._privacy_counts(values).values())
+
+
+def test_absent_exports_keep_todays_not_measured_reasons(tmp_path: Path) -> None:
+    _manifest, parsed, _sample, output = _generate(tmp_path)
+    del parsed
+    manifest = json.loads((output / "qwen-parsing-inputs.json").read_text())
+    by_kind = {item["kind"]: item for item in manifest["artifacts"]}
+    assert by_kind["audit_log"] == {
+        "kind": "audit_log",
+        "path": "log/agent_actions.log",
+        "sha256": "NOT_MEASURED",
+        "availability": "NOT_MEASURED",
+        "reason": report.REASON_AUDIT,
+    }
+    assert by_kind["graph_export"]["reason"] == report.REASON_GRAPH

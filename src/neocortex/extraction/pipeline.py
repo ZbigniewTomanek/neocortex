@@ -35,6 +35,7 @@ from neocortex.extraction.agents import (
     build_librarian_relation_items,
     build_ontology_agent,
     cap_extraction_entities,
+    count_capped_relations,
     qwen_entity_cap,
 )
 from neocortex.extraction.oneshot_librarian import ONESHOT_REQUEST_LIMIT, run_oneshot_librarian
@@ -479,9 +480,13 @@ async def run_extraction(
             if is_qwen_model(ext_cfg.model_name):
                 # Second half of the entity budget: the prompt states it, the host enforces it.
                 cap = qwen_entity_cap(text)
-                before = len(extraction_result.output.entities)
-                capped = cap_extraction_entities(extraction_result.output, cap)
-                if capped is not extraction_result.output:
+                uncapped = extraction_result.output
+                before = len(uncapped.entities)
+                capped = cap_extraction_entities(uncapped, cap)
+                if capped is not uncapped:
+                    # Only the integer count is logged: the dropped endpoints are
+                    # entity names, and an entity name is graph text (D-13).
+                    relations_dropped, _dropped_pairs = count_capped_relations(uncapped, capped)
                     extraction_result = _PrecomputedExtraction(output=capped)
                     logger.bind(action_log=True).warning(
                         "extractor_cardinality_capped",
@@ -489,6 +494,9 @@ async def run_extraction(
                         before=before,
                         after=len(capped.entities),
                         cap=cap,
+                        relations_dropped_by_cap=relations_dropped,
+                        relations_before=len(uncapped.relations),
+                        relations_after=len(capped.relations),
                     )
             logger.bind(action_log=True).info(
                 "extractor_cardinality",

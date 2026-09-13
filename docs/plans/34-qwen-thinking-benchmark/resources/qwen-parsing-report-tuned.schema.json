@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neocortex.local/schemas/qwen-parsing-report-tuned.schema.json",
+  "title": "Qwen Flash Next tuned compact per-episode parsing report",
+  "description": "Compact revision 1. Tuned runs preserve the exact four-agent effort map; normalized ontology type names are structural safe values, not entity or model text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "run", "source_artifacts", "episodes", "checks"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"enum": ["MEASURED", "NOT_MEASURED"]},
+    "run": {"$ref": "#/$defs/run"},
+    "source_artifacts": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/sourceArtifact"}
+    },
+    "episodes": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/episode"},
+      "allOf": [
+        {"contains": {"properties": {"episode_key": {"const": "E02"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E04"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E05"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E10"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E18"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E20"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E26"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"episode_key": {"const": "E27"}}, "required": ["episode_key"]}, "minContains": 1, "maxContains": 1}
+      ]
+    },
+    "checks": {"$ref": "#/$defs/reportChecks"}
+  },
+  "$defs": {
+    "episodeKey": {"enum": ["E02", "E04", "E05", "E10", "E18", "E20", "E26", "E27"]},
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "runId": {"type": "string", "pattern": "^[A-Za-z0-9_.-]{1,128}$"},
+    "safeReference": {
+      "type": "string",
+      "minLength": 1,
+      "not": {"pattern": "(^/|^[a-zA-Z][a-zA-Z0-9+.-]*://|ncx_[a-z0-9]+__[a-z0-9_]+)"}
+    },
+    "measurement": {"enum": ["MEASURED", "NOT_MEASURED"]},
+    "missingValue": {"const": "NOT_MEASURED"},
+    "safeScalar": {"oneOf": [{"type": "string"}, {"type": "number"}, {"type": "boolean"}, {"type": "null"}]},
+    "efforts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ontology", "extractor", "librarian", "domain_classifier"],
+      "properties": {
+        "ontology": {"enum": ["false", "off", "low", "medium", "high"]},
+        "extractor": {"enum": ["false", "off", "low", "medium", "high"]},
+        "librarian": {"enum": ["false", "off", "low", "medium", "high"]},
+        "domain_classifier": {"enum": ["false", "off", "low", "medium", "high"]}
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "model", "efforts", "source_revision", "corpus_profile", "corpus_revision", "corpus_path", "corpus_sha256", "snapshot_path", "snapshot_sha256"],
+      "properties": {
+        "run_id": {"$ref": "#/$defs/runId"},
+        "model": {"const": "qwen3.8-flash-next"},
+        "efforts": {"$ref": "#/$defs/efforts"},
+        "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "corpus_profile": {"const": "compact"},
+        "corpus_revision": {"const": 1},
+        "corpus_path": {"$ref": "#/$defs/safeReference"},
+        "corpus_sha256": {"$ref": "#/$defs/digest"},
+        "snapshot_path": {"$ref": "#/$defs/safeReference"},
+        "snapshot_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "sha256", "availability"],
+      "properties": {
+        "kind": {"enum": ["corpus", "metrics", "snapshot", "admin_jobs", "graph_export", "audit_log", "e2e_manifest", "recall"]},
+        "path": {"$ref": "#/$defs/safeReference"},
+        "sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"const": "NOT_MEASURED"}]},
+        "availability": {"$ref": "#/$defs/measurement"},
+        "reason": {
+          "enum": [
+            "No committed privacy-safe per-job admin response exists for this run.",
+            "No privacy-safe graph export with source episode and job identifiers is committed.",
+            "The private audit log was not read; only committed aggregate counters are used."
+          ]
+        }
+      },
+      "allOf": [{
+        "if": {"properties": {"availability": {"const": "NOT_MEASURED"}}, "required": ["availability"]},
+        "then": {"required": ["reason"], "properties": {"sha256": {"const": "NOT_MEASURED"}}},
+        "else": {"not": {"required": ["reason"]}, "properties": {"sha256": {"$ref": "#/$defs/digest"}}}
+      }]
+    },
+    "job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "job_id", "outcome"],
+      "properties": {
+        "kind": {"enum": ["ingestion", "routing", "extraction"]},
+        "status": {"enum": ["todo", "doing", "succeeded", "failed", "cancelled", "NOT_MEASURED"]},
+        "job_id": {"oneOf": [{"type": "integer", "minimum": 0}, {"$ref": "#/$defs/missingValue"}]},
+        "outcome": {"enum": ["queued", "running", "succeeded", "failed", "cancelled", "not_submitted", "not_started", "NOT_MEASURED"]}
+      }
+    },
+    "countValue": {"oneOf": [{"type": "integer", "minimum": 0}, {"$ref": "#/$defs/missingValue"}]},
+    "countPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node", "edge"],
+      "properties": {
+        "node": {"$ref": "#/$defs/countValue"},
+        "edge": {"$ref": "#/$defs/countValue"}
+      }
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "stable_ids", "representative_safe_values"],
+      "properties": {
+        "count": {"$ref": "#/$defs/countValue"},
+        "stable_ids": {"oneOf": [{"type": "array", "items": {"type": "integer", "minimum": 0}}, {"$ref": "#/$defs/missingValue"}]},
+        "representative_safe_values": {"oneOf": [{"type": "array", "items": {"$ref": "#/$defs/safeValue"}}, {"$ref": "#/$defs/missingValue"}]}
+      }
+    },
+    "safeValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": {"enum": ["opaque_id", "one_way_hash", "type_name", "relation_type", "static_domain_ref", "action"]},
+        "value": {}
+      },
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "opaque_id"}}}, "then": {"properties": {"value": {"type": "integer", "minimum": 0}}}},
+        {"if": {"properties": {"kind": {"const": "one_way_hash"}}}, "then": {"properties": {"value": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}}},
+        {"if": {"properties": {"kind": {"const": "type_name"}}}, "then": {"properties": {"value": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]{0,59}$"}}}},
+        {"if": {"properties": {"kind": {"const": "relation_type"}}}, "then": {"properties": {"value": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,59}$"}}}},
+        {"if": {"properties": {"kind": {"const": "static_domain_ref"}}}, "then": {"properties": {"value": {"enum": ["user_profile", "technical_knowledge", "work_context", "domain_knowledge"]}}}},
+        {"if": {"properties": {"kind": {"const": "action"}}}, "then": {"properties": {"value": {"enum": ["created_node", "updated_node", "archived_node", "created_edge", "removed_edge"]}}}}
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pointer", "status", "value", "source"],
+      "properties": {
+        "pointer": {"type": "string", "pattern": "^/episodes/[0-7]/(jobs|domains|ontology|extraction|librarian|events|quality_integrity)/"},
+        "status": {"$ref": "#/$defs/measurement"},
+        "value": {"$ref": "#/$defs/safeScalar"},
+        "source": {"$ref": "#/$defs/safeReference"},
+        "reason": {"const": "No committed privacy-safe per-episode attribution exists for this field."}
+      },
+      "allOf": [{
+        "if": {"properties": {"status": {"const": "NOT_MEASURED"}}, "required": ["status"]},
+        "then": {"required": ["reason"], "properties": {"value": {"const": "NOT_MEASURED"}}},
+        "else": {"not": {"required": ["reason"]}}
+      }]
+    },
+    "episode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episode_key", "source", "jobs", "run_provenance", "domains", "ontology", "extraction", "librarian", "events", "quality_integrity", "evidence"],
+      "properties": {
+        "episode_key": {"$ref": "#/$defs/episodeKey"},
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "locator"],
+          "properties": {
+            "path": {"$ref": "#/$defs/safeReference"},
+            "locator": {"type": "string", "pattern": "^episode:E(02|04|05|10|18|20|26|27)$"}
+          }
+        },
+        "jobs": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/job"}},
+        "run_provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["model", "efforts", "run_id", "snapshot_path", "source_revision"],
+          "properties": {
+            "model": {"const": "qwen3.8-flash-next"},
+            "efforts": {"$ref": "#/$defs/efforts"},
+            "run_id": {"$ref": "#/$defs/runId"},
+            "snapshot_path": {"$ref": "#/$defs/safeReference"},
+            "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+          }
+        },
+        "domains": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["accepted", "proposal"],
+          "properties": {
+            "accepted": {"oneOf": [{"type": "object"}, {"$ref": "#/$defs/missingValue"}]},
+            "proposal": {"oneOf": [{"type": "object"}, {"$ref": "#/$defs/missingValue"}]}
+          }
+        },
+        "ontology": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["proposed", "accepted", "rejected"],
+          "properties": {
+            "proposed": {"$ref": "#/$defs/countPair"},
+            "accepted": {"$ref": "#/$defs/countPair"},
+            "rejected": {"$ref": "#/$defs/countPair"}
+          }
+        },
+        "extraction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["entities", "relations"],
+          "properties": {
+            "entities": {"$ref": "#/$defs/collection"},
+            "relations": {"$ref": "#/$defs/collection"}
+          }
+        },
+        "librarian": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["actions"],
+          "properties": {
+            "actions": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["created_nodes", "updated_nodes", "archived_nodes", "created_edges", "removed_edges"],
+              "properties": {
+                "created_nodes": {"$ref": "#/$defs/countValue"},
+                "updated_nodes": {"$ref": "#/$defs/countValue"},
+                "archived_nodes": {"$ref": "#/$defs/countValue"},
+                "created_edges": {"$ref": "#/$defs/countValue"},
+                "removed_edges": {"$ref": "#/$defs/countValue"}
+              }
+            }
+          }
+        },
+        "events": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["retries", "timeouts", "rejections"],
+          "properties": {
+            "retries": {"$ref": "#/$defs/countValue"},
+            "timeouts": {"$ref": "#/$defs/countValue"},
+            "rejections": {"$ref": "#/$defs/countValue"}
+          }
+        },
+        "quality_integrity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "checks"],
+          "properties": {
+            "status": {"enum": ["PASS", "FAIL", "NOT_MEASURED"]},
+            "checks": {
+              "type": "array",
+              "minItems": 5,
+              "maxItems": 5,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "status", "source"],
+                "properties": {
+                  "name": {"enum": ["extraction_smoke", "plan15", "plan17", "episodic_memory", "cognitive_recall"]},
+                  "status": {"enum": ["PASS", "FAIL", "NOT_MEASURED"]},
+                  "source": {"$ref": "#/$defs/safeReference"}
+                }
+              }
+            }
+          }
+        },
+        "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/evidence"}}
+      }
+    },
+    "reportChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episode_set", "source_links", "evidence_coverage", "evidence_value_equality", "no_invented_rows", "hidden_reasoning_absent", "raw_secrets_absent", "sensitive_audit_absent", "domain_privacy"],
+      "properties": {
+        "episode_set": {"const": "E02,E04,E05,E10,E18,E20,E26,E27"},
+        "source_links": {"const": "PASS"},
+        "evidence_coverage": {"const": "PASS"},
+        "evidence_value_equality": {"const": "PASS"},
+        "no_invented_rows": {"const": "PASS"},
+        "hidden_reasoning_absent": {"const": "PASS"},
+        "raw_secrets_absent": {"const": "PASS"},
+        "sensitive_audit_absent": {"const": "PASS"},
+        "domain_privacy": {"const": "PASS"}
+      }
+    }
+  }
+}

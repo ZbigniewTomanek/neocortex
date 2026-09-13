@@ -18,6 +18,7 @@ from neocortex.extraction.agents import (
     ExtractorAgentDeps,
     build_extractor_agent,
     cap_extraction_entities,
+    count_capped_relations,
     qwen_entity_cap,
 )
 from neocortex.extraction.schemas import ExtractedEntity, ExtractedRelation, ExtractionResult
@@ -120,6 +121,33 @@ def test_cap_is_a_no_op_below_the_budget() -> None:
     result = _result()
     assert cap_extraction_entities(result, 4) is result
     assert cap_extraction_entities(result, 12) is result
+
+
+def test_count_capped_relations_reports_the_drop_and_its_endpoints() -> None:
+    before = _result()
+    after = cap_extraction_entities(before, 3)
+    dropped, pairs = count_capped_relations(before, after)
+    # A->B and B->D lose B; only A->C survives.
+    assert dropped == 2
+    assert pairs == [("A", "B"), ("B", "D")]
+
+
+def test_count_capped_relations_is_zero_when_nothing_was_dropped() -> None:
+    result = _result()
+    assert count_capped_relations(result, result) == (0, [])
+
+
+def test_count_capped_relations_counts_duplicates_once_each() -> None:
+    entities = [_entity("A", 0.9), _entity("B", 0.1)]
+    duplicated = ExtractionResult(
+        entities=entities,
+        relations=[
+            ExtractedRelation(source_name="A", target_name="B", relation_type="LINKS"),
+            ExtractedRelation(source_name="A", target_name="B", relation_type="LINKS"),
+        ],
+    )
+    after = ExtractionResult(entities=[entities[0]], relations=[])
+    assert count_capped_relations(duplicated, after) == (2, [("A", "B"), ("A", "B")])
 
 
 # ── Prompts ──
@@ -346,3 +374,74 @@ async def test_pipeline_does_not_cap_a_hosted_extractor(monkeypatch: pytest.Monk
         logger.remove(handler)
 
     assert "extractor_cardinality_capped" not in records
+
+
+@pytest.mark.asyncio
+async def test_pipeline_logs_relations_dropped_by_cap_without_any_entity_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The cap's collateral edge loss is counted, and only counted (D-13)."""
+    from loguru import logger
+
+    from neocortex.db.mock import InMemoryRepository
+    from neocortex.extraction.pipeline import run_extraction
+
+    # 40 words gives a cap of 5.  Five important entities survive; the sixth,
+    # "Peripheral Detail", is dropped and takes exactly one relation with it.
+    entities = [
+        {"name": f"Entity {index}", "type_name": "Thing", "description": "A thing", "importance": 0.9}
+        for index in range(1, 6)
+    ]
+    entities.append({"name": "Peripheral Detail", "type_name": "Thing", "description": "A thing", "importance": 0.01})
+    relations = [
+        {"source_name": "Entity 1", "target_name": "Entity 2", "relation_type": "LINKS"},
+        {"source_name": "Entity 1", "target_name": "Peripheral Detail", "relation_type": "LINKS"},
+    ]
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        del messages
+        tool = info.output_tools[0]
+        if "new_node_types" in tool.parameters_json_schema.get("properties", {}):
+            payload: dict[str, Any] = {"new_node_types": [], "new_edge_types": [], "rationale": ""}
+        else:
+            payload = {"entities": entities, "relations": relations, "rationale": ""}
+        return ModelResponse(parts=[ToolCallPart(tool.name, payload, tool_call_id="call")])
+
+    monkeypatch.setattr("neocortex.extraction.agents._build_model", lambda config: FunctionModel(respond))
+
+    repo = InMemoryRepository()
+    await repo.get_or_create_node_type("dropped-relation-agent", "Thing", "A thing")
+    await repo.get_or_create_edge_type("dropped-relation-agent", "LINKS", "A link")
+    episode_id = await repo.store_episode("dropped-relation-agent", " ".join(["word"] * 40), importance=0.5)
+    config = AgentInferenceConfig(
+        model_name="local:qwen3.8-flash-next", thinking_effort=False, local_endpoint=LOCAL_ENDPOINT
+    )
+
+    records: list[tuple[str, dict[str, Any]]] = []
+    handler = logger.add(
+        lambda message: records.append((message.record["message"], dict(message.record["extra"]))),
+        level="DEBUG",
+        filter=lambda record: bool(record["extra"].get("action_log")),
+    )
+    try:
+        await run_extraction(
+            repo=repo,
+            embeddings=None,
+            agent_id="dropped-relation-agent",
+            episode_ids=[episode_id],
+            ontology_config=config,
+            extractor_config=config,
+            librarian_config=config,
+        )
+    finally:
+        logger.remove(handler)
+
+    capped = [fields for event, fields in records if event == "extractor_cardinality_capped"]
+    assert len(capped) == 1
+    assert capped[0]["relations_dropped_by_cap"] == 1
+    assert capped[0]["relations_before"] == 2
+    assert capped[0]["relations_after"] == 1
+    # The dropped endpoints are entity names; the audit log is privacy-scanned,
+    # so not one of them may appear in any field of any record.
+    for _event, fields in records:
+        assert "Peripheral Detail" not in str(fields)

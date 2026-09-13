@@ -382,3 +382,171 @@ def test_offline_merge_rejects_snapshot_hash_mismatch(tmp_path: Path, monkeypatc
             snapshot_path=fixture["snapshot"],
             snapshot_sha256=fixture["snapshot_digest"],
         )
+
+
+# ── Failure attribution for children recorded by exit status only ──
+
+_STEP_STDOUT = """Starting run
+=== Step 1: Ingest seed corpus & wait for extraction ===
+ingested 8 episodes
+=== Step 2: Wait for extraction jobs (timeout 120s) ===
+"""
+
+_STAGE_STDOUT = """=== Stage 1: Session Ingestion ===
+=== Stage 1 PASSED ===
+=== Stage 2: Session Recall with Neighbors ===
+"""
+
+_SCENARIO_STDOUT = """======================================================================
+PHASE A: Ingesting initial episodes
+======================================================================
+--- Scenario 1: entity is recalled after ingestion ---
+--- Scenario 2: temporal correction supersedes the old node ---
+"""
+
+_PHASE_ONLY_STDOUT = """======================================================================
+PHASE B: Recall after consolidation
+======================================================================
+querying the graph
+"""
+
+_BOTH_BANNERS_STDOUT = """--- Scenario 7: contradiction is resolved in favour of the newer episode ---
+======================================================================
+PHASE B: Recall after consolidation
+======================================================================
+"""
+
+
+@pytest.mark.parametrize(
+    ("stdout", "expected_kind", "expected_fragment"),
+    [
+        (_STEP_STDOUT, "step", "=== Step 2:"),
+        (_STAGE_STDOUT, "stage", "=== Stage 2:"),
+        (_SCENARIO_STDOUT, "scenario", "--- Scenario 2:"),
+        (_PHASE_ONLY_STDOUT, "phase", "PHASE B:"),
+    ],
+)
+def test_every_banner_convention_yields_a_failure_step(stdout: str, expected_kind: str, expected_fragment: str) -> None:
+    # A parser that matches only ``=== Step`` fails three of these four cases.
+    step, kind = evidence.parse_failure_step(stdout)
+    assert kind == expected_kind
+    assert step is not None and expected_fragment in step
+
+
+def test_a_scenario_docstring_beats_a_later_phase_banner() -> None:
+    # "Last banner wins" would answer ``PHASE B``, which only says which third
+    # of the run died.  The scenario docstring localizes the failure.
+    step, kind = evidence.parse_failure_step(_BOTH_BANNERS_STDOUT)
+    assert kind == "scenario"
+    assert step is not None and step.startswith("--- Scenario 7:")
+
+
+@pytest.mark.parametrize("rule", ["=" * 70, "-" * 70, "=" * 3])
+def test_a_rule_line_is_never_a_failure_step(rule: str) -> None:
+    assert evidence.parse_failure_step(f"{rule}\n") == (None, None)
+
+
+def test_stdout_without_any_banner_has_no_failure_step() -> None:
+    assert evidence.parse_failure_step("just some output\nand more\n") == (None, None)
+
+
+def test_exception_class_is_extracted_without_the_message_text() -> None:
+    stderr = (
+        "Traceback (most recent call last):\n"
+        '  File "scripts/e2e_episodic_memory_test.py", line 512, in _stage\n'
+        "    print(formatted_ctx)\n"
+        "NameError: name 'formatted_ctx' is not defined. Did you mean: 'formatted_context'?\n"
+    )
+    assert evidence.parse_exception_class(stderr) == "NameError"
+
+
+def test_exception_class_reads_the_last_traceback_not_the_first() -> None:
+    stderr = (
+        "Traceback (most recent call last):\n"
+        '  File "a.py", line 1, in <module>\n'
+        "ValueError: first\n"
+        "Traceback (most recent call last):\n"
+        '  File "b.py", line 2, in <module>\n'
+        "asyncio.exceptions.TimeoutError: second\n"
+    )
+    assert evidence.parse_exception_class(stderr) == "asyncio.exceptions.TimeoutError"
+
+
+def test_stderr_without_a_traceback_has_no_exception_class() -> None:
+    assert evidence.parse_exception_class("connection refused\n") is None
+
+
+def test_write_exit_result_records_attribution_and_survives_validation(tmp_path: Path) -> None:
+    stdout_path = tmp_path / "stdout"
+    stderr_path = tmp_path / "stderr"
+    stdout_path.write_text(_STAGE_STDOUT)
+    stderr_path.write_text('Traceback (most recent call last):\n  File "x.py", line 1\nNameError: boom\n')
+    result_path = tmp_path / "result.json"
+
+    evidence.write_exit_result(
+        result_path,
+        script="e2e_episodic_memory_test.py",
+        child_run_id="run.e2e.04",
+        exit_code=1,
+        stdout_path=stdout_path,
+        stderr_path=stderr_path,
+    )
+    written = json.loads(result_path.read_text())
+    assert written["failure_step_kind"] == "stage"
+    assert written["failure_step"].startswith("=== Stage 2:")
+    assert written["exception_class"] == "NameError"
+    assert "boom" not in result_path.read_text()
+
+    safe = evidence.validate_exit_result(
+        written, script="e2e_episodic_memory_test.py", child_run_id="run.e2e.04", exit_code=1
+    )
+    assert safe["failure_step_kind"] == "stage"
+    assert safe["exception_class"] == "NameError"
+
+
+def test_write_exit_result_without_streams_records_nulls_not_guesses(tmp_path: Path) -> None:
+    result_path = tmp_path / "result.json"
+    evidence.write_exit_result(
+        result_path, script="e2e_cognitive_recall_test.py", child_run_id="run.e2e.05", exit_code=0
+    )
+    written = json.loads(result_path.read_text())
+    assert written["failure_step"] is None
+    assert written["failure_step_kind"] is None
+    assert written["exception_class"] is None
+
+
+def test_a_legacy_exit_result_without_attribution_still_validates() -> None:
+    # Plan 33's committed manifests carry the three-field safe result and must
+    # keep validating; nothing in this stage may invalidate frozen evidence.
+    legacy = {
+        "schema_version": 1,
+        "kind": "neocortex-e2e-exit-result",
+        "script": "e2e_cognitive_recall_test.py",
+        "child_run_id": "run.e2e.05",
+        "status": "FAIL",
+        "exit_code": 1,
+        "reason": "exit_status_only",
+    }
+    safe = evidence.validate_exit_result(
+        legacy, script="e2e_cognitive_recall_test.py", child_run_id="run.e2e.05", exit_code=1
+    )
+    assert safe == {"status": "FAIL", "exit_code": 1, "reason": "exit_status_only"}
+
+
+def test_an_unsafe_attribution_field_is_rejected() -> None:
+    tainted = {
+        "schema_version": 1,
+        "kind": "neocortex-e2e-exit-result",
+        "script": "e2e_cognitive_recall_test.py",
+        "child_run_id": "run.e2e.05",
+        "status": "FAIL",
+        "exit_code": 1,
+        "reason": "exit_status_only",
+        "failure_step": "x" * 121,
+        "failure_step_kind": "step",
+        "exception_class": None,
+    }
+    with pytest.raises(evidence.EvidenceError, match="attribution field is unsafe"):
+        evidence.validate_exit_result(
+            tainted, script="e2e_cognitive_recall_test.py", child_run_id="run.e2e.05", exit_code=1
+        )

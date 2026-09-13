@@ -104,6 +104,27 @@ def cap_extraction_entities(result: ExtractionResult, cap: int) -> ExtractionRes
     return ExtractionResult(entities=entities, relations=relations, rationale=result.rationale)
 
 
+def count_capped_relations(before: ExtractionResult, after: ExtractionResult) -> tuple[int, list[tuple[str, str]]]:
+    """Return how many relations the entity cap dropped, and their endpoint name pairs.
+
+    ``cap_extraction_entities`` drops dangling relations silently, so a run
+    could lose edges with nothing recording it.  The count is what the audit
+    log carries; the name pairs exist for unit tests only and must never be
+    logged, because an entity name is graph text and the action log is
+    privacy-scanned (Decision D-13).
+    """
+    survivors = [(relation.source_name, relation.target_name) for relation in after.relations]
+    remaining = list(survivors)
+    dropped: list[tuple[str, str]] = []
+    for relation in before.relations:
+        pair = (relation.source_name, relation.target_name)
+        if pair in remaining:
+            remaining.remove(pair)
+            continue
+        dropped.append(pair)
+    return len(dropped), dropped
+
+
 def _qwen_output_cap(config: AgentInferenceConfig, agent_kind: str) -> int | None:
     """Return the max output tokens for one Qwen agent, or None for other models.
 

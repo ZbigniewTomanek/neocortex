@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neocortex.local/schemas/skip-events.schema.json",
+  "title": "NeoCortex librarian edge-skip events",
+  "description": "Privacy-safe export of edge_skipped_missing_node and edge_skipped_temporal_pair records for one bake-off run. Counts, booleans and integer identifiers only; no names, content, descriptions or episode text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "run_id", "arm", "source_paths", "status"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "neocortex-skip-events"},
+    "run_id": {"type": "string", "minLength": 1},
+    "arm": {"type": "string", "minLength": 1},
+    "source_paths": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "not": {"pattern": "^/|^[a-zA-Z][a-zA-Z0-9+.-]*://"}}
+    },
+    "status": {"enum": ["MEASURED", "NOT MEASURED"]},
+    "reason": {"enum": ["run_id_unavailable", "missing_audit_log", "unreadable_audit_log"]},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["missing_node", "temporal_pair"],
+      "properties": {
+        "missing_node": {"type": "integer", "minimum": 0},
+        "temporal_pair": {"type": "integer", "minimum": 0}
+      }
+    },
+    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "MEASURED"}}, "required": ["status"]},
+      "then": {"required": ["counts", "events"], "not": {"required": ["reason"]}},
+      "else": {"required": ["reason"], "not": {"anyOf": [{"required": ["counts"]}, {"required": ["events"]}]}}
+    }
+  ],
+  "$defs": {
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason_code",
+        "episode_id",
+        "correlation_id",
+        "stage",
+        "source_present",
+        "target_present",
+        "source_id",
+        "target_id",
+        "timestamp"
+      ],
+      "properties": {
+        "reason_code": {"enum": ["missing_node", "temporal_pair"]},
+        "episode_id": {"type": ["integer", "null"]},
+        "correlation_id": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9_.:-]{1,128}$"},
+        "stage": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9_.-]{1,64}$"},
+        "source_present": {"type": ["boolean", "null"]},
+        "target_present": {"type": ["boolean", "null"]},
+        "source_id": {"type": ["integer", "null"]},
+        "target_id": {"type": ["integer", "null"]},
+        "timestamp": {"type": ["string", "null"], "pattern": "^[0-9A-Za-z:+. -]{1,64}$"},
+        "survived": {
+          "type": ["boolean", "null"],
+          "description": "Temporal pairs only. Null until export_graph_sample.py --check-temporal has read the graph; never guessed."
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"reason_code": {"const": "missing_node"}}, "required": ["reason_code"]},
+          "then": {"not": {"required": ["survived"]}},
+          "else": {"required": ["survived"]}
+        }
+      ]
+    }
+  }
+}

@@ -216,3 +216,76 @@ ready to dispatch. It could not start in parallel with Stage 2 because both brie
 **Not yet started, and load-bearing**: no live model call has been made in this run. The plan's central
 question -- whether the local endpoint honours `reasoning_effort` at all -- is Stage 5 and is still
 `NOT MEASURED`.
+
+## 2026-09-13 -- Run resumed on Codex
+
+- Owner: "use goal-execution-loop skill to act as a coordinator to finish docs/plans/34-qwen-thinking-benchmark/index.md".
+- Existing modes, groups, permissions and PROTOCOL retained; no owner gate is due. Stage 1 commit `0101ce4` exists.
+- Harness adaptation: resumed assignments use the skill's Codex tiers (`codex/gpt-5.6-sol`, high, implementer/reviewer; `codex/gpt-5.6-luna`, medium, helper). Historical role records remain intact; each stage records actual agents.
+- Stage 2 resumes from WRITING with existing changes preserved. Some attempt-1 evidence landed after the pause; new attempts must use fresh filenames. Untracked `.agents/` is user material, excluded from commits.
+- Stage 2 brief header updated for actual roles. No feature code changed by coordinator.
+
+## 2026-09-13 -- Preparation for remaining stages
+
+- Stage 3 brief header uses actual Codex strong-tier roles; deliverables unchanged.
+- Backlog 6's documented command correction applied to Stage 6 step 2: pin the ontology and extractor levels when reading the extraction cache. Its runtime error handling remains required implementation work before the sweep.
+- Backlog 7 and 8 are promoted into pre-sweep instrumentation repairs: fixture cache provenance and cross-node fact matching affect the evidence to be published. Backlog 10's wording correction will accompany those changes. No live measurement may precede these repairs.
+- Custom goal agent types are unavailable in this session; explicit strong/light model overrides and flat, no-delegation prompts enforce the same role contract.
+
+## 2026-09-13 -- Stage 4/5 briefs prepared
+
+- Stage 4 brief separates deterministic implementation from live launch; Stage 5 does the same. Only one implementation writer runs at a time.
+- Stage 4 resolves contradictory prose in favor of its unchanged S05 gate: content must contain May 1 and omit April 15. The illustrative "previously Y" wording cannot reintroduce the stale date. No criterion is relaxed.
+- Stage 2 implementation inspection found possible false comparisons against missing audit counters, a still-hardcoded effort in the parametrized report, and a same-directory temporal annotation command that refuses its own input. These were sent to the active implementer before gating; no review budget has been consumed.
+
+## 2026-09-13 -- Stage 2 brief corrected for tuned evidence
+
+- Implementer confirmed frozen historical schema has effort `const: false`. Added a separate tuned report schema to Stage 2 scope; exact four-agent effort mapping and suffixed output files preserve historical evidence.
+- Clarified atomic annotation of this run's skip file for the documented same-directory command. Cross-schema numeric-id ambiguity must remain unresolved rather than a false survived=true.
+- Read-only local endpoint check (10 s) returned curl exit 28, HTTP 000. No inference request was issued; live readiness remains unmeasured.
+
+## 2026-09-13 -- Stage 7 lifecycle prerequisite identified
+
+- `model_bakeoff.sh` captures corpus metrics before children, each child restarts services, and EXIT restores PRE_SNAPSHOT (`restore_preserved_snapshot`). Therefore the plan's after-arm live graph export would sample the restored graph, not this run's corpus.
+- Stage 7 must collect skip/sample evidence while the corpus graph still exists, before the first child restart; then build the final report after the manifest exists. Updating metrics after manifest creation also changes its pinned digest, so all corpus metric augmentation must precede manifest construction or require explicit manifest regeneration.
+- This is required harness integration within the plan's allowed `scripts/model_bakeoff.sh` scope, to be included in Stage 7 brief and tested before any service arm. No live call or product edit made here.
+
+## 2026-09-13 -- Stage 2 blocked on PostgreSQL; independent Stage 5 starts
+
+- Stage 2 implementation finished, no commit or review yet because full-suite gate is red: 1,355 passed / 7 skipped / 31 setup errors, all PostgreSQL connection resets (`validation/stage2-suite-2.txt`).
+- Coordinator reproduced one setup error at localhost:5432 (`stage2-postgres-coordinator-attempt1.txt`), independently measured 138 focused tests passing (`stage2-unit-coordinator-attempt1.txt`), lint clean, and historical generation exit 0 with no Plan 33 resource diff. All evidence under validation/.
+- Stage 2 changes remain uncommitted and frozen pending environment recovery; review.used remains false. No tests skipped, weakened or deleted.
+- Docker owns the local model listener, but its container listing hangs and was interrupted; local endpoint check times out. Owner clarification requested asynchronously while offline work continues.
+- Stage 5 depends only on accepted Stage 1 and writes new files disjoint from frozen Stage 2. Dispatch its offline assignment on codex/gpt-5.6-sol/high. Stage 3/4 overlap Stage 2 files and wait until its commit or a deliberate isolation decision.
+
+## 2026-09-13 -- Endpoint recovery, PostgreSQL still unavailable
+
+- Authenticated bounded `/v1/models` check now returns exactly the required `qwen3.8-flash-next` model (jq true, exit 0); no inference request made.
+- PostgreSQL representative gate still fails with the same connection reset (`validation/stage2-postgres-coordinator-attempt2.txt`). Docker listing with explicit desktop-linux context also hangs and was interrupted.
+- Strong implementer reassigned to a bounded read-only environment diagnosis; no restart or environment mutation authorized or performed. Stage 5 offline writer continues independently.
+
+## 2026-09-13 -- Owner restarted Docker; database recovered
+
+- Owner: "restarted". Docker Desktop local context now responds; existing `neocortex-postgres` was stopped. Coordinator ran `docker --context desktop-linux compose up -d postgres`, preserving its volume.
+- `pg_isready` accepts connections and the previously failing scoped-connection test passes (1 passed; `validation/stage2-postgres-coordinator-attempt3.txt`). Full gate will rerun after current Stage 5 files freeze.
+- Docker commands for this run explicitly select desktop-linux because DOCKER_HOST overrides the default context. No unrelated container changed; no graph reset or live inference occurred.
+
+## 2026-09-13 -- Stage 2 gates green; Stage 5 offline gates green
+
+- Coordinator full suite: 1,404 passed / 7 skipped in 42.09 s (`validation/stage2-suite-coordinator-attempt1.txt`), including frozen Stage 5's 18 new tests. PostgreSQL blocker resolved. Lint clean (`validation/stage5-ruff-coordinator-attempt1.txt`).
+- Stage 2 focused 138 passed, default historical generation byte-identical; diff inspected. Stage 2 implementation ready for commit and its one post-review.
+- Coordinator Stage 5 exact TestModel run: 12 valid output rows, boundary none/low/medium/high as requested, no timeout. JSON `validation/stage5-testmodel-coordinator.json` read directly. Synthetic reasoning usage absent => NOT MEASURED and cancellation null, correctly.
+- Stage 5 instrument corrections before gating: one request per row enforced with UsageLimits; mock exit requires correct boundaries and valid output instead of counting preallocated rows. No live run yet; regression evidence shared because both frozen code sets were checked together, no duplicate full-suite run.
+
+## 2026-09-13 -- Commit hook gate fix
+
+- Stage 2 commit attempt rejected by black (three formatted files) and ty (new exporter/metrics/report typing diagnostics plus Stage 5 test scripts import). No commit created; hooks were not bypassed.
+- Stage 2 implementer dispatched for one bounded type-correction gate fix, preserving formatter output. Stage 5 writer has finished, so no concurrent writer.
+- Coordinator small-change exception: one line adds the repository's existing `ty: ignore[unresolved-import]` convention to Stage 5's scripts import; runtime code unchanged. No broad suppression or configuration change.
+
+## 2026-09-13 -- Hook gate fix complete
+
+- Stage 2 typed dictionary narrowing and fixed tuple construction corrected; sequential Stage 5 nested settings narrowing also corrected by the same strong implementer after Stage 2 froze.
+- Whole-tree ty passes; 156 combined focused tests pass; scoped pre-commit hooks pass including black/ruff/flake8/ty (`validation/stage2-stage5-precommit-gatefix1-attempt2.txt`).
+- An initial all-files hook attempt exposed existing test_agents baseline issues; its formatter changes to previously clean unrelated files were restored. No unrelated changes retained, no hook bypass.
+- Final regression rerun checks the actual formatted/type-corrected tree before commit. Review ledger remains unspent; gateFixes=1 for Stage 2.

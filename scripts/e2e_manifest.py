@@ -243,12 +243,109 @@ def validate_scenario_result(result: object, *, script: str, child_run_id: str, 
     }
 
 
+# ── Failure attribution for children recorded by exit status only ──
+#
+# A child that dies with nothing but an exit code told Plan 33 nothing about
+# where it died.  Both signals below are code-owned text: a progress banner is
+# a literal in the child script, and an exception class name is an identifier.
+# The exception *message* is never read — it can quote graph or episode text.
+
+# Three banner conventions exist across the five children, all verified in the
+# tree: ``=== Step N: … ===`` (cognitive recall, extraction pipeline, weight
+# stability, content update), ``=== Stage N: … ===`` (episodic memory — the
+# child hosting the formatter defect, so a parser that misses it blinds the one
+# failure this plan most wants attributed), ``--- {scenario docstring} ---``
+# and a coarse ``PHASE X: …`` line (plan15 scenarios, plan17 validation).
+_STEP_BANNER = re.compile(r"^=== (?P<kind>Step|Stage) \d+\S*:.*===$")
+_SCENARIO_BANNER = re.compile(r"^--- \S.* ---$")
+_PHASE_BANNER = re.compile(r"^PHASE [A-Za-z0-9]+:.*$")
+# ``"=" * 70`` and ``"-" * 70`` rules are decoration, never a banner.
+_RULE_LINE = re.compile(r"^[=\-]+$")
+# A banner is published verbatim, so it must be short printable ASCII.
+_SAFE_BANNER = re.compile(r"^[ -~]{1,120}$")
+_EXCEPTION_CLASS = re.compile(r"^(?P<cls>[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)(?:: |:?$)")
+_TRACEBACK_HEADER = "Traceback (most recent call last)"
+FAILURE_STEP_KINDS = frozenset({"step", "stage", "scenario", "phase"})
+
+
+def parse_failure_step(stdout: str) -> tuple[str | None, str | None]:
+    """Return the last progress banner a child printed and which kind it is.
+
+    Two of the five children print both a coarse ``PHASE A:`` banner and a fine
+    ``--- scenario docstring ---`` banner, so "the last banner printed" is
+    ambiguous for exactly the children whose failures most need attributing.
+    Resolve it by precedence, not recency: a scenario docstring localizes the
+    failure to one scenario, which is the diagnostic the rubric needs, so it
+    wins whenever the run printed any; otherwise the last step, stage or phase
+    banner is returned.
+    """
+    scenario: str | None = None
+    fallback: tuple[str, str] | None = None
+    for raw_line in stdout.splitlines():
+        line = raw_line.strip()
+        if not line or _RULE_LINE.fullmatch(line) or not _SAFE_BANNER.fullmatch(line):
+            continue
+        if _SCENARIO_BANNER.fullmatch(line):
+            scenario = line
+        elif match := _STEP_BANNER.fullmatch(line):
+            fallback = (match.group("kind").lower(), line)
+        elif _PHASE_BANNER.fullmatch(line):
+            fallback = ("phase", line)
+    if scenario is not None:
+        return scenario, "scenario"
+    if fallback is not None:
+        return fallback[1], fallback[0]
+    return None, None
+
+
+def parse_exception_class(stderr: str) -> str | None:
+    """Return the class name on the final traceback line, never its message."""
+    lines = stderr.splitlines()
+    headers = [index for index, line in enumerate(lines) if line.lstrip().startswith(_TRACEBACK_HEADER)]
+    if not headers:
+        return None
+    tail = [line for line in lines[headers[-1] + 1 :] if line.strip()]
+    # Frame lines are indented; the exception line is the last unindented one.
+    unindented = [line for line in tail if line[:1] not in {" ", "\t"}]
+    if not unindented:
+        return None
+    match = _EXCEPTION_CLASS.match(unindented[-1])
+    if match is None:
+        return None
+    name = match.group("cls")
+    return name if len(name) <= 80 else None
+
+
+def _read_optional_text(path: Path | None) -> str:
+    """Read a diagnostic stream, or return nothing when it cannot be read."""
+    if path is None:
+        return ""
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
 def validate_exit_result(result: object, *, script: str, child_run_id: str, exit_code: int) -> dict[str, Any]:
     """Validate an exit-only result for scripts without scenario score tables."""
     data = _require_object(result, "exit result")
     required = {"schema_version", "kind", "script", "child_run_id", "status", "exit_code", "reason"}
-    if set(data) != required or data["schema_version"] != 1 or data["kind"] != "neocortex-e2e-exit-result":
+    attribution = {"failure_step", "failure_step_kind", "exception_class"}
+    if (
+        set(data) - attribution != required
+        or data["schema_version"] != 1
+        or data["kind"] != "neocortex-e2e-exit-result"
+    ):
         raise EvidenceError(f"{script} exit result schema is invalid")
+    for key in attribution & set(data):
+        value = data[key]
+        if value is None:
+            continue
+        if not isinstance(value, str) or not _SAFE_BANNER.fullmatch(value):
+            raise EvidenceError(f"{script} exit result attribution field is unsafe: {key}")
+    kind = data.get("failure_step_kind")
+    if kind is not None and kind not in FAILURE_STEP_KINDS:
+        raise EvidenceError(f"{script} exit result failure step kind is invalid")
     result_exit_code = _require_nonnegative_int(data["exit_code"], "exit result code")
     if data["script"] != script or data["child_run_id"] != child_run_id or result_exit_code != exit_code:
         raise EvidenceError(f"{script} exit result identity is inconsistent")
@@ -262,12 +359,30 @@ def validate_exit_result(result: object, *, script: str, child_run_id: str, exit
         raise EvidenceError(f"{script} cannot pass with a nonzero exit code")
     if status == "FAIL" and exit_code == 0:
         raise EvidenceError(f"{script} cannot fail with a zero exit code")
-    return {"status": status, "exit_code": exit_code, "reason": reason}
+    safe: dict[str, Any] = {"status": status, "exit_code": exit_code, "reason": reason}
+    # Carried through only when the writer captured them, so a manifest built
+    # before failure attribution existed still validates unchanged.
+    safe.update({key: data[key] for key in ("failure_step", "failure_step_kind", "exception_class") if key in data})
+    return safe
 
 
-def write_exit_result(path: Path, *, script: str, child_run_id: str, exit_code: int) -> None:
-    """Write a safe fallback result when a generic E2E emits no score table."""
+def write_exit_result(
+    path: Path,
+    *,
+    script: str,
+    child_run_id: str,
+    exit_code: int,
+    stdout_path: Path | None = None,
+    stderr_path: Path | None = None,
+) -> None:
+    """Write a safe fallback result when a generic E2E emits no score table.
+
+    ``failure_step`` and ``exception_class`` are ``None`` whenever the streams
+    were not supplied or carry no banner and no traceback.  Neither is guessed.
+    """
     status = "PASS" if exit_code == 0 else "FAIL"
+    failure_step, failure_step_kind = parse_failure_step(_read_optional_text(stdout_path))
+    exception_class = parse_exception_class(_read_optional_text(stderr_path))
     atomic_write_json(
         path,
         {
@@ -278,6 +393,9 @@ def write_exit_result(path: Path, *, script: str, child_run_id: str, exit_code: 
             "status": status,
             "exit_code": exit_code,
             "reason": "exit_status_only",
+            "failure_step": failure_step,
+            "failure_step_kind": failure_step_kind,
+            "exception_class": exception_class,
         },
     )
 
@@ -722,6 +840,8 @@ def _cli() -> int:
     write_exit.add_argument("--script", required=True, choices=E2E_SCRIPTS)
     write_exit.add_argument("--child-run-id", required=True)
     write_exit.add_argument("--exit-code", type=int, required=True)
+    write_exit.add_argument("--stdout-path", type=Path)
+    write_exit.add_argument("--stderr-path", type=Path)
     write_missing = subparsers.add_parser("write-missing-result")
     write_missing.add_argument("--path", type=Path, required=True)
     write_missing.add_argument("--script", required=True, choices=E2E_SCRIPTS)
@@ -752,7 +872,14 @@ def _cli() -> int:
     args = parser.parse_args()
     try:
         if args.command == "write-exit-result":
-            write_exit_result(args.path, script=args.script, child_run_id=args.child_run_id, exit_code=args.exit_code)
+            write_exit_result(
+                args.path,
+                script=args.script,
+                child_run_id=args.child_run_id,
+                exit_code=args.exit_code,
+                stdout_path=args.stdout_path,
+                stderr_path=args.stderr_path,
+            )
         elif args.command == "write-missing-result":
             write_missing_result(
                 args.path, script=args.script, child_run_id=args.child_run_id, exit_code=args.exit_code

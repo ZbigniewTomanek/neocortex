@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Implementer | `claude/opus`, effort `high` (strong tier) |
-| Reviewer | `claude/opus`, effort `high` (strong tier) |
+| Implementer | `codex/gpt-5.6-sol`, effort `high` (strong tier) |
+| Reviewer | `codex/gpt-5.6-sol`, effort `high` (strong tier) |
 | Tier reason | A shared helper replacing seven hand-rolled poll loops without changing any assertion, plus an open-ended root-cause investigation. Judgment throughout. |
 | Plan stage | [stages/03-e2e-harness-reliability.md](../stages/03-e2e-harness-reliability.md) |
 | Run contract | [goal.md](../goal.md) · [PROTOCOL.md](../PROTOCOL.md) |
