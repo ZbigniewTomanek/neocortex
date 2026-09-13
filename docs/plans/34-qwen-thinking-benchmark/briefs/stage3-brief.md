@@ -197,6 +197,13 @@ In `scripts/run_e2e.sh`, call the existing `wait_for_healthy` in the **local** b
 
 ## Step 4 — root-cause the empty `formatted_context`
 
+Pre-dispatch bounded diagnosis (codex/gpt-5.6-sol/high, 2026-09-13) did not
+reproduce the symptom. Existing recall-session tests: 14 passed in 0.44 s.
+Direct recall of a stored episode returned count=1, source_kinds=[episode],
+placeholder=false and formatted_json=true. This is a REPORT-only limitation.
+Do not expand the investigation beyond the stated reproduction. If the same
+in-memory test stays green, keep product code unchanged and report NOT MEASURED.
+
 **Order matters. Write the test first, run it on unchanged product code, and record what it did.**
 
 1. Create `tests/test_recall_formatted_context.py`. It drives `recall` on `InMemoryRepository` with a

@@ -55,13 +55,13 @@
       "id": 2,
       "title": "Privacy-safe integrity evidence export",
       "file": "stages/02-integrity-evidence-export.md",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "depends_on": [],
-      "commit": ["8932147"],
-      "note": "F1 fixed and inspected: episodic Stage3 attribution correct, Plan15/17 precedence preserved; 1413 passed/7 skipped. Fix commit pending, no re-review.",
+      "commit": ["8932147", "d639284"],
+      "note": "F1 fixed and inspected: episodic Stage3 attribution correct, Plan15/17 precedence preserved; 1413 passed/7 skipped. One fix consumed, no re-review.",
       "blocked_by": [],
-      "step": "REPAIRING",
-      "writer": "codex/gpt-5.6-sol",
+      "step": null,
+      "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": "codex/gpt-5.6-sol, effort high",
       "preReview": {
@@ -81,7 +81,7 @@
         "used": false
       },
       "gates": {"G1 focused": "PASS", "G2 historical identity": "PASS", "G3 full suite": "PASS", "G4 ruff": "PASS"},
-      "evidence": ["validation/stage2-unit-coordinator-attempt1.txt", "validation/stage2-byteidentity-coordinator-attempt1.txt", "validation/stage2-suite-coordinator-attempt1.txt", "validation/stage2-postgres-coordinator-attempt3.txt", "validation/stage2-ruff-coordinator-attempt1.txt"]
+      "evidence": ["validation/stage2-unit-coordinator-attempt1.txt", "validation/stage2-byteidentity-coordinator-attempt1.txt", "validation/stage2-suite-coordinator-attempt2.txt", "validation/stage2-postgres-coordinator-attempt3.txt", "validation/stage2-ruff-coordinator-attempt1.txt", "validation/stage2-review.md", "validation/stage2-fix1-focused-attempt1.txt", "validation/stage2-fix1-suite-attempt1.txt", "validation/stage2-fix1-hooks-attempt1.txt"]
     },
     {
       "id": 3,
@@ -122,19 +122,19 @@
         1
       ],
       "commit": null,
-      "note": "A1 offline instrumentation complete and frozen; 54 focused tests and hooks pass. Scalar A2 and live baseline pending.",
+      "note": "Deterministic gates pass: 1429/7, 118 focused, 14 hosted, exact mock11/11. Implementation commit/review next; live baseline pending.",
       "blocked_by": [],
       "step": "WRITING",
       "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
-      "reviewer": null,
+      "reviewer": "codex/gpt-5.6-sol, effort high",
       "preReview": {
         "used": false
       },
       "review": {
         "used": false
       },
-      "gateFixes": 0,
+      "gateFixes": 2,
       "repair": {
         "used": false,
         "rounds": 0
@@ -142,8 +142,8 @@
       "repairReview": {
         "used": false
       },
-      "gates": {},
-      "evidence": []
+      "gates": {"scalar tests red then green": "PASS", "hosted identity": "PASS", "full suite": "PASS", "lint and hooks": "PASS", "exact TestModel baseline": "PASS", "live off baseline": "NOT MEASURED"},
+      "evidence": ["validation/stage4-s05-red-attempt1.txt", "validation/stage4-scalars-focused-attempt2.txt", "validation/stage4-scalars-hosted-attempt2.txt", "validation/stage4-scalars-hosted-identity-attempt1.txt", "validation/stage4-suite-coordinator-attempt1.txt", "validation/stage4-ruff-coordinator-attempt1.txt", "validation/stage4-testmodel-coordinator-attempt1.json"]
     },
     {
       "id": 5,
@@ -305,9 +305,9 @@
       "command": null
     }
   },
-  "currentStage": 2,
+  "currentStage": 4,
   "writesFrozen": false,
-  "writer": "codex/gpt-5.6-sol (Stage2 fix1)",
+  "writer": null,
   "runReview": {
     "preReview": {
       "used": false
@@ -322,7 +322,5 @@
     "repairReview": {
       "used": false
     }
-  },
-  "pausedAt": "2026-09-11T16:35",
-  "pauseReason": "Owner ended the session: 'we'll have no time for the fixes, let's serialize the state in the plan files so it can be resumed'."
+  }
 }

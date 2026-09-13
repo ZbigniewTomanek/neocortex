@@ -28,6 +28,14 @@ or lose another entity's previously accepted fact when aliases resolve to one no
 Keep existing repeated-target tests and add a scalar conflict case if that path changes.
 Do not weaken existing assertions. Only fix demonstrated behaviors within this contract.
 
+Coordinator gate correction: scalar replacement must not cascade or alter a valid
+incoming value through another property's old-value mapping. Concrete regression:
+old content `Retries 15, timeout 16.`, new content `Retries 16, timeout 17.`, old
+properties retries=15/timeout=16, new properties retries=16/timeout=17. The initial
+implementation returned `Retries 17, timeout 17.` Preserve the incoming description
+and replace against the original old text in one non-cascading pass, or use an
+equivalent correct simultaneous policy. Keep the single-property S05 behavior.
+
 ## Gates
 
 - Red S05 evidence before product fix: validation/stage4-s05-red-attempt1.txt.

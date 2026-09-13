@@ -33,6 +33,7 @@ from neocortex.extraction.agents import (
     build_librarian_agent,
 )
 from neocortex.extraction.oneshot_librarian import (
+    _merge_content,
     build_oneshot_items,
     render_oneshot_items,
     resolve_extraction_entities,
@@ -334,6 +335,144 @@ async def test_missing_decision_falls_back_to_host_default(repo: InMemoryReposit
 
 
 @pytest.mark.asyncio
+async def test_s05_host_default_replaces_the_stale_deadline_scalar(repo: InMemoryRepository) -> None:
+    """S05: a deadline correction must not leave both dates on one node."""
+    node_type = await repo.get_or_create_node_type(AGENT, "Project")
+    assert node_type is not None
+    existing = await repo.upsert_node(
+        agent_id=AGENT,
+        name="Project Zenith",
+        type_id=node_type.id,
+        content="Project Zenith is due April 15, 2026.",
+        properties={"deadline": "April 15, 2026"},
+    )
+    extraction = ExtractionResult(
+        entities=[
+            ExtractedEntity(
+                name="Project Zenith",
+                type_name="Project",
+                description="Project Zenith is due May 1, 2026.",
+                properties={"deadline": "May 1, 2026"},
+            )
+        ]
+    )
+
+    report, _ = await _run(repo, extraction, model=_decisions_model({"decisions": []}))
+
+    merged = _node(repo, existing.id)
+    assert merged.properties["deadline"] == "May 1, 2026"
+    assert "May 1" in merged.content
+    assert "April 15" not in merged.content
+    assert report.entities_updated == 1
+
+
+@pytest.mark.parametrize(
+    ("case_id", "property_name", "old_value", "new_value"),
+    [
+        ("S11", "scaling_exponent", 0.57, 0.62),
+        ("S07", "precision_percent", 87, 94.2),
+    ],
+)
+@pytest.mark.asyncio
+async def test_canned_scalar_corrections_keep_the_new_value(
+    repo: InMemoryRepository,
+    case_id: str,
+    property_name: str,
+    old_value: float,
+    new_value: float,
+) -> None:
+    """S11/S07: numeric corrections survive the host-default merge."""
+    node_type = await repo.get_or_create_node_type(AGENT, "Metric")
+    assert node_type is not None
+    existing = await repo.upsert_node(
+        agent_id=AGENT,
+        name=case_id,
+        type_id=node_type.id,
+        content=f"{case_id} has {property_name} {old_value}.",
+        properties={property_name: old_value},
+    )
+    extraction = ExtractionResult(
+        entities=[
+            ExtractedEntity(
+                name=case_id,
+                type_name="Metric",
+                description=f"{case_id} has {property_name} {new_value}.",
+                properties={property_name: new_value},
+            )
+        ]
+    )
+
+    await _run(repo, extraction, model=_decisions_model({"decisions": []}))
+
+    merged = _node(repo, existing.id)
+    assert merged.properties[property_name] == new_value
+    assert str(new_value) in merged.content
+
+
+@pytest.mark.asyncio
+async def test_scalar_replacement_does_not_change_a_larger_numeric_value(repo: InMemoryRepository) -> None:
+    """Changing 15 to 16 must leave unrelated version 115 intact."""
+    node_type = await repo.get_or_create_node_type(AGENT, "Metric")
+    assert node_type is not None
+    existing = await repo.upsert_node(
+        agent_id=AGENT,
+        name="Throughput Policy",
+        type_id=node_type.id,
+        content="Version 115 is current; the retry threshold is 15.",
+        properties={"retry_threshold": 15},
+    )
+    extraction = ExtractionResult(
+        entities=[
+            ExtractedEntity(
+                name="Throughput Policy",
+                type_name="Metric",
+                description="The retry threshold is 16.",
+                properties={"retry_threshold": 16},
+            )
+        ]
+    )
+
+    await _run(repo, extraction, model=_decisions_model({"decisions": []}))
+
+    assert _node(repo, existing.id).content == "Version 115 is current; the retry threshold is 16."
+
+
+def test_scalar_replacements_do_not_cascade_into_another_new_value() -> None:
+    """Replacing 15 with 16 must not let the 16-to-17 correction rewrite it."""
+    assert (
+        _merge_content(
+            "Retries 15, timeout 16.",
+            "Retries 16, timeout 17.",
+            {"retries": 15, "timeout": 16},
+            {"retries": 16, "timeout": 17},
+        )
+        == "Retries 16, timeout 17."
+    )
+
+
+@pytest.mark.asyncio
+async def test_host_default_truncation_keeps_the_newest_text(repo: InMemoryRepository) -> None:
+    """When merged content exceeds the cap, the incoming fact remains."""
+    node_type = await repo.get_or_create_node_type(AGENT, "Note")
+    assert node_type is not None
+    existing = await repo.upsert_node(
+        agent_id=AGENT,
+        name="Long Note",
+        type_id=node_type.id,
+        content="old " * 400,
+    )
+    extraction = ExtractionResult(
+        entities=[ExtractedEntity(name="Long Note", type_name="Note", description="Newest fact survives.")]
+    )
+
+    await _run(repo, extraction, model=_decisions_model({"decisions": []}))
+
+    merged = _node(repo, existing.id)
+    assert len(merged.content) == 1200
+    assert merged.content.endswith("Newest fact survives.")
+
+
+@pytest.mark.asyncio
 async def test_create_decision_colliding_with_a_candidate_merges_instead(repo: InMemoryRepository) -> None:
     """`create` on a name the graph already holds would erase it, so it merges.
 
@@ -469,6 +608,46 @@ async def test_two_entities_on_one_node_keep_both_facts(repo: InMemoryRepository
     assert report.entities_updated == 2
     assert report.entities_created == 0
     assert await _counts(repo) == (1, 0)
+
+
+@pytest.mark.asyncio
+async def test_repeated_target_keeps_a_scalar_correction_and_later_fact(repo: InMemoryRepository) -> None:
+    """A later alias merge builds on the corrected scalar and its properties."""
+    node_type = await repo.get_or_create_node_type(AGENT, "Project")
+    assert node_type is not None
+    existing = await repo.upsert_node(
+        agent_id=AGENT,
+        name="Project Zenith",
+        type_id=node_type.id,
+        content="Project Zenith is due April 15, 2026.",
+        properties={"deadline": "April 15, 2026"},
+    )
+    await repo.register_alias(AGENT, existing.id, "Zenith", source="test")
+    extraction = ExtractionResult(
+        entities=[
+            ExtractedEntity(
+                name="Project Zenith",
+                type_name="Project",
+                description="Project Zenith is due May 1, 2026.",
+                properties={"deadline": "May 1, 2026"},
+            ),
+            ExtractedEntity(
+                name="Zenith",
+                type_name="Project",
+                description="The Launch Team owns delivery.",
+                properties={"owner": "Launch Team"},
+            ),
+        ]
+    )
+
+    await _run(repo, extraction, model=_decisions_model({"decisions": []}))
+
+    merged = _node(repo, existing.id)
+    assert "May 1" in merged.content
+    assert "April 15" not in merged.content
+    assert "Launch Team owns delivery" in merged.content
+    assert merged.properties["deadline"] == "May 1, 2026"
+    assert merged.properties["owner"] == "Launch Team"
 
 
 # ── Temporal corrections ──
@@ -827,6 +1006,7 @@ async def test_work_list_holds_only_entities_with_candidates(repo: InMemoryRepos
         properties={"_source_episode": 7, "vendor": "Apache", "nested": {"skip": True}},
     )
     entities = _extraction().entities
+    entities[0].properties = {"version": "4.0", "nested": {"skip": True}}
     outcomes = await resolve_extraction_entities(repo, None, AGENT, None, entities)
     items = build_oneshot_items(entities, outcomes)
 
@@ -835,7 +1015,9 @@ async def test_work_list_holds_only_entities_with_candidates(repo: InMemoryRepos
     assert items[0].candidates[0].properties == {"vendor": "Apache"}
     rendered = render_oneshot_items(items)
     assert rendered.splitlines()[0].startswith("0 | Apache Kafka | Technology |")
+    assert 'properties={"version":"4.0"}' in rendered.splitlines()[0]
     assert "node_id=" in rendered.splitlines()[1]
+    assert 'properties={"vendor":"Apache"}' in rendered.splitlines()[1]
 
 
 def test_oneshot_prompt_is_short_and_shows_the_expected_json() -> None:

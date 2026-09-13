@@ -192,8 +192,8 @@ def load_fixture(path: Path, *, corpus: list[dict[str, object]] | None = None) -
     )
 
 
-def _node_haystack(graph: GraphView) -> str:
-    """Normalized ``name + content + property values`` over all active nodes."""
+def _node_haystacks(graph: GraphView) -> tuple[str, ...]:
+    """Return each active node field as its own normalized search boundary."""
     parts: list[str] = []
     for node in graph.nodes:
         if node.forgotten:
@@ -201,7 +201,7 @@ def _node_haystack(graph: GraphView) -> str:
         parts.append(node.name)
         parts.append(node.content or "")
         parts.extend(str(value) for value in (node.properties or {}).values())
-    return normalize(" ".join(parts))
+    return tuple(normalize(part) for part in parts if part)
 
 
 def score_episode(graph: GraphView, episode: EpisodeFixture) -> FactScore:
@@ -210,8 +210,12 @@ def score_episode(graph: GraphView, episode: EpisodeFixture) -> FactScore:
     Facts are deduplicated by fixture index, so one fact listed twice cannot be
     counted twice.
     """
-    haystack = _node_haystack(graph)
-    missing = [index for index, fact in enumerate(episode.facts) if normalize(fact) not in haystack]
+    haystacks = _node_haystacks(graph)
+    missing = [
+        index
+        for index, fact in enumerate(episode.facts)
+        if not any(normalize(fact) in haystack for haystack in haystacks)
+    ]
     return FactScore(
         facts_total=len(episode.facts),
         facts_found=len(episode.facts) - len(missing),
@@ -232,11 +236,12 @@ def count_temporal_edges(graph: GraphView) -> int:
 
 
 def score_supersession(graph: GraphView, triplet: SupersessionFixture) -> SupersessionScore:
-    """Mirror the E2E supersession checks on an offline graph.
+    """Score the E2E supersession conditions on an offline graph.
 
     The anchor text is the anchor nodes' ``content`` only — not ``name``, not
-    ``properties``.  The E2E children assert on content, and widening the
-    haystack here would let the probe pass where the E2E child fails.
+    ``properties``.  This exactly mirrors the S05 and S07 content checks.  It is
+    only an approximation for S11: the real E2E check ranks recalled content
+    using embeddings, while this offline probe has embeddings disabled.
 
     With no anchor node at all the result is
     ``new_present=False, old_absent=True, temporal_edge_present=False``: a

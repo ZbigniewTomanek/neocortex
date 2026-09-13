@@ -337,3 +337,45 @@ question -- whether the local endpoint honours `reasoning_effort` at all -- is S
 - F1 correction inspected against the complete finding: child-aware parsing reports the later episodic Stage3, preserves Plan15/17 scenario priority. Coordinator reproduced exact corrected tuple; no rereview.
 - Focused 84 passed in 6.27 s; full suite 1,413 passed / 7 skipped in 43.48 s; all scoped hooks pass. Raw evidence in validation/stage2-fix1-*-attempt1.txt.
 - Repair budget consumed (one round); implementation and single fix are complete. Stage4 A1 remains frozen, Stage5 offline files remain untouched; only Stage2 files and coordinator run records are staged for the fix commit.
+
+## 2026-09-13 -- Stage 2 DONE; Stage 4 resumes
+
+- Fix commit d639284 created with all hooks passing; Stage2 DONE with commits 8932147 and d639284. Review and repair flags remain spent.
+- Dispatch Stage4's bounded A1 gate correction as the sole writer. A2 follows sequentially; no further Stage2 review or work.
+
+## 2026-09-13 -- Stage 3 formatter diagnosis prepared
+
+- Read-only codex/gpt-5.6-sol/high assignment ran in parallel with Stage4 writes. Existing recall-session tests: 14 passed in 0.44 s. Direct InMemory recall returned one episode, source_kind=episode, valid JSON context, not the placeholder.
+- No defect reproduced; no product fix justified. Stage3 brief carries this REPORT-only limitation to avoid speculative formatter changes.
+- Live diagnosis needs PostgreSQL-backed results' safe source kinds/counts/ids and placeholder boolean after terminal extraction, tied to revision/run identity. Source text is not required.
+- Prepared a draft Stage8 brief using the mandated simple-english rules; no verdict or report value is invented before live evidence.
+
+## 2026-09-13 -- Stage 4 A1 accepted; scalar assignment A2 starts
+
+- Inspected gatefix1: public normalizers replace copied rules; APITimeoutError becomes timeout; timeout-caused failure events no longer become critical defects. Independent stored marker remains critical during timeout.
+- Focused 63 tests pass with real delayed TestModel/provider-timeout regressions; scoped hooks pass. Coordinator rerun evidence: validation/stage4-instruments-gatefix1-coordinator-attempt1.txt.
+- A1 writer released. Dispatch A2 under briefs/stage4-scalars-brief.md, codex/gpt-5.6-sol/high, sole writer. S05 must run red before product edits. Full-suite and exact mock baseline follow the scalar changes; live remains undispatched.
+
+## 2026-09-13 -- Stage 7 external embedding authority clarified
+
+- Read-only preflight found model_bakeoff.sh requires GOOGLE_API_KEY and makes a real Gemini embedding health request. Saved allowed actions cover local Qwen calls and exclude spending money/external service calls.
+- Asked owner asynchronously for Stage7-only embedding approval before that stage. No external call issued. Stage7 brief explicitly prevents launch pending the answer; independent offline/local work can continue.
+
+## 2026-09-13 -- Stage 4 scalar regression is red before the fix
+
+- A2 saved validation/stage4-s05-red-attempt1.txt before product edits. S05 fails `assert "April 15" not in merged.content` because content contains both the old April15 sentence and new May1 sentence.
+- The stored property already has May1, demonstrating the content/property mismatch rather than a missing property update. Coordinator read the failing output. A2 now implements the bounded merge/rendering correction.
+
+## 2026-09-13 -- Scalar gate catches cross-property rewriting
+
+- Coordinator inspected A2's four-file diff and exact mock JSON: 11/11 synthetic units ok, embeddings none, expected fact/triplet observations present. Synthetic quality is not live quality.
+- Direct deterministic call with old retries15/timeout16 and new retries16/timeout17 returned `Retries 17, timeout 17.` Sequential value replacement rewrote the valid new retries value through the other property's old value.
+- Accepted as scalar data corruption within the declared merge contract. A2 brief corrected with this exact regression and a non-cascading policy that preserves incoming text. Strong implementer retains sole writer for the gate correction; no review or live run consumed.
+
+## 2026-09-13 -- Stage 4 deterministic implementation accepted
+
+- A2 corrected simultaneous replacements; coordinator's exact retries15/timeout16 -> retries16/timeout17 call now returns `Retries 16, timeout 17.` All eight Stage4 source/test diffs inspected.
+- Focused 118 passed, hosted 14 passed, full suite 1,429 passed / 7 skipped, scoped hooks and lint passed. Required S05 red evidence remains separate. Hosted extractor/librarian prompt AST hashes match 8766e90; other hosted branches unchanged by Stage4.
+- Exact TestModel baseline: 11/11 units ok in 0.08 s, embeddings none. Eight synthetic fact scores 0/56; triplets have new_present=false and old_absent=true. This proves the instrument, not model quality. Coordinator runs the final same-command mock with its own durable JSON.
+- Promoted backlog6/7/8/10/11 resolved; Stage1 stays DONE. Formatter non-reproduction and hook observation limits recorded as backlog13/14.
+- Commit/review precede live proof per protocol. Stage3 can write during committed Stage4 review because their source scopes are disjoint; neither stage may change the other's files.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -127,30 +128,233 @@ def test_aggregate_stage_rows_ignores_non_agent_stages() -> None:
     assert probe.aggregate_stage_rows("E02", records) == []
 
 
+def test_critical_defects_are_scoped_and_use_only_code_owned_reasons() -> None:
+    """Graph leaks, malformed types, terminal validation, and unknown tools are observable."""
+    before = probe.GraphView(nodes=[], edges=[], node_type_names={}, edge_type_names={})
+    after = probe.GraphView(
+        nodes=[
+            SimpleNamespace(
+                id=1,
+                type_id=1,
+                name="safe node",
+                content="<think>private reasoning</think>",
+                properties={},
+            )
+        ],
+        edges=[SimpleNamespace(id=1, source_id=1, target_id=1, type_id=2, weight=1.0, properties={})],
+        node_type_names={1: "bad node type"},
+        edge_type_names={2: "bad-edge-type"},
+    )
+    records = [
+        _record("tool_call_failed", tool="unknown"),
+        _record("tool_validation_rejected", retry=2, max_retries=2),
+        _record("agent_run_failed"),
+    ]
+
+    defects = probe.detect_critical_defects(before, after, records, "error:UnexpectedModelBehavior")
+
+    assert defects == [
+        "agent_run_failure",
+        "invalid_edge_type",
+        "invalid_node_type",
+        "reasoning_marker",
+        "tool_call_failure",
+        "unknown_tool",
+        "validation_failure",
+    ]
+    assert "private reasoning" not in json.dumps(defects)
+
+
+def test_critical_defects_ignore_unchanged_graph_content_and_recovered_retries() -> None:
+    """A prior unit's leak and a retry that later succeeded do not taint this unit."""
+    existing = SimpleNamespace(
+        id=1,
+        type_id=1,
+        name="Existing",
+        content="<think>older unit</think>",
+        properties={},
+    )
+    before = probe.GraphView(nodes=[existing], edges=[], node_type_names={1: "Person"}, edge_type_names={})
+    after = probe.GraphView(nodes=[existing], edges=[], node_type_names={1: "Person"}, edge_type_names={})
+
+    assert probe.detect_critical_defects(before, after, [_record("output_validation_retry", retry=1)], "ok") == []
+
+
+@pytest.mark.parametrize(
+    ("name", "normalizer", "expected"),
+    [
+        ("Person", probe.normalize_node_type, True),
+        ("DishGreg", probe.normalize_node_type, False),
+        ("Functiondefault", probe.normalize_node_type, False),
+        ("WORKS_ON", probe.normalize_edge_type, True),
+        ("FUNCTIONDEFAULT", probe.normalize_edge_type, False),
+    ],
+)
+def test_type_validation_uses_the_repository_normalizers(name: str, normalizer: Any, expected: bool) -> None:
+    """Instance-level and tool-artifact names cannot pass a copied subset of the rules."""
+    assert probe._valid_type_name(name, normalizer) is expected
+
+
+async def _run_text_with_model(
+    monkeypatch: pytest.MonkeyPatch,
+    model_type: type,
+    *,
+    episode_timeout: float,
+) -> tuple[str, list[dict[str, Any]], list[str], list[dict[str, Any]]]:
+    from loguru import logger
+
+    from neocortex.extraction import agents as extraction_agents
+
+    monkeypatch.setattr(extraction_agents, "TestModel", model_type)
+    args = probe.build_parser().parse_args(["--test-model", "--episode-timeout", str(episode_timeout)])
+    levels = probe.resolve_thinking_levels(args)
+    configs = probe.build_configs(args, levels, probe.resolve_local_endpoint(args.per_call_timeout))
+    collector = probe.ActionLogCollector()
+    sink_id = logger.add(collector, level="DEBUG", filter=lambda record: bool(record["extra"].get("action_log")))
+    try:
+        _seconds, outcome, rows, defects = await probe.run_text(
+            "E04",
+            "Alpha works on Beta.",
+            0.5,
+            InMemoryRepository(),
+            args,
+            collector,
+            configs,
+            levels,
+            None,
+            "corpus-hash",
+            None,
+        )
+    finally:
+        logger.remove(sink_id)
+    return outcome, rows, defects, collector.records
+
+
+@pytest.mark.asyncio
+async def test_episode_timeout_is_not_a_critical_agent_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Outer wait_for cancellation remains an allowed timeout observation."""
+    import asyncio
+
+    from pydantic_ai.models.test import TestModel
+
+    class SlowTestModel(TestModel):
+        async def request(self, messages: Any, model_settings: Any, model_request_parameters: Any) -> Any:
+            await asyncio.sleep(0.2)
+            return await super().request(messages, model_settings, model_request_parameters)
+
+    outcome, rows, defects, records = await _run_text_with_model(monkeypatch, SlowTestModel, episode_timeout=0.01)
+
+    assert outcome == "timeout"
+    assert [(row["stage"], row["status"]) for row in rows] == [("ontology", "timeout")]
+    assert defects == []
+    assert any(
+        record["event"] == "agent_run_failed" and record["fields"]["error_type"] == "CancelledError"
+        for record in records
+    )
+
+
+@pytest.mark.asyncio
+async def test_provider_timeout_is_normalized_and_not_a_critical_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The OpenAI client timeout class counts as timeout, not model corruption."""
+    import httpx
+    from openai import APITimeoutError
+    from pydantic_ai.models.test import TestModel
+
+    class ProviderTimeoutModel(TestModel):
+        async def request(self, messages: Any, model_settings: Any, model_request_parameters: Any) -> Any:
+            raise APITimeoutError(request=httpx.Request("POST", "http://test.invalid/v1/chat/completions"))
+
+    outcome, rows, defects, records = await _run_text_with_model(monkeypatch, ProviderTimeoutModel, episode_timeout=1)
+
+    assert outcome == "timeout"
+    assert [(row["stage"], row["status"]) for row in rows] == [("ontology", "timeout")]
+    assert defects == []
+    assert {
+        (record["event"], record["fields"].get("error_type"))
+        for record in records
+        if record["event"].endswith("failed")
+    } == {("model_request_failed", "APITimeoutError"), ("agent_run_failed", "APITimeoutError")}
+
+
+@pytest.mark.asyncio
+async def test_classifier_provider_timeout_is_normalized(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """The probe-local classifier TestModel applies the same timeout status."""
+    import httpx
+    import pydantic_ai.models.test
+    from openai import APITimeoutError
+    from pydantic_ai.models.test import TestModel
+
+    class ProviderTimeoutModel(TestModel):
+        async def request(self, messages: Any, model_settings: Any, model_request_parameters: Any) -> Any:
+            raise APITimeoutError(request=httpx.Request("POST", "http://test.invalid/v1/chat/completions"))
+
+    monkeypatch.setattr(pydantic_ai.models.test, "TestModel", ProviderTimeoutModel)
+    args = probe.build_parser().parse_args(["--test-model", "--classify"])
+    levels = probe.resolve_thinking_levels(args)
+    config = probe.build_configs(args, levels, probe.resolve_local_endpoint(args.per_call_timeout))["classifier"]
+
+    _seconds, status, matched, proposed = await probe._classify(
+        "Alpha works on Beta.", "E04", 1, config, probe.THINKING[levels["classifier"]], 1, tmp_path
+    )
+
+    assert (status, matched, proposed) == ("timeout", 0, 0)
+
+
+def test_timeout_does_not_hide_an_independent_stored_marker() -> None:
+    """Suppressing cancellation events must not suppress graph integrity defects."""
+    before = probe.GraphView(nodes=[], edges=[], node_type_names={}, edge_type_names={})
+    after = probe.GraphView(
+        nodes=[SimpleNamespace(id=1, type_id=1, name="Safe", content="<think>leak</think>", properties={})],
+        edges=[],
+        node_type_names={1: "Person"},
+        edge_type_names={},
+    )
+    records = [_record("agent_run_failed", error_type="CancelledError")]
+
+    assert probe.detect_critical_defects(before, after, records, "timeout") == ["reasoning_marker"]
+
+
 # ── Cache ──
 
 
 def test_cache_key_is_setup_specific() -> None:
     """The key separates episodes, models, thinking levels, and test-model runs."""
-    base = probe.cache_key("E04", "local:qwen3.8-flash-next", "low", "abc", test_model=False)
+    base = probe.cache_key("E04", "local:qwen3.8-flash-next", "low", "abc", "episode text", test_model=False)
     assert base.startswith("E04-")
     assert len(base) == len("E04-") + 12
-    assert base != probe.cache_key("E05", "local:qwen3.8-flash-next", "low", "abc", test_model=False)
-    assert base != probe.cache_key("E04", "local:other", "low", "abc", test_model=False)
-    assert base != probe.cache_key("E04", "local:qwen3.8-flash-next", False, "abc", test_model=False)
-    assert base != probe.cache_key("E04", "local:qwen3.8-flash-next", "low", "def", test_model=False)
-    assert base != probe.cache_key("E04", "local:qwen3.8-flash-next", "low", "abc", test_model=True)
+    assert base != probe.cache_key("E05", "local:qwen3.8-flash-next", "low", "abc", "episode text", test_model=False)
+    assert base != probe.cache_key("E04", "local:other", "low", "abc", "episode text", test_model=False)
+    assert base != probe.cache_key("E04", "local:qwen3.8-flash-next", False, "abc", "episode text", test_model=False)
+    assert base != probe.cache_key("E04", "local:qwen3.8-flash-next", "low", "def", "episode text", test_model=False)
+    assert base != probe.cache_key("E04", "local:qwen3.8-flash-next", "low", "abc", "episode text", test_model=True)
     # A cache entry holds the ontology and extractor agents' output, so both of
     # their levels separate keys; omitting either would let a rerun reuse an
     # extraction produced at a different level.
     assert base == probe.cache_key(
-        "E04", "local:qwen3.8-flash-next", "low", "abc", test_model=False, ontology_thinking="low"
+        "E04", "local:qwen3.8-flash-next", "low", "abc", "episode text", test_model=False, ontology_thinking="low"
     )
     assert base != probe.cache_key(
-        "E04", "local:qwen3.8-flash-next", "low", "abc", test_model=False, ontology_thinking="high"
+        "E04", "local:qwen3.8-flash-next", "low", "abc", "episode text", test_model=False, ontology_thinking="high"
     )
     assert base != probe.cache_key(
-        "E04", "local:qwen3.8-flash-next", "low", "abc", test_model=False, extractor_thinking="high"
+        "E04", "local:qwen3.8-flash-next", "low", "abc", "episode text", test_model=False, extractor_thinking="high"
+    )
+
+
+def test_triplet_cache_key_includes_fixture_text_and_revision() -> None:
+    """Changed S05 fixture content or revision cannot reuse an earlier extraction."""
+    kwargs = {"test_model": False, "fixture_revision": 1}
+    base = probe.cache_key("S05-1", "local:qwen3.8-flash-next", "off", "corpus", "April 15", **kwargs)
+
+    assert base != probe.cache_key("S05-1", "local:qwen3.8-flash-next", "off", "corpus", "May 1", **kwargs)
+    assert base != probe.cache_key(
+        "S05-1",
+        "local:qwen3.8-flash-next",
+        "off",
+        "corpus",
+        "April 15",
+        test_model=False,
+        fixture_revision=2,
     )
 
 
@@ -178,6 +382,7 @@ def test_cache_key_ignores_the_librarian_and_classifier_levels() -> None:
             args.model,
             probe.THINKING[args.cache_thinking or args.thinking],
             "abc",
+            "episode text",
             test_model=args.test_model,
             ontology_thinking=probe.THINKING[levels["ontology"]],
             extractor_thinking=probe.THINKING[levels["extractor"]],
@@ -396,6 +601,7 @@ def test_per_agent_levels_reach_three_separate_agent_configs() -> None:
     assert configs["extractor"].thinking_effort == "high"
     assert configs["librarian"].thinking_effort is False
     assert configs["classifier"].thinking_effort is False
+    assert all(config.model_name == args.model for config in configs.values())
 
 
 def test_per_call_timeout_bounds_one_model_call(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -540,6 +746,7 @@ async def test_test_model_run_over_the_full_corpus_and_triplets(tmp_path: Path) 
     keys = [episode["episode"] for episode in payload["episodes"]]
     assert keys == ["E02", "E04", "E05", "E10", "E18", "E20", "E26", "E27", "S05", "S11", "S07"]
     assert all("fact_score" in episode for episode in payload["episodes"])
+    assert all(episode["critical_defects"] == [] for episode in payload["episodes"])
     compact = payload["episodes"][:8]
     triplets = payload["episodes"][8:]
     assert all(isinstance(episode["fact_score"], dict) for episode in compact)
@@ -554,6 +761,142 @@ async def test_test_model_run_over_the_full_corpus_and_triplets(tmp_path: Path) 
     assert payload["run"]["corpus"] == "both"
     assert payload["run"]["chain"] == {"status": "NOT MEASURED", "reason": "repo_mode=fresh"}
     assert payload["run"]["wall_budget_exhausted"] is False
+
+
+@pytest.mark.asyncio
+async def test_librarian_cache_misses_are_recorded_and_remaining_units_continue(tmp_path: Path) -> None:
+    """A missing cache entry is an error row, not a traceback that prevents output."""
+    import sys
+
+    from loguru import logger
+
+    output = tmp_path / "cache-misses.json"
+    try:
+        exit_code = await probe.main(
+            [
+                "--test-model",
+                "--stage",
+                "librarian",
+                "--episodes",
+                "E04",
+                "E05",
+                "--cache-dir",
+                str(tmp_path / "empty-cache"),
+                "--output",
+                str(output),
+            ]
+        )
+    finally:
+        logger.remove()
+        logger.add(sys.stderr)
+
+    assert exit_code == 1
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert [row["episode"] for row in payload["episodes"]] == ["E04", "E05"]
+    assert [row["status"] for row in payload["episodes"]] == [
+        "error:FileNotFoundError",
+        "error:FileNotFoundError",
+    ]
+    assert [row["critical_defects"] for row in payload["episodes"]] == [["unit_error"], ["unit_error"]]
+    assert [(row["episode"], row["stage"], row["status"]) for row in payload["stages"]] == [
+        ("E04", "librarian", "error:FileNotFoundError"),
+        ("E05", "librarian", "error:FileNotFoundError"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_classifier_test_model_runs_eight_rows_without_a_provider_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The mock CLI exercises AgentDomainClassifier while denying live I/O."""
+    import sys
+
+    import httpx
+    from loguru import logger
+
+    from neocortex.domains import classifier as classifier_module
+
+    def deny_provider_factory(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("live provider factory called")
+
+    async def deny_http_request(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("live HTTP request called")
+
+    monkeypatch.setattr(classifier_module, "build_model", deny_provider_factory)
+    monkeypatch.setattr(httpx.AsyncClient, "send", deny_http_request)
+    output = tmp_path / "classifier.json"
+    try:
+        exit_code = await probe.main(
+            [
+                "--test-model",
+                "--classify",
+                "--corpus",
+                "compact",
+                "--fixture",
+                str(FIXTURE_PATH),
+                "--cache-dir",
+                str(tmp_path / "cache"),
+                "--output",
+                str(output),
+            ]
+        )
+    finally:
+        logger.remove()
+        logger.add(sys.stderr)
+
+    assert exit_code == 0
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    classifier_rows = [row for row in payload["stages"] if row["stage"] == "classifier"]
+    assert [row["episode"] for row in classifier_rows] == [
+        "E02",
+        "E04",
+        "E05",
+        "E10",
+        "E18",
+        "E20",
+        "E26",
+        "E27",
+    ]
+    assert all(row["status"] == "ok" and row["valid_result"] is True for row in classifier_rows)
+    assert all(row["critical_defects"] == [] for row in payload["episodes"])
+
+
+@pytest.mark.asyncio
+async def test_classifier_failure_remains_the_unit_outcome(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A successful extraction cannot turn a failed classifier row into an ok unit."""
+    import sys
+
+    from loguru import logger
+
+    async def fail_classifier(*args: Any, **kwargs: Any) -> tuple[float, str, int, int]:
+        return 0.01, "error:UnexpectedModelBehavior", 0, 0
+
+    monkeypatch.setattr(probe, "_classify", fail_classifier)
+    output = tmp_path / "classifier-failure.json"
+    try:
+        exit_code = await probe.main(
+            [
+                "--test-model",
+                "--classify",
+                "--episodes",
+                "E04",
+                "--cache-dir",
+                str(tmp_path / "cache"),
+                "--output",
+                str(output),
+            ]
+        )
+    finally:
+        logger.remove()
+        logger.add(sys.stderr)
+
+    assert exit_code == 1
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["episodes"][0]["status"] == "error:UnexpectedModelBehavior"
+    assert payload["episodes"][0]["critical_defects"] == ["unit_error"]
+    classifier_row = next(row for row in payload["stages"] if row["stage"] == "classifier")
+    assert classifier_row["status"] == "error:UnexpectedModelBehavior"
+    assert classifier_row["valid_result"] is False
 
 
 @pytest.mark.asyncio
@@ -622,6 +965,7 @@ async def test_max_wall_seconds_zero_launches_nothing_and_still_writes(tmp_path:
     assert all(episode["reason"] == "wall_budget" for episode in payload["episodes"])
     assert all(episode["seconds_total"] is None for episode in payload["episodes"])
     assert all(episode["words"] is None for episode in payload["episodes"])
+    assert all(episode["critical_defects"] is None for episode in payload["episodes"])
     assert payload["stages"] == []
     assert payload["run"]["wall_budget_exhausted"] is True
     assert payload["run"]["chain"] == {"status": "NOT MEASURED", "reason": "wall_budget"}

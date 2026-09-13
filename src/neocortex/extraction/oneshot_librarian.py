@@ -18,6 +18,8 @@ Design invariants:
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -98,6 +100,7 @@ class _NodePlan:
     properties: dict[str, Any]
     importance: float
     new_fact: str | None = None
+    incoming_properties: dict[str, Any] = field(default_factory=dict)
     node_id: int | None = None
     aliases: list[str] = field(default_factory=list)
 
@@ -114,15 +117,47 @@ def _scalar_properties(properties: dict[str, Any] | None) -> dict[str, str | int
     return scalars
 
 
-def _merge_content(existing: str | None, description: str | None) -> str:
-    """Host default merge: keep the old text, append the new fact once."""
+def _replace_scalars(text: str, replacements: list[tuple[Any, Any]]) -> str:
+    """Apply scalar replacements simultaneously without touching larger values."""
+    by_old_value: dict[str, set[str]] = {}
+    for old_value, new_value in replacements:
+        old = str(old_value)
+        if old:
+            by_old_value.setdefault(old.casefold(), set()).add(str(new_value))
+
+    unambiguous = [(old, next(iter(new_values))) for old, new_values in by_old_value.items() if len(new_values) == 1]
+    ordered = sorted(unambiguous, key=lambda pair: len(pair[0]), reverse=True)
+    if not ordered:
+        return text
+    patterns = [rf"(?P<s{index}>(?<!\w)(?<!\d\.){re.escape(old)}(?!\w|\.\d))" for index, (old, _) in enumerate(ordered)]
+    replacements_by_group = {f"s{index}": new for index, (_, new) in enumerate(ordered)}
+    pattern = re.compile("|".join(patterns), flags=re.IGNORECASE)
+    return pattern.sub(lambda match: replacements_by_group[match.lastgroup or ""], text)
+
+
+def _merge_content(
+    existing: str | None,
+    description: str | None,
+    existing_properties: dict[str, Any] | None = None,
+    incoming_properties: dict[str, Any] | None = None,
+) -> str:
+    """Host default merge, replacing stale shared scalars before appending."""
     old = (existing or "").strip()
     new = (description or "").strip()
+    old_scalars = _scalar_properties(existing_properties)
+    new_scalars = _scalar_properties(incoming_properties)
+    replacements: list[tuple[Any, Any]] = []
+    for key in sorted(old_scalars.keys() & new_scalars.keys()):
+        old_value = old_scalars[key]
+        new_value = new_scalars[key]
+        if old_value != new_value:
+            replacements.append((old_value, new_value))
+    old = _replace_scalars(old, replacements)
     if not old:
-        return new[:MERGE_CONTENT_CHARS]
+        return new[-MERGE_CONTENT_CHARS:]
     if not new or new.casefold() in old.casefold():
-        return old[:MERGE_CONTENT_CHARS]
-    return f"{old} {new}"[:MERGE_CONTENT_CHARS]
+        return old[-MERGE_CONTENT_CHARS:]
+    return f"{old} {new}"[-MERGE_CONTENT_CHARS:]
 
 
 def _temporal_signal(entity: ExtractedEntity) -> str:
@@ -246,10 +281,17 @@ def render_oneshot_items(items: list[OneshotItem]) -> str:
     """Render the work list as compact lines: one per entity, candidates indented."""
     lines: list[str] = []
     for item in items:
-        lines.append(f"{item.index} | {item.name} | {item.type_name} | {item.description or ''}")
+        properties = json.dumps(_scalar_properties(item.properties), sort_keys=True, separators=(",", ":"))
+        lines.append(
+            f"{item.index} | {item.name} | {item.type_name} | properties={properties} | {item.description or ''}"
+        )
         for candidate in item.candidates:
+            candidate_properties = json.dumps(
+                _scalar_properties(candidate.properties), sort_keys=True, separators=(",", ":")
+            )
             lines.append(
-                f"  node_id={candidate.node_id} | {candidate.name} | {candidate.type_name} | {candidate.content}"
+                f"  node_id={candidate.node_id} | properties={candidate_properties} | "
+                f"{candidate.name} | {candidate.type_name} | {candidate.content}"
             )
     return "\n".join(lines)
 
@@ -307,7 +349,16 @@ def _decision_for(
         chose_create = decision is not None and decision.decision == "create"
         collision = _colliding_candidate(entity, outcome, typed_only=chose_create)
         if collision is not None:
-            return "merge", collision, _merge_content(collision.content, entity.description)
+            return (
+                "merge",
+                collision,
+                _merge_content(
+                    collision.content,
+                    entity.description,
+                    collision.properties,
+                    entity.properties,
+                ),
+            )
     return "create", None, None
 
 
@@ -319,14 +370,25 @@ def _chain_repeated_targets(plans: list[_NodePlan]) -> None:
     time, so applying them in order would drop the earlier one's fact.  Rebuild
     the later plan's content from what the run already decided to write.
     """
-    decided: dict[int, str | None] = {}
+    decided: dict[int, tuple[str | None, dict[str, Any]]] = {}
     for plan in plans:
         if plan.node_id is None or plan.action == "unchanged":
             continue
         previous = decided.get(plan.node_id)
         if previous is not None:
-            plan.content = _merge_content(previous, plan.new_fact)
-        decided[plan.node_id] = plan.content
+            previous_content, previous_properties = previous
+            plan.content = _merge_content(
+                previous_content,
+                plan.new_fact,
+                previous_properties,
+                plan.incoming_properties,
+            )
+            chained_properties = dict(previous_properties)
+            chained_properties.update(plan.incoming_properties)
+            if "_source_episode" in plan.properties:
+                chained_properties["_source_episode"] = plan.properties["_source_episode"]
+            plan.properties = chained_properties
+        decided[plan.node_id] = (plan.content, plan.properties)
 
 
 async def run_oneshot_librarian(
@@ -491,6 +553,7 @@ async def _apply(
                     properties=properties,
                     importance=entity.importance,
                     new_fact=entity.description,
+                    incoming_properties=dict(entity.properties),
                     aliases=aliases,
                 )
             )
@@ -511,6 +574,7 @@ async def _apply(
                 properties=properties,
                 importance=max(node.importance, entity.importance),
                 new_fact=entity.description,
+                incoming_properties=dict(entity.properties),
                 node_id=node.id,
             )
         )

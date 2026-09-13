@@ -7,8 +7,11 @@ Runs the real ``run_extraction`` over compact-corpus episodes on an
 summary.  Extraction results are cached under ``--cache-dir`` so later work can
 iterate on the librarian stage alone (``--stage librarian``).
 
-The summary holds stage names, durations, and counts only.  Episode text,
-prompts, entity names, and model output never reach it.
+The summary holds stage names, durations, counts, and normalized ontology edge
+type names.  Those names are structural metadata: model-proposed names reach
+``edge_types_after`` only after ``InMemoryRepository.get_or_create_edge_type``
+accepts the result of ``normalize_edge_type``.  Episode text, prompts, entity
+names, and all other model output never reach the summary.
 """
 
 from __future__ import annotations
@@ -18,9 +21,12 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -28,6 +34,7 @@ from typing import Any
 
 import pydantic_ai
 from loguru import logger
+from openai import APITimeoutError
 from pydantic_ai.settings import ThinkingLevel
 
 from neocortex.db.mock import InMemoryRepository
@@ -37,12 +44,14 @@ from neocortex.extraction.pipeline import run_extraction
 from neocortex.extraction.schemas import ExtractionResult
 from neocortex.mcp_settings import MCPSettings
 from neocortex.model_factory import LocalEndpoint
+from neocortex.normalization import normalize_edge_type, normalize_node_type
 from neocortex.schemas.memory import TypeInfo
 
 try:  # Direct ``python scripts/qwen_speed_probe.py`` invocation.
     from corpus_loader import corpus_path, load_corpus  # ty: ignore[unresolved-import]
     from fact_retention import (  # ty: ignore[unresolved-import]
         Fixture,
+        GraphView,
         count_temporal_edges,
         load_fixture,
         score_episode,
@@ -53,6 +62,7 @@ except ModuleNotFoundError:  # Imported as ``scripts.qwen_speed_probe``.
     from scripts.corpus_loader import corpus_path, load_corpus  # ty: ignore[unresolved-import]
     from scripts.fact_retention import (  # ty: ignore[unresolved-import]
         Fixture,
+        GraphView,
         count_temporal_edges,
         load_fixture,
         score_episode,
@@ -91,6 +101,8 @@ COUNT_FIELDS = ("requests", "tool_calls", "input_tokens", "output_tokens", "reas
 # Bounded-librarian diagnostics: counts and code-owned reason codes only.
 TRAJECTORY_FIELDS = ("requests", "provider_tool_calls", "reads", "mutations_attempted", "mutations_succeeded",
                      "duplicates", "validation_rejections", "max_read_streak", "hard_reason")  # fmt: skip
+_REASONING_MARKER = re.compile(r"</?think>", re.IGNORECASE)
+_TIMEOUT_ERROR_TYPES = frozenset({"APITimeoutError", "CancelledError", "TimeoutError"})
 
 
 class ActionLogCollector:
@@ -176,8 +188,10 @@ def cache_key(
     model: str,
     thinking: ThinkingLevel,
     corpus_sha256: str,
+    source_text: str,
     *,
     test_model: bool,
+    fixture_revision: int | None = None,
     ontology_thinking: ThinkingLevel | None = None,
     extractor_thinking: ThinkingLevel | None = None,
 ) -> str:
@@ -197,11 +211,31 @@ def cache_key(
     Excluding it still satisfies the requirement above, because the extractor
     level *is* in the key.
 
+    ``source_text`` prevents a changed fixture triplet from reusing an earlier
+    extraction.  ``fixture_revision`` additionally invalidates every triplet
+    when the fixture contract changes.  Cache format version 2 intentionally
+    makes pre-provenance cache files unreachable; there is no compatibility
+    fallback.
+
     ``ontology_thinking`` and ``extractor_thinking`` default to ``thinking``.
     """
     ontology = thinking if ontology_thinking is None else ontology_thinking
     extractor = thinking if extractor_thinking is None else extractor_thinking
-    preimage = f"{model}|{thinking}|{ontology}|{extractor}|{corpus_sha256}|{'test' if test_model else 'live'}"
+    source_sha256 = hashlib.sha256(source_text.encode()).hexdigest()
+    preimage = json.dumps(
+        {
+            "version": 2,
+            "model": model,
+            "thinking": thinking,
+            "ontology_thinking": ontology,
+            "extractor_thinking": extractor,
+            "corpus_sha256": corpus_sha256,
+            "source_sha256": source_sha256,
+            "fixture_revision": fixture_revision,
+            "mode": "test" if test_model else "live",
+        },
+        sort_keys=True,
+    )
     return f"{episode}-{hashlib.sha256(preimage.encode()).hexdigest()[:12]}"
 
 
@@ -247,6 +281,26 @@ def resolve_local_endpoint(timeout_s: float) -> LocalEndpoint:
         local_model_timeout_s=timeout_s,
     )
     return LocalEndpoint.from_settings(settings)
+
+
+@contextmanager
+def _classifier_model_override(use_test_model: bool) -> Iterator[None]:
+    """Replace only the classifier's provider factory during a test-model run."""
+    if not use_test_model:
+        yield
+        return
+
+    from unittest.mock import patch
+
+    from pydantic_ai.models.test import TestModel
+
+    from neocortex.domains import classifier as classifier_module
+
+    # Keep AgentDomainClassifier configured with the requested Qwen identity so
+    # it selects the Qwen prompt/settings branch. Only its final model factory
+    # is replaced; no provider client can be constructed or called.
+    with patch.object(classifier_module, "build_model", return_value=TestModel()):
+        yield
 
 
 def resolve_embeddings() -> tuple[Any, str]:
@@ -301,7 +355,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, default=None)
     parser.add_argument("--test-model", action="store_true")
     parser.add_argument("--profile", choices=PROFILES, default=None)
-    parser.add_argument("--classify", action="store_true", help="also time the domain classifier (needs a live model)")
+    parser.add_argument("--classify", action="store_true", help="also time the domain classifier")
     return parser
 
 
@@ -358,12 +412,14 @@ async def _classify(
     started = time.monotonic()
     with capture_run_messages() as messages:
         try:
-            result = await asyncio.wait_for(
-                classifier.classify(text, list(SEED_DOMAINS), agent_id=AGENT_ID, episode_id=episode_id), timeout=timeout
-            )
+            with _classifier_model_override(config.use_test_model):
+                result = await asyncio.wait_for(
+                    classifier.classify(text, list(SEED_DOMAINS), agent_id=AGENT_ID, episode_id=episode_id),
+                    timeout=timeout,
+                )
             matched = len(result.matched_domains)
             proposed = int(result.proposed_domain is not None)
-        except TimeoutError:
+        except (TimeoutError, APITimeoutError):
             status = "timeout"
         except Exception as exc:  # a classifier failure is a recorded measurement
             status = f"error:{type(exc).__name__}"
@@ -396,9 +452,13 @@ def build_configs(
 ) -> dict[str, AgentInferenceConfig]:
     """Build one :class:`AgentInferenceConfig` per tunable agent."""
     if args.test_model:
-        # The hosted default model name keeps TestModel free of endpoint requirements.
         return {
-            agent: AgentInferenceConfig(use_test_model=True, thinking_effort=THINKING[levels[agent]])
+            agent: AgentInferenceConfig(
+                model_name=args.model,
+                use_test_model=True,
+                thinking_effort=THINKING[levels[agent]],
+                local_endpoint=endpoint,
+            )
             for agent in TUNABLE_AGENTS
         }
     return {
@@ -450,9 +510,108 @@ def blank_summary(key: str, status: str, reason: str) -> dict[str, Any]:
         "edge_types_after": None,
         "fact_score": None,
         "supersession": None,
+        "critical_defects": None,
         "status": status,
         "reason": reason,
     }
+
+
+def _valid_type_name(name: str, normalizer: Callable[[str], str]) -> bool:
+    """Return whether the repository normalizer accepts this stored spelling."""
+    try:
+        return normalizer(name) == name
+    except ValueError:
+        return False
+
+
+def _node_signature(node: Any) -> tuple[Any, ...]:
+    return node.type_id, node.name, node.content, json.dumps(node.properties, sort_keys=True, default=str)
+
+
+def _edge_signature(edge: Any) -> tuple[Any, ...]:
+    return (
+        edge.source_id,
+        edge.target_id,
+        edge.type_id,
+        edge.weight,
+        json.dumps(edge.properties, sort_keys=True, default=str),
+    )
+
+
+def detect_critical_defects(
+    before: GraphView,
+    after: GraphView,
+    records: list[dict[str, Any]],
+    outcome: str,
+) -> list[str]:
+    """Return code-owned defect reasons observed while processing one text."""
+    defects: set[str] = set()
+    before_nodes = {node.id: _node_signature(node) for node in before.nodes}
+    before_edges = {edge.id: _edge_signature(edge) for edge in before.edges}
+    changed_nodes = [node for node in after.nodes if before_nodes.get(node.id) != _node_signature(node)]
+    changed_edges = [edge for edge in after.edges if before_edges.get(edge.id) != _edge_signature(edge)]
+
+    node_type_ids = {
+        *(type_id for type_id, name in after.node_type_names.items() if before.node_type_names.get(type_id) != name),
+        *(node.type_id for node in changed_nodes),
+    }
+    edge_type_ids = {
+        *(type_id for type_id, name in after.edge_type_names.items() if before.edge_type_names.get(type_id) != name),
+        *(edge.type_id for edge in changed_edges),
+    }
+    if any(
+        not _valid_type_name(after.node_type_names[type_id], normalize_node_type)
+        for type_id in node_type_ids
+        if type_id in after.node_type_names
+    ):
+        defects.add("invalid_node_type")
+    if any(
+        not _valid_type_name(after.edge_type_names[type_id], normalize_edge_type)
+        for type_id in edge_type_ids
+        if type_id in after.edge_type_names
+    ):
+        defects.add("invalid_edge_type")
+
+    stored_fields = [
+        field
+        for node in changed_nodes
+        for field in (node.name, node.content or "", json.dumps(node.properties, sort_keys=True, default=str))
+    ]
+    stored_fields.extend(json.dumps(edge.properties, sort_keys=True, default=str) for edge in changed_edges)
+    if any(_REASONING_MARKER.search(field) for field in stored_fields):
+        defects.add("reasoning_marker")
+
+    events = {str(record["event"]) for record in records}
+    critical_failure_events = {
+        str(record["event"])
+        for record in records
+        if not (outcome == "timeout" and record["fields"].get("error_type") in _TIMEOUT_ERROR_TYPES)
+    }
+    if "agent_run_failed" in critical_failure_events:
+        defects.add("agent_run_failure")
+    if "model_request_failed" in critical_failure_events:
+        defects.add("model_request_failure")
+    if "tool_call_failed" in critical_failure_events:
+        defects.add("tool_call_failure")
+    validation_rejected = any(
+        record["event"] in {"tool_validation_rejected", "output_validation_retry"} for record in records
+    )
+    terminal_tool_rejection = any(
+        int(record["fields"].get("retry") or 0) >= int(record["fields"].get("max_retries") or 0)
+        for record in records
+        if record["event"] == "tool_validation_rejected"
+    )
+    if validation_rejected and ("agent_run_failed" in critical_failure_events or terminal_tool_rejection):
+        defects.add("validation_failure")
+    # Successful structured-output tools are also redacted to ``unknown`` by
+    # the shared audit hook. Only a failed executable tool is unambiguous here.
+    if any(record["event"] == "tool_call_failed" and record["fields"].get("tool") == "unknown" for record in records):
+        defects.add("unknown_tool")
+    if outcome.startswith("error:") and not events.intersection(
+        {"agent_run_failed", "model_request_failed", "tool_call_failed"}
+    ):
+        defects.add("unit_error")
+    return sorted(defects)
 
 
 def write_output(
@@ -491,8 +650,9 @@ async def run_text(
     levels: dict[str, str],
     embeddings: Any,
     corpus_sha256: str,
-) -> tuple[float, str, list[dict[str, Any]]]:
-    """Run one text end to end and return (seconds, outcome, stage rows)."""
+    fixture_revision: int | None,
+) -> tuple[float, str, list[dict[str, Any]], list[str]]:
+    """Run one text and return seconds, outcome, stage rows, and defects."""
     episode_id = await repo.store_episode(
         AGENT_ID, text, importance=importance, metadata={"importance_hint": importance}
     )
@@ -501,20 +661,16 @@ async def run_text(
         args.model,
         THINKING[args.cache_thinking or args.thinking],
         corpus_sha256,
+        text,
         test_model=args.test_model,
+        fixture_revision=fixture_revision,
         ontology_thinking=THINKING[levels["ontology"]],
         extractor_thinking=THINKING[levels["extractor"]],
     )
     collector.reset()
+    graph_before = snapshot_graph(repo)
 
     precomputed: dict[int, ExtractionResult] | None = None
-    if args.stage == "librarian":
-        cached, ontology = load_cached_extraction(args.cache_dir, key)
-        for node_type in ontology["node_types"]:
-            await repo.get_or_create_node_type(AGENT_ID, node_type["name"], node_type["description"])
-        for edge_type in ontology["edge_types"]:
-            await repo.get_or_create_edge_type(AGENT_ID, edge_type["name"], edge_type["description"])
-        precomputed = {episode_id: cached}
 
     async def on_extracted(extracted_id: int, result: ExtractionResult) -> None:
         del extracted_id
@@ -526,25 +682,36 @@ async def run_text(
             type_snapshot(await repo.get_edge_types(AGENT_ID)),
         )
 
-    classifier_row: dict[str, Any] | None = None
-    if args.classify:
-        seconds, status, matched, proposed = await _classify(
-            text,
-            label,
-            episode_id,
-            configs["classifier"],
-            THINKING[levels["classifier"]],
-            args.episode_timeout,
-            args.cache_dir,
-        )
-        classifier_row = _blank_row(label, "classifier", status)
-        classifier_row["seconds"] = seconds
-        classifier_row["matched_domains"] = matched
-        classifier_row["proposed_domains"] = proposed
-
     started = time.monotonic()
     outcome = "ok"
+    classifier_row: dict[str, Any] | None = None
     try:
+        if args.stage == "librarian":
+            cached, ontology = load_cached_extraction(args.cache_dir, key)
+            for node_type in ontology["node_types"]:
+                await repo.get_or_create_node_type(AGENT_ID, node_type["name"], node_type["description"])
+            for edge_type in ontology["edge_types"]:
+                await repo.get_or_create_edge_type(AGENT_ID, edge_type["name"], edge_type["description"])
+            precomputed = {episode_id: cached}
+
+        if args.classify:
+            seconds, status, matched, proposed = await _classify(
+                text,
+                label,
+                episode_id,
+                configs["classifier"],
+                THINKING[levels["classifier"]],
+                args.episode_timeout,
+                args.cache_dir,
+            )
+            classifier_row = _blank_row(label, "classifier", status)
+            classifier_row["seconds"] = seconds
+            classifier_row["matched_domains"] = matched
+            classifier_row["proposed_domains"] = proposed
+            classifier_row["valid_result"] = status == "ok"
+            if status != "ok":
+                outcome = status
+
         await asyncio.wait_for(
             run_extraction(
                 repo=repo,
@@ -560,13 +727,19 @@ async def run_text(
             ),
             timeout=args.episode_timeout,
         )
-    except TimeoutError:
-        outcome = "timeout"
+    except (TimeoutError, APITimeoutError):
+        if outcome == "ok":
+            outcome = "timeout"
     except Exception as exc:  # a failure is a recorded measurement, not a crash
-        outcome = f"error:{type(exc).__name__}"
+        if outcome == "ok":
+            outcome = f"error:{type(exc).__name__}"
     seconds_total = round(time.monotonic() - started, 2)
 
     rows = aggregate_stage_rows(label, collector.records, outcome=outcome)
+    if args.stage == "librarian" and outcome != "ok" and not any(row["stage"] == "librarian" for row in rows):
+        # Cache preparation happens before the librarian emits lifecycle events.
+        # Preserve that failure as a real stage row rather than an empty trace.
+        rows.append(_blank_row(label, "librarian", outcome))
     if classifier_row is not None:
         # The classifier runs outside run_extraction, so the harness owns its timing.
         collected = next((row for row in rows if row["stage"] == "classifier"), None)
@@ -577,8 +750,10 @@ async def run_text(
             collected["status"] = classifier_row["status"]
             collected["matched_domains"] = classifier_row["matched_domains"]
             collected["proposed_domains"] = classifier_row["proposed_domains"]
+            collected["valid_result"] = classifier_row["valid_result"]
 
-    return seconds_total, outcome, rows
+    defects = detect_critical_defects(graph_before, snapshot_graph(repo), collector.records, outcome)
+    return seconds_total, outcome, rows, defects
 
 
 async def run_unit(
@@ -600,13 +775,25 @@ async def run_unit(
     """
     seconds_total = 0.0
     rows: list[dict[str, Any]] = []
+    critical_defects: set[str] = set()
     outcome = "ok"
     for label, text in unit.texts:
-        seconds, text_outcome, text_rows = await run_text(
-            label, text, unit.importance, repo, args, collector, configs, levels, embeddings, corpus_sha256
+        seconds, text_outcome, text_rows, text_defects = await run_text(
+            label,
+            text,
+            unit.importance,
+            repo,
+            args,
+            collector,
+            configs,
+            levels,
+            embeddings,
+            corpus_sha256,
+            fixture.revision if fixture is not None and unit.kind == "triplet" else None,
         )
         seconds_total += seconds
         rows.extend(text_rows)
+        critical_defects.update(text_defects)
         if text_outcome != "ok" and outcome == "ok":
             outcome = text_outcome
 
@@ -638,6 +825,7 @@ async def run_unit(
         },
         "fact_score": fact_score,
         "supersession": supersession,
+        "critical_defects": sorted(critical_defects),
         "status": outcome,
     }
     return summary, rows
@@ -685,7 +873,9 @@ async def main(argv: list[str] | None = None) -> int:
 
     collector = install_collector()
     if args.test_model:
-        endpoint, embeddings, embeddings_mode = None, None, "none"
+        # The endpoint object supplies Qwen-specific settings without creating
+        # a provider; every TestModel config still bypasses network model setup.
+        endpoint, embeddings, embeddings_mode = resolve_local_endpoint(args.per_call_timeout), None, "none"
     else:
         # The model comes from the CLI, never from MCPSettings, so .env cannot override it.
         endpoint = resolve_local_endpoint(args.per_call_timeout)

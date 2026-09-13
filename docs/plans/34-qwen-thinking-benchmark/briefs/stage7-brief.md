@@ -32,6 +32,12 @@ paths must already have passed test-model checks in preceding stages.
 
 ## Live assignment, only after preparation is gated
 
+Pending authority: model_bakeoff.sh requires Gemini embeddings (key check at
+line477 and real embedding health call at line539). The saved grant excludes
+paid external calls. Owner clarification is pending. Do not launch this service
+arm until the coordinator records the additional grant. Do not bypass embedding
+health or silently replace embeddings to avoid this boundary.
+
 Use mechanically selected levels from `resources/effort-sweep.json`; off becomes
 boolean false. Preflight authenticated local model listing and settings without
 printing credentials. Check Docker/PostgreSQL readiness with bounded commands. If

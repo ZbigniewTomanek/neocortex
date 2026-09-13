@@ -1053,8 +1053,9 @@ QWEN_EXTRACTOR_PROMPT: tuple[str, ...] = (
     "The text is the only evidence source: invent nothing. Prefer canonical entity names.",
     "Obey the entity and relation budget in the instructions. "
     "Prefer the entities the text is about; drop background detail first.",
-    "description: one sentence, at most 160 characters.",
-    "properties: explicit scalar facts only (numbers, dates, versions, roles). "
+    "description: one sentence, at most 160 characters; include every explicit number, date, percentage, "
+    "version, and code ID relevant to the entity.",
+    "properties: also copy those explicit scalar facts (numbers, dates, percentages, versions, code IDs, roles). "
     "Never put evidence text in relation properties.",
     "importance 0.0-1.0: 0.8+ critical, 0.6-0.8 central, 0.3-0.6 factual, below 0.3 peripheral.",
     "",

@@ -22,3 +22,36 @@ Statuses: `OPEN` -> `IN_PROGRESS` -> `RESOLVED`.
 When an item flips to RESOLVED, **revisit its origin stage in the same commit** -- a stage may
 not stay BLOCKED on a resolved item. Summarize the fix in `journal.md`. Heavy items may warrant
 their own follow-up plan; link it here.
+
+## 2026-09-13 — Stage4 disposition of promoted instrument items
+
+- Items 6, 7, 8, 10 and 11: RESOLVED by Stage4 A1. Cache misses produce explicit
+  error rows; source text/revision invalidate cache; fact matching stays within
+  fields; S11 approximation and normalized type metadata exemption are explicit.
+  Evidence: validation/stage4-instruments-gatefix1-coordinator-attempt1.txt,
+  63 passed; scripts/qwen_speed_probe.py and scripts/fact_retention.py.
+- Stage1 remains DONE. These items did not block its accepted gates; no spent
+  review flags or Stage1 status change. Stage6 uses the corrected instrumentation.
+- Item5: prior malformed-setting failure is not reproduced on this machine.
+  MCPSettings construction passes without editing .env. Treat as environment-specific,
+  not as a committed configuration correction.
+
+## 13 — Recall formatter symptom does not reproduce in memory
+
+- Origin: Stage3 read-only diagnosis, 2026-09-13, codex/gpt-5.6-sol/high.
+- Existing recall-session tests pass 14/14; direct recall returns one episode
+  and valid formatted JSON, not the placeholder. No demonstrated product fix.
+- Non-blocking: Stage3 formatter reproduction is REPORT; Stage7 runs the actual child.
+- Next trigger: a live failure with safe source_kind/count/id and placeholder
+  observations tied to revision/run identity. Owner: next formatter diagnosis.
+
+## 14 — Critical-defect observation boundaries
+
+- Origin: Stage4 instrumentation, 2026-09-13.
+- The probe inspects changed persisted graph types/text and existing failure hooks.
+  Rejected proposals before persistence and unknown calls rejected before hooks
+  are not observable through these interfaces. Successful structured-output tools
+  are audit-redacted as unknown and cannot be counted as unknown executable calls.
+- Non-blocking: the report names this limitation; no fabricated detection status.
+  Next trigger: extend product audit instrumentation in a separately scoped plan.
+  Owner: extraction observability follow-up.

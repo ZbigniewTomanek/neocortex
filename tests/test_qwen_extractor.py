@@ -170,6 +170,8 @@ def test_qwen_extractor_prompt_is_short_and_keeps_the_temporal_rules() -> None:
     assert "supersedes" in joined
     assert "VERSIONED name" in joined
     assert "160 characters" in joined
+    assert "every explicit number, date, percentage, version, and code ID" in joined
+    assert "also copy those explicit scalar facts" in joined
 
 
 def test_qwen_extractor_carries_the_output_ceiling_and_hosted_does_not() -> None:

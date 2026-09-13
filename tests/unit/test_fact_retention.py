@@ -102,6 +102,18 @@ def test_facts_match_over_name_content_and_properties() -> None:
     assert fr.score_episode(_view(nodes), episode).missing_keys == []
 
 
+def test_multi_word_fact_cannot_span_unrelated_nodes_or_fields() -> None:
+    """E26's phrase is absent when its pieces only become adjacent after joining fields."""
+    fact = "8-character Metaphone3 for Latin-script"
+    episode = fr.EpisodeFixture(key="E26", facts=(fact,))
+
+    unrelated_nodes = _view([_node(1, "Encoding length: 8-character"), _node(2, "Metaphone3 for Latin-script input")])
+    split_fields = _view([_node(1, "8-character", "Metaphone3 for Latin-script input")])
+
+    assert fr.score_episode(unrelated_nodes, episode).missing_keys == [0]
+    assert fr.score_episode(split_fields, episode).missing_keys == [0]
+
+
 def test_forgotten_nodes_do_not_contribute_facts() -> None:
     """A forgotten node is not part of the graph the probe scores."""
     episode = fr.EpisodeFixture(key="E04", facts=("Libpostal",))
