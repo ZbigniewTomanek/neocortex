@@ -37,6 +37,21 @@ from fastmcp import Client
 
 from neocortex.config import PostgresConfig
 
+try:
+    from scripts.e2e_common import (  # ty: ignore[unresolved-import]
+        DEFAULT_JOB_WAIT_S,
+        DEFAULT_POLL_S,
+        wait_for_jobs,
+        wait_for_ready,
+    )
+except ModuleNotFoundError:  # Direct ``python scripts/e2e_extraction_pipeline_test.py`` execution.
+    from e2e_common import (  # ty: ignore[unresolved-import]
+        DEFAULT_JOB_WAIT_S,
+        DEFAULT_POLL_S,
+        wait_for_jobs,
+        wait_for_ready,
+    )
+
 BASE_URL = os.environ.get("NEOCORTEX_BASE_URL", "http://127.0.0.1:8000")
 INGESTION_URL = os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001")
 MCP_URL = os.environ.get("NEOCORTEX_MCP_URL", f"{BASE_URL}/mcp")
@@ -79,9 +94,6 @@ SEED_TEXTS = [
         "sexual arousal and orgasm."
     ),
 ]
-
-JOB_WAIT_TIMEOUT = 300  # seconds (domain routing spawns additional extraction jobs)
-JOB_POLL_INTERVAL = 3  # seconds
 
 
 async def mcp_call(token: str, tool_name: str, arguments: dict[str, object]) -> dict:
@@ -213,52 +225,24 @@ async def step_ingest() -> tuple[list[int], int]:
 
 async def step_wait_for_extraction(baseline_job_id: int) -> None:
     """Poll the database until our extraction jobs (created after baseline) complete."""
-    print(f"\n=== Step 2: Wait for extraction jobs (timeout {JOB_WAIT_TIMEOUT}s) ===")
-    conn = await asyncpg.connect(dsn=PostgresConfig().dsn)
-    try:
-        start = time.monotonic()
-        while time.monotonic() - start < JOB_WAIT_TIMEOUT:
-            row = await conn.fetchrow(
-                """SELECT
-                    count(*) FILTER (WHERE status = 'todo') AS pending,
-                    count(*) FILTER (WHERE status = 'doing') AS running,
-                    count(*) FILTER (WHERE status = 'succeeded') AS completed,
-                    count(*) FILTER (WHERE status = 'failed') AS failed
-                FROM procrastinate_jobs
-                WHERE queue_name = 'extraction' AND id > $1""",
+    print("\n=== Step 2: Wait for extraction jobs ===")
+    counts = await wait_for_jobs(baseline_job_id=baseline_job_id, label="extraction")
+    if counts.failed:
+        conn = await asyncpg.connect(dsn=PostgresConfig().dsn)
+        try:
+            err_rows = await conn.fetch(
+                """SELECT id, args, status
+                   FROM procrastinate_jobs
+                   WHERE queue_name = 'extraction' AND status = 'failed'
+                     AND id > $1
+                   LIMIT 3""",
                 baseline_job_id,
             )
-            pending, running, completed, failed = (
-                int(row["pending"]),
-                int(row["running"]),
-                int(row["completed"]),
-                int(row["failed"]),
-            )
-            elapsed = int(time.monotonic() - start)
-            print(f"  [{elapsed:3d}s] pending={pending} running={running} completed={completed} failed={failed}")
-            if pending == 0 and running == 0:
-                if failed > 0:
-                    err_rows = await conn.fetch(
-                        """SELECT id, args, status
-                           FROM procrastinate_jobs
-                           WHERE queue_name = 'extraction' AND status = 'failed'
-                             AND id > $1
-                           LIMIT 3""",
-                        baseline_job_id,
-                    )
-                    details = [(int(r["id"]), r["status"]) for r in err_rows]
-                    print(f"  [WARN] {failed} job(s) failed: {details}")
-                if completed > 0:
-                    print(f"  [PASS] All extraction jobs finished ({completed} completed, {failed} failed)")
-                    return
-                if completed == 0 and failed == 0:
-                    print("  [WARN] No extraction jobs found — checking if extraction is wired...")
-                    await asyncio.sleep(JOB_POLL_INTERVAL)
-                    continue
-            await asyncio.sleep(JOB_POLL_INTERVAL)
-        raise AssertionError(f"Extraction jobs did not complete within {JOB_WAIT_TIMEOUT}s")
-    finally:
-        await conn.close()
+            details = [(int(r["id"]), r["status"]) for r in err_rows]
+            print(f"  [WARN] {counts.failed} job(s) failed: {details}")
+        finally:
+            await conn.close()
+    print(f"  [PASS] All extraction jobs finished ({counts.completed} completed, {counts.failed} failed)")
 
 
 # ── Step 2b: Verify domain routing jobs ───────────────────────────
@@ -266,7 +250,8 @@ async def step_wait_for_extraction(baseline_job_id: int) -> None:
 
 async def step_verify_routing_jobs(baseline_job_id: int) -> None:
     """Verify that route_episode jobs were created and completed."""
-    print(f"\n=== Step 2b: Verify domain routing jobs (timeout {JOB_WAIT_TIMEOUT}s) ===")
+    timeout_s = float(os.environ.get("NEOCORTEX_E2E_JOB_WAIT_S", str(DEFAULT_JOB_WAIT_S)))
+    print(f"\n=== Step 2b: Verify domain routing jobs (timeout {timeout_s:g}s) ===")
     conn = await asyncpg.connect(dsn=PostgresConfig().dsn)
     try:
         # Check that route_episode jobs were enqueued
@@ -299,9 +284,9 @@ async def step_verify_routing_jobs(baseline_job_id: int) -> None:
         # Wait for remaining routing jobs
         start = time.monotonic()
         while pending > 0 or running > 0:
-            if time.monotonic() - start > JOB_WAIT_TIMEOUT:
-                raise AssertionError(f"Domain routing jobs did not complete within {JOB_WAIT_TIMEOUT}s")
-            await asyncio.sleep(JOB_POLL_INTERVAL)
+            if time.monotonic() - start > timeout_s:
+                raise AssertionError(f"Domain routing jobs did not complete within {timeout_s:g}s")
+            await asyncio.sleep(DEFAULT_POLL_S)
             route_row = await conn.fetchrow(
                 """SELECT
                     count(*) FILTER (WHERE status = 'todo') AS pending,
@@ -353,14 +338,14 @@ async def step_verify_routing_jobs(baseline_job_id: int) -> None:
             if d_pending == 0 and d_running == 0:
                 print(f"  [PASS] Domain extraction jobs done: {d_completed} completed, {d_failed} failed")
                 break
-            if time.monotonic() - start2 > JOB_WAIT_TIMEOUT:
+            if time.monotonic() - start2 > timeout_s:
                 raise AssertionError("Domain extraction jobs did not complete in time")
             elapsed = int(time.monotonic() - start2)
             print(
                 f"  [{elapsed:3d}s] domain extract: pending={d_pending} running={d_running} "
                 f"completed={d_completed} failed={d_failed}"
             )
-            await asyncio.sleep(JOB_POLL_INTERVAL)
+            await asyncio.sleep(DEFAULT_POLL_S)
 
     finally:
         await conn.close()
@@ -748,6 +733,7 @@ async def main() -> None:
     print("Token:     configured")
     print("=" * 60)
 
+    await wait_for_ready(INGESTION_URL, ADMIN_TOKEN)
     await _assert_health()
 
     await step_setup_domain_routing()

@@ -60,8 +60,10 @@ Do not commit or edit run records, briefs, or review files. Never weaken existin
 ## Assignment B: bounded live baseline (not yet dispatched)
 
 After coordinator accepts deterministic evidence, preflight then launch one detached
-all-off baseline, timeout 300 s per call and 1200 s wall budget. Keep live cache separate
-from mock cache at `.tmp/plan34/cache`; use the command in the stage specification.
+all-off baseline, timeout 300 s per call and 1200 s wall budget. Keep live cache
+separate from mock cache at `.tmp/plan34/cache`; use the command in the stage specification.
+Use a managed asynchronous command session, not `nohup ... &`: D-16 records the
+runner lifecycle failure. Corrected attempt2 retains the original 13:39:43 UTC deadline.
 Poll at intervals of at least five minutes. Persist remaining units explicitly as
 TIMEOUT/NOT MEASURED; copy the finished JSON to `resources/sweep/off.json`.
 Do not rerun a live measurement without a coordinator-recorded root-caused change.

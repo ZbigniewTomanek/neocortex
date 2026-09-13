@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import time
 
 import asyncpg
 import httpx
@@ -37,15 +36,17 @@ from fastmcp import Client
 
 from neocortex.config import PostgresConfig
 
+try:
+    from scripts.e2e_common import wait_for_jobs, wait_for_ready  # ty: ignore[unresolved-import]
+except ModuleNotFoundError:  # Direct ``python scripts/e2e_content_update_test.py`` execution.
+    from e2e_common import wait_for_jobs, wait_for_ready  # ty: ignore[unresolved-import]
+
 BASE_URL = os.environ.get("NEOCORTEX_BASE_URL", "http://127.0.0.1:8000")
 INGESTION_URL = os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001")
 MCP_URL = os.environ.get("NEOCORTEX_MCP_URL", f"{BASE_URL}/mcp")
 ALICE_TOKEN = os.environ.get("NEOCORTEX_ALICE_TOKEN", "alice-token")
 ADMIN_TOKEN = os.environ.get("NEOCORTEX_ADMIN_TOKEN", "admin-token-neocortex")
 AGENT_SCHEMA = "ncx_alice__personal"
-
-JOB_WAIT_TIMEOUT = 300  # seconds
-JOB_POLL_INTERVAL = 3  # seconds
 
 # --- Seed texts: initial and updated knowledge about Alice ---
 
@@ -101,58 +102,15 @@ async def _get_max_job_id() -> int:
 
 async def _wait_for_extraction(baseline_job_id: int, label: str) -> None:
     """Poll until extraction jobs created after baseline complete."""
-    print(f"\n  Waiting for extraction jobs ({label}, timeout {JOB_WAIT_TIMEOUT}s)...")
-    conn = await asyncpg.connect(dsn=PostgresConfig().dsn)
-    try:
-        start = time.monotonic()
-        while time.monotonic() - start < JOB_WAIT_TIMEOUT:
-            row = await conn.fetchrow(
-                """SELECT
-                    count(*) FILTER (WHERE status = 'todo') AS pending,
-                    count(*) FILTER (WHERE status = 'doing') AS running,
-                    count(*) FILTER (WHERE status = 'succeeded') AS completed,
-                    count(*) FILTER (WHERE status = 'failed') AS failed
-                FROM procrastinate_jobs
-                WHERE queue_name = 'extraction' AND id > $1""",
-                baseline_job_id,
-            )
-            pending = int(row["pending"])
-            running = int(row["running"])
-            completed = int(row["completed"])
-            failed = int(row["failed"])
-            elapsed = int(time.monotonic() - start)
-            print(f"    [{elapsed:3d}s] pending={pending} running={running} " f"completed={completed} failed={failed}")
-            if pending == 0 and running == 0:
-                if failed > 0:
-                    print(f"    [WARN] {failed} job(s) failed")
-                if completed > 0:
-                    print(f"    [PASS] Extraction done ({completed} completed, {failed} failed)")
-                    return
-                if completed == 0 and failed == 0:
-                    # No jobs yet — give extraction time to enqueue
-                    await asyncio.sleep(JOB_POLL_INTERVAL)
-                    continue
-            await asyncio.sleep(JOB_POLL_INTERVAL)
-
-        # Also wait for any domain routing + domain extraction jobs
-        start2 = time.monotonic()
-        while time.monotonic() - start2 < 60:
-            route_row = await conn.fetchrow(
-                """SELECT
-                    count(*) FILTER (WHERE status IN ('todo', 'doing')) AS active
-                FROM procrastinate_jobs
-                WHERE task_name IN ('route_episode', 'extract_episode')
-                  AND id > $1
-                  AND status IN ('todo', 'doing')""",
-                baseline_job_id,
-            )
-            if int(route_row["active"]) == 0:
-                break
-            await asyncio.sleep(JOB_POLL_INTERVAL)
-
-        raise AssertionError(f"Extraction jobs did not complete within {JOB_WAIT_TIMEOUT}s")
-    finally:
-        await conn.close()
+    print(f"\n  Waiting for extraction jobs ({label})...")
+    counts = await wait_for_jobs(
+        baseline_job_id=baseline_job_id,
+        label=label,
+        require_routing_idle=True,
+    )
+    if counts.failed:
+        print(f"    [WARN] {counts.failed} job(s) failed")
+    print(f"    [PASS] Extraction done ({counts.completed} completed, {counts.failed} failed)")
 
 
 async def _find_alice_nodes() -> list[dict]:
@@ -339,6 +297,7 @@ async def main() -> None:
     print(f"Token:     {ALICE_TOKEN[:8]}...")
     print("=" * 60)
 
+    await wait_for_ready(INGESTION_URL, ADMIN_TOKEN)
     await _assert_health()
 
     # Step 1: Ingest initial text

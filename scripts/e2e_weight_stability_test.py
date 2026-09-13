@@ -33,13 +33,17 @@ from __future__ import annotations
 
 import asyncio
 import os
-import time
 
 import asyncpg
 import httpx
 from fastmcp import Client
 
 from neocortex.config import PostgresConfig
+
+try:
+    from scripts.e2e_common import wait_for_jobs, wait_for_ready  # ty: ignore[unresolved-import]
+except ModuleNotFoundError:  # Direct ``python scripts/e2e_weight_stability_test.py`` execution.
+    from e2e_common import wait_for_jobs, wait_for_ready  # ty: ignore[unresolved-import]
 
 BASE_URL = os.environ.get("NEOCORTEX_BASE_URL", "http://127.0.0.1:8000")
 INGESTION_URL = os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001")
@@ -72,9 +76,6 @@ SEED_TEXTS = [
 
 RECALL_QUERY = "neural networks deep learning"
 NUM_RECALLS = 20
-JOB_WAIT_TIMEOUT = 120
-JOB_POLL_INTERVAL = 3
-
 # Weight bounds from Stage 5 implementation
 WEIGHT_CEILING = 1.5
 WEIGHT_TARGET_AFTER_20 = 1.3  # Success criteria: <= 1.3 after 20 recalls
@@ -123,30 +124,7 @@ async def _get_max_job_id() -> int:
 
 
 async def _wait_for_extraction(baseline_job_id: int) -> None:
-    conn = await asyncpg.connect(dsn=PostgresConfig().dsn)
-    try:
-        start = time.monotonic()
-        while time.monotonic() - start < JOB_WAIT_TIMEOUT:
-            row = await conn.fetchrow(
-                """SELECT
-                    count(*) FILTER (WHERE status = 'todo') AS pending,
-                    count(*) FILTER (WHERE status = 'doing') AS running,
-                    count(*) FILTER (WHERE status = 'succeeded') AS completed
-                FROM procrastinate_jobs
-                WHERE queue_name = 'extraction' AND id > $1""",
-                baseline_job_id,
-            )
-            pending = int(row["pending"])
-            running = int(row["running"])
-            completed = int(row["completed"])
-            elapsed = int(time.monotonic() - start)
-            print(f"  [{elapsed:3d}s] pending={pending} running={running} " f"completed={completed}")
-            if pending == 0 and running == 0 and completed > 0:
-                return
-            await asyncio.sleep(JOB_POLL_INTERVAL)
-        raise AssertionError(f"Extraction jobs did not complete within {JOB_WAIT_TIMEOUT}s")
-    finally:
-        await conn.close()
+    await wait_for_jobs(baseline_job_id=baseline_job_id, label="extraction")
 
 
 async def _get_edge_ids() -> set[int]:
@@ -453,6 +431,7 @@ async def main() -> None:
     print(f"Target:    <= {WEIGHT_TARGET_AFTER_20} after {NUM_RECALLS} recalls")
     print("=" * 60)
 
+    await wait_for_ready(INGESTION_URL, TOKEN)
     await _assert_health()
 
     # Capture pre-existing edge IDs to isolate this test's edges

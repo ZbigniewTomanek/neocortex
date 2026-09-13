@@ -421,3 +421,28 @@ question -- whether the local endpoint honours `reasoning_effort` at all -- is S
 - Complete fix diff inspected against F1/F2; reproduced corrected ninth-property, unchanged-team-size, two-property update and ambiguous-owner values. Conservative ambiguous text remains, with incoming description appended; no false attribution.
 - Coordinator final focused125 pass/0.92s, full1445 pass/7 skipped/44.18s, whole-tree lint pass. Exact fresh mock11/11 ok, no critical defects, embeddings none, 0.08s. Evidence uses new stage4-fix1-*-coordinator-attempt1 files.
 - Review and one repair consumed. No re-review. Stage3 checkpoint import lint corrected by its owner; unrelated source files stay unstaged for Stage4 fix commit.
+
+## 2026-09-13 -- Stage4 fix committed; first live baseline launched
+
+- Fix commit639b0d6 exists, hooks pass after final-newline-only normalization of mock JSON. Stage4 source is frozen; no re-review.
+- First live inference launch: 13:19:43 UTC, PID88591, nohup under .tmp/plan34/sweep/off.log, incremental off.json. Exact tested command: corpus both, fixture, all thinking off, per-call300s, episode600s, max-wall1200s, live cache .tmp/plan34/cache.
+- Endpoint model listing passes. Google/Gemini keys unset in probe process, embeddings none by construction. No prior off.json/log existed; no measurement overwritten. Next poll no earlier than13:24:43 UTC.
+- Stage3 resumes as sole source writer. Coordinator's Stage4 live gate reads only frozen probe/extraction files and writes its separate measurement outputs; no Stage3 scope file is used by this in-memory run. No concurrent feature writer.
+
+## 2026-09-13 -- First baseline poll has no measurement
+
+- At13:25:16 UTC (more than five minutes after launch), PID88591 is absent, off.json does not exist, and off.log is empty. No completed inference or episode can be established from this attempt. NOT MEASURED, not a model failure or a zero-call claim.
+- Strong bounded read-only launch-lifecycle diagnosis dispatched using harmless subprocess tests only; no model relaunch authorized. Stage3 source writer continues independently.
+- Original Stage4 budget starts13:19:43 UTC and expires13:39:43 UTC; no silent reset. Any corrected launch needs the root cause and decision recorded first.
+
+## 2026-09-13 -- Stage3 gate corrections
+
+- Coordinator inspection found Plan15/17 all-failed handlers omitted the original routing-idle condition. Require route_active==0 before returning; other assertions unchanged.
+- Full-suite attempt1: two cleanup-fixture failures, 1443 passed/7 skipped. New real readiness checks reached localhost because the fixture fakes manage.sh/uv but not curl, adding two60s waits.
+- Coordinator inspected the fixture and authorizes a bounded test-scope extension: fake curl, preserve cleanup assertions, assert health calls precede fake test execution. Stage3 brief corrected; no production readiness bypass. Count as pre-review gatefix1.
+
+## 2026-09-13 -- Baseline launch diagnosis and bounded correction
+
+- Strong read-only diagnosis reproduced command-boundary cleanup on two harmless nohup jobs. Managed asynchronous sessions survive; launchd was rejected because its default can restart jobs.
+- D-16 records the execution-method correction before any new inference. Original attempt remains NOT MEASURED; no claim of zero requests. Attempt2 uses separate paths and only time remaining before13:39:43 UTC.
+- Stage3 implementer released the lock: final suite1445 passed/7 skipped, helper9 passed, lint and scoped hooks pass. Coordinator inspection and commit/review follow; no source writer active.

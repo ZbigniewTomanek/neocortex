@@ -605,7 +605,11 @@ printf 'manage %s\\n' "$*" >>"${FAKE_COMMAND_LOG:?}"
 set -euo pipefail
 printf 'uv %s\\n' "$*" >>"${FAKE_COMMAND_LOG:?}"
 """)
-    for command in (scripts / "run_e2e.sh", scripts / "manage.sh", bin_dir / "uv"):
+    (bin_dir / "curl").write_text("""#!/usr/bin/env bash
+set -euo pipefail
+printf 'curl %s\\n' "$*" >>"${FAKE_COMMAND_LOG:?}"
+""")
+    for command in (scripts / "run_e2e.sh", scripts / "manage.sh", bin_dir / "uv", bin_dir / "curl"):
         command.chmod(0o755)
 
     env = os.environ.copy()
@@ -626,7 +630,12 @@ printf 'uv %s\\n' "$*" >>"${FAKE_COMMAND_LOG:?}"
     )
 
     assert completed.returncode == 0, completed.stderr
-    assert log_path.read_text().splitlines()[-1] == expected_cleanup
+    commands = log_path.read_text().splitlines()
+    assert commands[-1] == expected_cleanup
+    test_index = commands.index(f"uv run python {test_script}")
+    health_calls = [index for index, command in enumerate(commands) if command.startswith("curl -sf ")]
+    assert len(health_calls) == 2
+    assert all(index < test_index for index in health_calls)
 
 
 def test_bash_syntax_is_valid() -> None:

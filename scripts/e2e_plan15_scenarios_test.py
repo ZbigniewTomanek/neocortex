@@ -32,7 +32,6 @@ from __future__ import annotations
 import asyncio
 import itertools
 import os
-import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import cast
@@ -44,8 +43,10 @@ from fastmcp import Client
 from neocortex.config import PostgresConfig
 
 try:
+    from scripts.e2e_common import JobWaitError, wait_for_jobs, wait_for_ready  # ty: ignore[unresolved-import]
     from scripts.e2e_result import write_configured_result  # ty: ignore[unresolved-import]
 except ModuleNotFoundError:  # Direct ``python scripts/e2e_plan15_scenarios_test.py`` execution.
+    from e2e_common import JobWaitError, wait_for_jobs, wait_for_ready  # ty: ignore[unresolved-import]
     from e2e_result import write_configured_result  # ty: ignore[unresolved-import]
 
 BASE_URL = os.environ.get("NEOCORTEX_BASE_URL", "http://127.0.0.1:8000")
@@ -53,10 +54,6 @@ INGESTION_URL = os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1
 MCP_URL = os.environ.get("NEOCORTEX_MCP_URL", f"{BASE_URL}/mcp")
 TOKEN = os.environ.get("NEOCORTEX_ALICE_TOKEN", "alice-token")
 AGENT_SCHEMA = "ncx_alice__personal"
-
-JOB_WAIT_TIMEOUT = 600  # seconds (10 min for Gemini API rate limits)
-JOB_POLL_INTERVAL = 3  # seconds
-
 
 # ── Scenario verdict ──
 
@@ -242,58 +239,26 @@ async def _get_max_job_id() -> int:
 
 async def _wait_for_extraction(baseline_job_id: int, label: str) -> None:
     """Poll until all extraction jobs created after baseline complete."""
-    print(f"\n  Waiting for extraction jobs ({label}, timeout {JOB_WAIT_TIMEOUT}s)...")
-    conn = await asyncpg.connect(dsn=PostgresConfig().dsn)
+    print(f"\n  Waiting for extraction jobs ({label})...")
     try:
-        start = time.monotonic()
-        while time.monotonic() - start < JOB_WAIT_TIMEOUT:
-            row = await conn.fetchrow(
-                """SELECT
-                    count(*) FILTER (WHERE status = 'todo') AS pending,
-                    count(*) FILTER (WHERE status = 'doing') AS running,
-                    count(*) FILTER (WHERE status = 'succeeded') AS completed,
-                    count(*) FILTER (WHERE status = 'failed') AS failed
-                FROM procrastinate_jobs
-                WHERE queue_name = 'extraction' AND id > $1""",
-                baseline_job_id,
-            )
-            pending = int(row["pending"])
-            running = int(row["running"])
-            completed = int(row["completed"])
-            failed = int(row["failed"])
-
-            # Also check routing jobs
-            route_row = await conn.fetchrow(
-                """SELECT
-                    count(*) FILTER (WHERE status IN ('todo', 'doing')) AS active
-                FROM procrastinate_jobs
-                WHERE task_name IN ('route_episode', 'extract_episode')
-                  AND id > $1
-                  AND status IN ('todo', 'doing')""",
-                baseline_job_id,
-            )
-            route_active = int(route_row["active"])
-
-            elapsed = int(time.monotonic() - start)
-            print(
-                f"    [{elapsed:3d}s] pending={pending} running={running} "
-                f"completed={completed} failed={failed} routing={route_active}"
-            )
-            if pending == 0 and running == 0 and route_active == 0:
-                if completed > 0:
-                    print(f"    [OK] Extraction done ({completed} completed, {failed} failed)")
-                    return
-                if completed == 0 and failed == 0:
-                    await asyncio.sleep(JOB_POLL_INTERVAL)
-                    continue
-                if failed > 0 and completed == 0:
-                    print(f"    [WARN] All {failed} jobs failed")
-                    return
-            await asyncio.sleep(JOB_POLL_INTERVAL)
-
-        raise AssertionError(f"Extraction jobs did not complete within {JOB_WAIT_TIMEOUT}s")
-    finally:
-        await conn.close()
+        counts = await wait_for_jobs(
+            baseline_job_id=baseline_job_id,
+            label=label,
+            require_routing_idle=True,
+        )
+    except JobWaitError as exc:
+        counts = exc.counts
+        if (
+            counts.pending == 0
+            and counts.running == 0
+            and counts.completed == 0
+            and counts.failed > 0
+            and counts.route_active == 0
+        ):
+            print(f"    [WARN] All {counts.failed} jobs failed")
+            return
+        raise
+    print(f"    [OK] Extraction done ({counts.completed} completed, {counts.failed} failed)")
 
 
 async def _find_nodes_by_name(name_pattern: str) -> list[dict]:
@@ -848,6 +813,7 @@ async def main() -> int:
     print(f"Schema:    {AGENT_SCHEMA}")
     print("=" * 70)
 
+    await wait_for_ready(INGESTION_URL, TOKEN)
     await _assert_health()
 
     # ── Phase A: Ingest all initial episodes ──

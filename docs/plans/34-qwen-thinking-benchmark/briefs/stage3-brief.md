@@ -111,6 +111,9 @@ environment variable for a timeout.
 - `src/neocortex/tools/recall.py` (only if step 4 reproduces a defect)
 - `tests/unit/test_e2e_common.py` (new), `tests/test_recall_formatted_context.py` (new),
   `tests/test_recall_session_output.py` (only if step 4's fix changes documented behaviour)
+- `tests/unit/test_model_bakeoff.py`, only the run_e2e cleanup fixture: stub curl
+  alongside its fake manage.sh/uv so required readiness checks do not contact a
+  real service. Preserve cleanup assertions and check the two health calls occur.
 
 Out of scope: `src/neocortex/admin/`, every other `scripts/e2e_*.py`, and any change to an E2E
 assertion. You may change **how** a child waits. You may not change **what** it asserts.
@@ -175,6 +178,8 @@ it does today, and keeps passing it through — including the children that capt
 Preserve behaviour that is part of an assertion:
 
 - the routing-idle requirement in plan15, plan17, and content-update → `require_routing_idle=True`;
+  Plan15/17's all-failed exception handlers must also require route_active==0
+  before preserving their existing warning/return behavior.
 - `e2e_episodic_memory_test.py`'s distinction between "all jobs failed" and "no jobs enqueued" — both
   currently raise with different messages, and both must still raise;
 - `e2e_cognitive_recall_test.py`'s second wait, which today only needs `pending == 0`, becomes a real

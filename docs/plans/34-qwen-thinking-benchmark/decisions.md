@@ -182,3 +182,15 @@ as** `--- docstring ---` ones (`:951`, `:959`). Under "last wins", the two child
 rubric most needs attributed would resolve to a coarse phase name. The docstring localizes the failure to
 one scenario. The matched convention is recorded as `failure_step_kind` so a coarse attribution is
 visible as coarse.
+
+### D-16: Keep live probes in managed asynchronous command sessions
+**Date**: 2026-09-13 - **Stage**: 4
+**Root cause**: the command runner kills shell-background children at command exit.
+Two harmless `nohup ... &` experiments reproduced this; `disown` was unavailable.
+The first baseline left an empty log and no JSON. Completed inference and zero calls
+are both unproven: its measurement is NOT MEASURED, not a model failure.
+**Change**: replace the shell-background launch with a foreground command retained
+by the runner's asynchronous session. A harmless test survived intervening calls.
+This is the detached execution mechanism for this harness, not a model-code change.
+**Rerun boundary**: one corrected launch, distinct attempt2 paths, only the remaining
+time before the original 13:39:43 UTC deadline. No reset of the 20-minute budget.

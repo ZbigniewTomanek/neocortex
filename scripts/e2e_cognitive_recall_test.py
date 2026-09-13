@@ -28,13 +28,17 @@ from __future__ import annotations
 
 import asyncio
 import os
-import time
 
 import asyncpg
 import httpx
 from fastmcp import Client
 
 from neocortex.config import PostgresConfig
+
+try:
+    from scripts.e2e_common import wait_for_jobs, wait_for_ready  # ty: ignore[unresolved-import]
+except ModuleNotFoundError:  # Direct ``python scripts/e2e_cognitive_recall_test.py`` execution.
+    from e2e_common import wait_for_jobs, wait_for_ready  # ty: ignore[unresolved-import]
 
 BASE_URL = os.environ.get("NEOCORTEX_BASE_URL", "http://127.0.0.1:8000")
 INGESTION_URL = os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001")
@@ -66,9 +70,6 @@ SEED_TEXTS = [
         "sexual arousal and orgasm."
     ),
 ]
-
-JOB_WAIT_TIMEOUT = 120
-JOB_POLL_INTERVAL = 3
 
 
 async def mcp_call(tool_name: str, arguments: dict[str, object]) -> dict:
@@ -115,28 +116,7 @@ async def _get_max_job_id() -> int:
 
 async def _wait_for_extraction(baseline_job_id: int) -> None:
     """Poll until extraction jobs created after baseline are done."""
-    conn = await asyncpg.connect(dsn=PostgresConfig().dsn)
-    try:
-        start = time.monotonic()
-        while time.monotonic() - start < JOB_WAIT_TIMEOUT:
-            row = await conn.fetchrow(
-                """SELECT
-                    count(*) FILTER (WHERE status = 'todo') AS pending,
-                    count(*) FILTER (WHERE status = 'doing') AS running,
-                    count(*) FILTER (WHERE status = 'succeeded') AS completed
-                FROM procrastinate_jobs
-                WHERE queue_name = 'extraction' AND id > $1""",
-                baseline_job_id,
-            )
-            pending, running, completed = int(row["pending"]), int(row["running"]), int(row["completed"])
-            elapsed = int(time.monotonic() - start)
-            print(f"  [{elapsed:3d}s] pending={pending} running={running} completed={completed}")
-            if pending == 0 and running == 0 and completed > 0:
-                return
-            await asyncio.sleep(JOB_POLL_INTERVAL)
-        raise AssertionError(f"Extraction jobs did not complete within {JOB_WAIT_TIMEOUT}s")
-    finally:
-        await conn.close()
+    await wait_for_jobs(baseline_job_id=baseline_job_id, label="extraction")
 
 
 # ── Step 1: Ingest and wait for extraction ────────────────────────
@@ -260,19 +240,9 @@ async def step_importance_hint() -> None:
 
     # Wait for extraction of this single episode
     print("  Waiting for extraction...")
+    await wait_for_jobs(baseline_job_id=baseline_job_id, label="importance hint")
     conn = await asyncpg.connect(dsn=PostgresConfig().dsn)
     try:
-        start = time.monotonic()
-        while time.monotonic() - start < JOB_WAIT_TIMEOUT:
-            row = await conn.fetchrow(
-                """SELECT count(*) FILTER (WHERE status IN ('todo', 'doing')) AS pending
-                FROM procrastinate_jobs WHERE queue_name = 'extraction' AND id > $1""",
-                baseline_job_id,
-            )
-            if int(row["pending"]) == 0:
-                break
-            await asyncio.sleep(JOB_POLL_INTERVAL)
-
         # Check importance on nodes from this episode
         schema = _quote(AGENT_SCHEMA)
         rows = await conn.fetch(
@@ -449,6 +419,7 @@ async def main() -> None:
     print("Token:     configured")
     print("=" * 60)
 
+    await wait_for_ready(INGESTION_URL, TOKEN)
     await _assert_health()
 
     await step_setup()

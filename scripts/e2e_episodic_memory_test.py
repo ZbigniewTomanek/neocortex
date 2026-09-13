@@ -24,7 +24,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import time
 import uuid
 
 import asyncpg
@@ -32,6 +31,11 @@ import httpx
 from fastmcp import Client
 
 from neocortex.config import PostgresConfig
+
+try:
+    from scripts.e2e_common import JobWaitError, wait_for_jobs, wait_for_ready  # ty: ignore[unresolved-import]
+except ModuleNotFoundError:  # Direct ``python scripts/e2e_episodic_memory_test.py`` execution.
+    from e2e_common import JobWaitError, wait_for_jobs, wait_for_ready  # ty: ignore[unresolved-import]
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -44,9 +48,6 @@ ALICE_TOKEN = os.environ.get("NEOCORTEX_ALICE_TOKEN", "alice-token")
 AGENT_SCHEMA = "ncx_alice__personal"
 
 SUFFIX = uuid.uuid4().hex[:8]
-
-JOB_WAIT_TIMEOUT = 600
-JOB_POLL_INTERVAL = 5
 
 SESSION_A = f"morning-standup-{SUFFIX}"
 SESSION_B = f"afternoon-debug-{SUFFIX}"
@@ -153,42 +154,19 @@ async def _get_max_job_id() -> int:
 
 async def _wait_for_extraction(baseline_job_id: int) -> None:
     """Poll until extraction jobs created after baseline are done."""
-    conn = await asyncpg.connect(dsn=PostgresConfig().dsn)
     try:
-        start = time.monotonic()
-        while time.monotonic() - start < JOB_WAIT_TIMEOUT:
-            row = await conn.fetchrow(
-                """SELECT
-                    count(*) FILTER (WHERE status = 'todo') AS pending,
-                    count(*) FILTER (WHERE status = 'doing') AS running,
-                    count(*) FILTER (WHERE status = 'succeeded') AS completed,
-                    count(*) FILTER (WHERE status = 'failed') AS failed
-                FROM procrastinate_jobs
-                WHERE queue_name = 'extraction' AND id > $1""",
-                baseline_job_id,
-            )
-            pending = int(row["pending"])
-            running = int(row["running"])
-            completed = int(row["completed"])
-            failed = int(row["failed"])
-            elapsed = int(time.monotonic() - start)
-            extra = f" failed={failed}" if failed else ""
-            print(f"  [{elapsed:3d}s] pending={pending} running={running} completed={completed}{extra}")
-            if pending == 0 and running == 0:
-                if completed > 0:
-                    msg = f"  Extraction complete: {completed} jobs finished"
-                    if failed:
-                        msg += f" ({failed} failed)"
-                    print(msg)
-                    return
-                if failed > 0:
-                    raise AssertionError(f"All {failed} extraction jobs failed")
-                # No jobs were enqueued at all
-                raise AssertionError("No extraction jobs found after baseline — nothing was enqueued")
-            await asyncio.sleep(JOB_POLL_INTERVAL)
-        raise AssertionError(f"Extraction jobs did not complete within {JOB_WAIT_TIMEOUT}s")
-    finally:
-        await conn.close()
+        counts = await wait_for_jobs(baseline_job_id=baseline_job_id, label="extraction")
+    except JobWaitError as exc:
+        counts = exc.counts
+        if counts.pending == 0 and counts.running == 0 and counts.completed == 0:
+            if counts.failed > 0:
+                raise AssertionError(f"All {counts.failed} extraction jobs failed") from exc
+            raise AssertionError("No extraction jobs found after baseline — nothing was enqueued") from exc
+        raise
+    msg = f"  Extraction complete: {counts.completed} jobs finished"
+    if counts.failed:
+        msg += f" ({counts.failed} failed)"
+    print(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -737,6 +715,8 @@ async def main() -> None:
     print(f"NeoCortex Episodic Memory E2E Test (suffix={SUFFIX})")
     print(f"MCP: {MCP_URL}")
     print(f"Ingestion: {INGESTION_URL}")
+
+    await wait_for_ready(INGESTION_URL, ALICE_TOKEN)
 
     # Capture baseline extraction job ID BEFORE ingestion so Stage 4
     # only waits for jobs from this test run (not stale previous runs).

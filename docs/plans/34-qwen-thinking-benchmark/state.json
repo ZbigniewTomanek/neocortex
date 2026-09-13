@@ -90,19 +90,19 @@
       "status": "IN_PROGRESS",
       "depends_on": [],
       "commit": null,
-      "note": "Paused with helper9 tests and three children integrated; four children/orchestrators/gates remain. Formatter not reproduced. Resume after Stage4 fix1.",
+      "note": "Implementation frozen for coordinator gates and commit; helper9, structural7, full1445/7 and lint pass in implementer evidence; formatter not reproduced.",
       "blocked_by": [],
       "step": "WRITING",
       "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
-      "reviewer": null,
+      "reviewer": "codex/gpt-5.6-sol, effort high",
       "preReview": {
         "used": false
       },
       "review": {
         "used": false
       },
-      "gateFixes": 0,
+      "gateFixes": 1,
       "repair": {
         "used": false,
         "rounds": 0
@@ -121,8 +121,8 @@
       "depends_on": [
         1
       ],
-      "commit": ["2f199a3"],
-      "note": "Fix1 accepted: F1/F2 regressions green, focused125/full1445/7/lint/mock11 pass. Single repair consumed; live baseline next.",
+      "commit": ["2f199a3", "639b0d6"],
+      "note": "Attempt1 lifecycle failure NOT MEASURED. D-16 attempt2 managed session89965 launched13:33:07Z with350s remaining budget; poll>=13:38:07Z; original deadline13:39:43Z. Review/fix spent.",
       "blocked_by": [],
       "step": "REVIEWED",
       "writer": null,
@@ -307,7 +307,7 @@
       "command": null
     }
   },
-  "currentStage": 4,
+  "currentStage": 3,
   "writesFrozen": false,
   "writer": null,
   "runReview": {

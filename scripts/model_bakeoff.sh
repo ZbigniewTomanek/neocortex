@@ -536,6 +536,7 @@ fi
 
 run "$ROOT/scripts/manage.sh" start --fresh
 if (( ! DRY_RUN )); then
+  run uv run python -c 'import asyncio, os; from scripts.e2e_common import wait_for_ready; asyncio.run(wait_for_ready(os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001"), os.environ.get("NEOCORTEX_ADMIN_TOKEN")))'
   uv run python -c 'import asyncio, os; from neocortex.embedding_service import EmbeddingService; from neocortex.mcp_settings import MCPSettings; assert os.environ.get("GOOGLE_API_KEY"), "GOOGLE_API_KEY is required; embedding health NOT MEASURED"; v=asyncio.run(EmbeddingService(model=MCPSettings().embedding_model).embed("bakeoff probe")); assert v is not None and len(v)==768, "EMBEDDINGS DEAD"; print("embeddings OK")'
   curl --fail --silent --show-error "http://127.0.0.1:8001/admin/graphs" -H @- \
     <<<"Authorization: Bearer ${NEOCORTEX_ADMIN_TOKEN}" \
