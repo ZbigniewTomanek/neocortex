@@ -416,6 +416,14 @@ PHASE B: Recall after consolidation
 ======================================================================
 """
 
+_EPISODIC_STAGE3_STDOUT = """=== Stage 2: Session Recall with Neighbors ===
+=== Stage 2 PASSED ===
+--- Cross-Session Isolation Check ---
+  Cross-session isolation verified
+=== Stage 3: STM Boost Validation ===
+Backdating Session A episodes to 3h ago...
+"""
+
 
 @pytest.mark.parametrize(
     ("stdout", "expected_kind", "expected_fragment"),
@@ -433,10 +441,11 @@ def test_every_banner_convention_yields_a_failure_step(stdout: str, expected_kin
     assert step is not None and expected_fragment in step
 
 
-def test_a_scenario_docstring_beats_a_later_phase_banner() -> None:
+@pytest.mark.parametrize("script", sorted(evidence.SCENARIO_GATES))
+def test_a_scenario_docstring_beats_a_later_phase_banner(script: str) -> None:
     # "Last banner wins" would answer ``PHASE B``, which only says which third
     # of the run died.  The scenario docstring localizes the failure.
-    step, kind = evidence.parse_failure_step(_BOTH_BANNERS_STDOUT)
+    step, kind = evidence.parse_failure_step(_BOTH_BANNERS_STDOUT, script=script)
     assert kind == "scenario"
     assert step is not None and step.startswith("--- Scenario 7:")
 
@@ -502,6 +511,24 @@ def test_write_exit_result_records_attribution_and_survives_validation(tmp_path:
     )
     assert safe["failure_step_kind"] == "stage"
     assert safe["exception_class"] == "NameError"
+
+
+def test_write_exit_result_uses_later_stage_over_episodic_section_heading(tmp_path: Path) -> None:
+    stdout_path = tmp_path / "stdout"
+    stdout_path.write_text(_EPISODIC_STAGE3_STDOUT)
+    result_path = tmp_path / "result.json"
+
+    evidence.write_exit_result(
+        result_path,
+        script="e2e_episodic_memory_test.py",
+        child_run_id="run.e2e.04",
+        exit_code=1,
+        stdout_path=stdout_path,
+    )
+
+    written = json.loads(result_path.read_text())
+    assert written["failure_step_kind"] == "stage"
+    assert written["failure_step"] == "=== Stage 3: STM Boost Validation ==="
 
 
 def test_write_exit_result_without_streams_records_nulls_not_guesses(tmp_path: Path) -> None:

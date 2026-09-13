@@ -268,33 +268,33 @@ _TRACEBACK_HEADER = "Traceback (most recent call last)"
 FAILURE_STEP_KINDS = frozenset({"step", "stage", "scenario", "phase"})
 
 
-def parse_failure_step(stdout: str) -> tuple[str | None, str | None]:
+def parse_failure_step(stdout: str, *, script: str | None = None) -> tuple[str | None, str | None]:
     """Return the last progress banner a child printed and which kind it is.
 
-    Two of the five children print both a coarse ``PHASE A:`` banner and a fine
-    ``--- scenario docstring ---`` banner, so "the last banner printed" is
-    ambiguous for exactly the children whose failures most need attributing.
-    Resolve it by precedence, not recency: a scenario docstring localizes the
-    failure to one scenario, which is the diagnostic the rubric needs, so it
-    wins whenever the run printed any; otherwise the last step, stage or phase
-    banner is returned.
+    The Plan 15 and 17 children print both a coarse ``PHASE A:`` banner and a
+    fine ``--- scenario docstring ---`` banner.  For those children, scenario
+    precedence localizes the failure better than recency.  Other children use
+    the last recognized banner because the episodic child also has ``---``
+    section headings that must not mask a later ``=== Stage`` banner.  A
+    missing script keeps the original scenario precedence for direct callers.
     """
     scenario: str | None = None
-    fallback: tuple[str, str] | None = None
+    last_banner: tuple[str, str] | None = None
     for raw_line in stdout.splitlines():
         line = raw_line.strip()
         if not line or _RULE_LINE.fullmatch(line) or not _SAFE_BANNER.fullmatch(line):
             continue
         if _SCENARIO_BANNER.fullmatch(line):
             scenario = line
+            last_banner = ("scenario", line)
         elif match := _STEP_BANNER.fullmatch(line):
-            fallback = (match.group("kind").lower(), line)
+            last_banner = (match.group("kind").lower(), line)
         elif _PHASE_BANNER.fullmatch(line):
-            fallback = ("phase", line)
-    if scenario is not None:
+            last_banner = ("phase", line)
+    if scenario is not None and (script is None or script in SCENARIO_GATES):
         return scenario, "scenario"
-    if fallback is not None:
-        return fallback[1], fallback[0]
+    if last_banner is not None:
+        return last_banner[1], last_banner[0]
     return None, None
 
 
@@ -381,7 +381,7 @@ def write_exit_result(
     were not supplied or carry no banner and no traceback.  Neither is guessed.
     """
     status = "PASS" if exit_code == 0 else "FAIL"
-    failure_step, failure_step_kind = parse_failure_step(_read_optional_text(stdout_path))
+    failure_step, failure_step_kind = parse_failure_step(_read_optional_text(stdout_path), script=script)
     exception_class = parse_exception_class(_read_optional_text(stderr_path))
     atomic_write_json(
         path,

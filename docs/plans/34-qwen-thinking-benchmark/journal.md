@@ -289,3 +289,51 @@ question -- whether the local endpoint honours `reasoning_effort` at all -- is S
 - Whole-tree ty passes; 156 combined focused tests pass; scoped pre-commit hooks pass including black/ruff/flake8/ty (`validation/stage2-stage5-precommit-gatefix1-attempt2.txt`).
 - An initial all-files hook attempt exposed existing test_agents baseline issues; its formatter changes to previously clean unrelated files were restored. No unrelated changes retained, no hook bypass.
 - Final regression rerun checks the actual formatted/type-corrected tree before commit. Review ledger remains unspent; gateFixes=1 for Stage 2.
+
+## 2026-09-13 -- Stage 2 committed/reviewing; disjoint Stage 4 work starts
+
+- Stage 2 commit `8932147` exists; all commit hooks pass. Final suite 1,404 passed / 7 skipped in 42.52 s (`validation/stage2-suite-coordinator-attempt2.txt`). Independent codex/gpt-5.6-sol/high post-review dispatched, one review only.
+- Parallel exception: Stage4 assignment A1 has its own brief `briefs/stage4-instruments-brief.md`, limited to speed probe/fact scorer and their two unit files. It shares no file with Stage2's reviewed implementation/brief scope. Extraction prompt/merge changes wait for review completion.
+- Stage5 offline implementation is frozen and remains uncommitted; live proof waits for the Stage4 baseline as planned. No live model call yet.
+
+## 2026-09-13 -- Pre-measurement probe gaps promoted into Stage 4 A1
+
+- Implementer traced `--classify --test-model`: `_classify` ignores use_test_model and builds a real AgentDomainClassifier, potentially contacting the hosted default during a mock run. Added probe-local scoped TestModel factory override and live-request denial to A1; no hosted/product classifier code changes.
+- Raw unit summaries lack `critical_defects`, so Stage6's selected-level gate could not be measured from its own artifacts. A1 now records observed graph/validation defects and preserves explicit unknowns; no default clean row for an unlaunched unit.
+- These are prerequisite instrument corrections before live calls, not a reason to rerun live measurements later. A1's file scope remains disjoint from Stage2 review.
+
+## 2026-09-13 -- Review time bounded
+
+- Stage2 reviewer proposed a further 20–30 minute axis pass after reading the scope. Coordinator bounded remaining work to five minutes to finish/refute existing concrete candidates and return one complete set, consistent with the owner's standing review/validation-trap constraint.
+- No correctness finding is waived; unverified ideas must be dropped rather than assigned a severity. Review ledger is consumed only when the final set is on disk.
+- Local settings validation now passes without editing .env; prior backlog5 malformed-setting condition is not reproduced on this machine.
+
+## 2026-09-13 -- Stage 2 review spent, one fix accepted
+
+- Complete review stored before triage in validation/stage2-review.md; ledger spent. One P2 BLOCKING F1, two candidates refuted.
+- Coordinator reproduced F1: episodic cross-session heading followed by Stage3 is wrongly returned as scenario heading. Both literals verified in the child. Accepted as incorrect diagnostic evidence.
+- Stage2 brief corrected in place; fix1 brief freezes scope to banner parser and its tests. One fix/no re-review. Dispatch waits for Stage4 A1 write-lock release.
+
+## 2026-09-13 -- A1 releases write lock; Stage 2 fix starts
+
+- Stage4 A1 returned its four-file implementation: 54 focused tests passed; formatter, lint and whole-tree type checks passed. No live calls. Frozen pending coordinator inspection and the remaining Stage4 assignments.
+- Docker recheck confirms local PostgreSQL and tailscale healthy. Existing Stage1 commit resolves in git; no spent review reset on resume.
+- Stage2 fix1 dispatched to codex/gpt-5.6-sol/high, limited to the reproduced F1 and its tests. No concurrent feature writer and no re-review.
+
+## 2026-09-13 -- A1 coordinator gate and baseline environment
+
+- Coordinator reran both instrument test files: 54 passed in 0.73 s (`validation/stage4-instruments-coordinator-attempt1.txt`) and inspected all four diffs.
+- Before live use, a bounded read-only strong assignment checks whether timeout events would incorrectly disqualify a permitted single timeout; no new review round is being run.
+- Stage4 live brief now explicitly unsets Google/Gemini keys for in-memory probes: existing resolve_embeddings otherwise enables hosted embeddings when ambient keys exist. The intended offline scoring path uses embeddings=none. Local model base URL is pinned; no environment file or hosted product code changes.
+
+## 2026-09-13 -- A1 measurement correction queued before live use
+
+- Strong diagnosis demonstrated normalizer drift (DishGreg/Functiondefault/FUNCTIONDEFAULT wrongly accepted) and expected timeouts wrongly labeled critical failures. Coordinator traced public normalization rejection and independently reproduced timeout -> [agent_run_failure].
+- Accepted both as measurement correctness defects. Two-file gate correction brief written; dispatch waits for Stage2 fix to finish. This is a pre-review gate fix, not a new review round.
+- The correction must preserve independent real defects during timeout; no blanket clean result. A2's final suite will cover the corrected tree.
+
+## 2026-09-13 -- Stage 2 fix1 accepted
+
+- F1 correction inspected against the complete finding: child-aware parsing reports the later episodic Stage3, preserves Plan15/17 scenario priority. Coordinator reproduced exact corrected tuple; no rereview.
+- Focused 84 passed in 6.27 s; full suite 1,413 passed / 7 skipped in 43.48 s; all scoped hooks pass. Raw evidence in validation/stage2-fix1-*-attempt1.txt.
+- Repair budget consumed (one round); implementation and single fix are complete. Stage4 A1 remains frozen, Stage5 offline files remain untouched; only Stage2 files and coordinator run records are staged for the fix commit.

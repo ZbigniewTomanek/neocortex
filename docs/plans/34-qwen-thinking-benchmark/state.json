@@ -57,23 +57,25 @@
       "file": "stages/02-integrity-evidence-export.md",
       "status": "IN_PROGRESS",
       "depends_on": [],
-      "commit": null,
-      "note": "All deterministic gates pass after Docker recovery; commit and single post-review next.",
+      "commit": ["8932147"],
+      "note": "F1 fixed and inspected: episodic Stage3 attribution correct, Plan15/17 precedence preserved; 1413 passed/7 skipped. Fix commit pending, no re-review.",
       "blocked_by": [],
-      "step": "WRITING",
-      "writer": null,
+      "step": "REPAIRING",
+      "writer": "codex/gpt-5.6-sol",
       "implementer": "codex/gpt-5.6-sol, effort high",
-      "reviewer": null,
+      "reviewer": "codex/gpt-5.6-sol, effort high",
       "preReview": {
         "used": false
       },
       "review": {
-        "used": false
+        "used": true,
+        "blocking": 1,
+        "file": "validation/stage2-review.md"
       },
       "gateFixes": 1,
       "repair": {
-        "used": false,
-        "rounds": 0
+        "used": true,
+        "rounds": 1
       },
       "repairReview": {
         "used": false
@@ -115,16 +117,16 @@
       "id": 4,
       "title": "Numeric-fact preservation in the Qwen path",
       "file": "stages/04-numeric-fact-preservation.md",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "depends_on": [
         1
       ],
       "commit": null,
-      "note": null,
+      "note": "A1 offline instrumentation complete and frozen; 54 focused tests and hooks pass. Scalar A2 and live baseline pending.",
       "blocked_by": [],
-      "step": null,
+      "step": "WRITING",
       "writer": null,
-      "implementer": null,
+      "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": null,
       "preReview": {
         "used": false
@@ -152,10 +154,10 @@
         1
       ],
       "commit": null,
-      "note": "Independent offline implementation while Stage 2 waits for PostgreSQL; no live calls until mock gates and readiness pass.",
+      "note": "Offline implementation complete: 18 focused tests, 12 valid mock rows, shared suite1404/7 and hooks pass. Live proof, commit and review pending after Stage4 baseline.",
       "blocked_by": [],
       "step": "WRITING",
-      "writer": "codex/gpt-5.6-sol",
+      "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": null,
       "preReview": {
@@ -303,9 +305,9 @@
       "command": null
     }
   },
-  "currentStage": 5,
+  "currentStage": 2,
   "writesFrozen": false,
-  "writer": "codex/gpt-5.6-sol",
+  "writer": "codex/gpt-5.6-sol (Stage2 fix1)",
   "runReview": {
     "preReview": {
       "used": false

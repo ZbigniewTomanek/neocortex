@@ -65,3 +65,7 @@ from mock cache at `.tmp/plan34/cache`; use the command in the stage specificati
 Poll at intervals of at least five minutes. Persist remaining units explicitly as
 TIMEOUT/NOT MEASURED; copy the finished JSON to `resources/sweep/off.json`.
 Do not rerun a live measurement without a coordinator-recorded root-caused change.
+For in-memory probes, launch with `env -u GOOGLE_API_KEY -u GEMINI_API_KEY` so
+`resolve_embeddings` returns None/none. This preserves the offline-scoring design
+and ensures no hosted embedding request is made. Pin the local base URL explicitly
+to `http://127.0.0.1:24000/v1`; credentials remain environment-only.

@@ -251,6 +251,12 @@ which is the diagnostic the rubric needs; the phase banner only says which third
 Record the matched convention alongside the value as `failure_step_kind` so a reader can tell a precise
 attribution from a coarse one. A `"=" * 70` rule line is never itself a banner.
 
+**Post-review correction F1 (2026-09-13):** the episodic child also uses `--- … ---`
+section headings. Scenario-over-phase precedence is for the Plan15/17 children;
+an earlier episodic section heading must not override a later Stage/Step banner.
+Use child context or an equivalent precise ordering rule that preserves Plan15/17
+scenario-over-phase behavior while returning Stage3 for the reproduced episodic case.
+
 `exception_class` is the class name on the final traceback line of stderr (the `NameError: ...` form →
 `NameError`). **Never the message text** — it can contain graph or episode content.
 
