@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "runs": {
+    "20260913T162930Z-tuned1": {
+      "arm": "qwen-flash-next-compact-tuned",
+      "scope": "Existing local development PostgreSQL graph; automatic preservation and restoration",
+      "authorization": "goal.md Allowed actions; owner proceed on 2026-09-11 and 2026-09-13",
+      "preflight": {
+        "postgres_container": "a4934b49b4b0",
+        "postgres_health": "healthy",
+        "docker_context": "desktop-linux",
+        "local_model": "local:qwen3.8-flash-next",
+        "selected_effort": {"ontology": "off", "extractor": "off", "librarian": "off", "classifier": "off"},
+        "credentials": "Environment only: LITELLM_API_KEY, existing GEMINI_API_KEY mapped to GOOGLE_API_KEY",
+        "recovery_snapshot": "Will be created by the harness before the first reset; actual identity recorded in events",
+        "existing_snapshot_archives": [
+          "stage4-auth-live-pre-20260903-131918.tar.gz",
+          "qwen-flash-next-compact-pre-20260909T180449Z-compact-20260909-200451.tar.gz",
+          "qwen-flash-next-compact-pre-20260909T180657Z-compact-20260909-200659.tar.gz",
+          "qwen-flash-next-pre-20260903T174929Z-31844-20260903-194931.tar.gz",
+          "test-empty-20260331-141144.tar.gz",
+          "qwen-flash-next-compact-20260909T180657Z-compact-20260910-031025.tar.gz",
+          "qwen-flash-next-compact-pre-20260911T001509Z-swift3-20260911-021511.tar.gz",
+          "qwen-flash-next-compact-20260910T225806Z-swift-20260911-010926.tar.gz",
+          "qwen-flash-next-pre-20260903T174610Z-30857-20260903-194612.tar.gz",
+          "stage4-auth-pre-20260903-20260903-131736.tar.gz",
+          "2026-04-02-20260402-141725.tar.gz",
+          "qwen-flash-next-pre-20260905T014401Z-stage6fresh2-20260905-034422.tar.gz",
+          "qwen-flash-next-compact-20260910T231754Z-swift2-20260911-012722.tar.gz",
+          "qwen-flash-next-compact-pre-20260910T231754Z-swift2-20260911-011756.tar.gz",
+          "qwen-flash-next-pre-20260903T133626Z-60064-20260903-153627.tar.gz",
+          "qwen-flash-next-pre-20260905T010813Z-stage6fresh-20260905-030832.tar.gz",
+          "qwen-flash-next-compact-pre-20260910T225806Z-swift-20260911-005807.tar.gz",
+          "qwen-flash-next-20260905-001012.tar.gz",
+          "qwen-flash-next-compact-20260911T001509Z-swift3-20260911-022540.tar.gz",
+          "migration-20260402-220120.tar.gz"
+        ]
+      },
+      "events": [
+        {
+          "at": "2026-09-13T16:29:30Z",
+          "status": "planned",
+          "action": "bounded_service_arm",
+          "target": "20260913T162930Z-tuned1"
+        }
+      ]
+    }
+  }
+}

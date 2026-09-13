@@ -1,0 +1,786 @@
+{
+  "schema_version": 1,
+  "run": {
+    "model": "local:qwen3.8-flash-next",
+    "test_model": false,
+    "identity_path": "resources/effort-levels.json",
+    "baseline_path": "resources/sweep/off.json",
+    "levels": [
+      "off",
+      "low",
+      "medium",
+      "high"
+    ],
+    "max_wall_seconds": 14400.0,
+    "budget_exhausted": false,
+    "started_at": 1789311400.997312,
+    "runner_wall_seconds": 3896.741,
+    "total_cell_wall_seconds": 3896.725,
+    "live_wall_seconds": 3896.725,
+    "complete": true
+  },
+  "cells": [
+    {
+      "agent": "extractor",
+      "level": "off",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "off",
+        "librarian": "off",
+        "classifier": "off"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/off.json",
+      "episodes": 11,
+      "source_text_rows": 14,
+      "triplet_passes": 1,
+      "facts_found": 42,
+      "facts_total": 56,
+      "tier": "triplet:1",
+      "selected": true,
+      "timeouts": 0,
+      "critical_defects": [],
+      "median_reasoning_tokens": 0.0,
+      "p50_s": 17.7,
+      "p95_s": 36.71,
+      "wall_seconds": 396.67,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "PASS",
+      "reason": null,
+      "reused_baseline": true
+    },
+    {
+      "agent": "extractor",
+      "level": "low",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "low",
+        "librarian": "off",
+        "classifier": "off"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/extractor-low.json",
+      "episodes": 11,
+      "source_text_rows": 14,
+      "triplet_passes": 1,
+      "facts_found": 39,
+      "facts_total": 56,
+      "tier": "triplet:1",
+      "selected": false,
+      "timeouts": 0,
+      "critical_defects": [],
+      "median_reasoning_tokens": 705.5,
+      "p50_s": 38.64,
+      "p95_s": 67.06,
+      "wall_seconds": 691.83,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "PASS",
+      "reason": null,
+      "child_status": "EXITED",
+      "child_returncode": 0,
+      "child_wall_seconds": 692.266
+    },
+    {
+      "agent": "extractor",
+      "level": "medium",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "medium",
+        "librarian": "off",
+        "classifier": "off"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/extractor-medium.json",
+      "episodes": 11,
+      "source_text_rows": 14,
+      "triplet_passes": 0,
+      "facts_found": 22,
+      "facts_total": 56,
+      "tier": "triplet:0",
+      "selected": false,
+      "timeouts": 0,
+      "critical_defects": [
+        "agent_run_failure"
+      ],
+      "median_reasoning_tokens": null,
+      "p50_s": null,
+      "p95_s": null,
+      "wall_seconds": 984.89,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "DISQUALIFIED",
+      "reason": "selection_gate_failed",
+      "child_status": "EXITED",
+      "child_returncode": 1,
+      "child_wall_seconds": 985.36
+    },
+    {
+      "agent": "extractor",
+      "level": "high",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "high",
+        "librarian": "off",
+        "classifier": "off"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/extractor-high.json",
+      "episodes": 11,
+      "source_text_rows": 14,
+      "triplet_passes": 0,
+      "facts_found": 0,
+      "facts_total": 56,
+      "tier": "triplet:0",
+      "selected": false,
+      "timeouts": 0,
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "median_reasoning_tokens": null,
+      "p50_s": null,
+      "p95_s": null,
+      "wall_seconds": 117.55,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "DISQUALIFIED",
+      "reason": "selection_gate_failed",
+      "child_status": "EXITED",
+      "child_returncode": 1,
+      "child_wall_seconds": 117.995
+    },
+    {
+      "agent": "librarian",
+      "level": "off",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "off",
+        "librarian": "off",
+        "classifier": "off"
+      },
+      "cache_thinking": "off",
+      "raw_path": "resources/sweep/librarian-off.json",
+      "episodes": 11,
+      "source_text_rows": 14,
+      "triplet_passes": 1,
+      "facts_found": 42,
+      "facts_total": 56,
+      "tier": "triplet:1",
+      "selected": true,
+      "timeouts": 0,
+      "critical_defects": [],
+      "median_reasoning_tokens": 0.0,
+      "p50_s": 0.0,
+      "p95_s": 4.82,
+      "wall_seconds": 11.42,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "PASS",
+      "reason": null,
+      "child_status": "EXITED",
+      "child_returncode": 0,
+      "child_wall_seconds": 11.866
+    },
+    {
+      "agent": "librarian",
+      "level": "low",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "off",
+        "librarian": "low",
+        "classifier": "off"
+      },
+      "cache_thinking": "off",
+      "raw_path": "resources/sweep/librarian-low.json",
+      "episodes": 11,
+      "source_text_rows": 14,
+      "triplet_passes": 1,
+      "facts_found": 42,
+      "facts_total": 56,
+      "tier": "triplet:1",
+      "selected": false,
+      "timeouts": 0,
+      "critical_defects": [],
+      "median_reasoning_tokens": 0.0,
+      "p50_s": 0.0,
+      "p95_s": 9.91,
+      "wall_seconds": 28.22,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "PASS",
+      "reason": null,
+      "child_status": "EXITED",
+      "child_returncode": 0,
+      "child_wall_seconds": 28.654
+    },
+    {
+      "agent": "librarian",
+      "level": "medium",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "off",
+        "librarian": "medium",
+        "classifier": "off"
+      },
+      "cache_thinking": "off",
+      "raw_path": "resources/sweep/librarian-medium.json",
+      "episodes": 11,
+      "source_text_rows": 14,
+      "triplet_passes": 1,
+      "facts_found": 42,
+      "facts_total": 56,
+      "tier": "triplet:1",
+      "selected": false,
+      "timeouts": 0,
+      "critical_defects": [],
+      "median_reasoning_tokens": 0.0,
+      "p50_s": 0.0,
+      "p95_s": 9.1,
+      "wall_seconds": 19.34,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "PASS",
+      "reason": null,
+      "child_status": "EXITED",
+      "child_returncode": 0,
+      "child_wall_seconds": 19.785
+    },
+    {
+      "agent": "librarian",
+      "level": "high",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "off",
+        "librarian": "high",
+        "classifier": "off"
+      },
+      "cache_thinking": "off",
+      "raw_path": "resources/sweep/librarian-high.json",
+      "episodes": 11,
+      "source_text_rows": 14,
+      "triplet_passes": 0,
+      "facts_found": 42,
+      "facts_total": 56,
+      "tier": "triplet:0",
+      "selected": false,
+      "timeouts": 0,
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "median_reasoning_tokens": null,
+      "p50_s": null,
+      "p95_s": null,
+      "wall_seconds": 0.38,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "DISQUALIFIED",
+      "reason": "selection_gate_failed",
+      "child_status": "EXITED",
+      "child_returncode": 1,
+      "child_wall_seconds": 0.82
+    },
+    {
+      "agent": "ontology",
+      "level": "off",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "off",
+        "librarian": "off",
+        "classifier": "off"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/ontology-off.json",
+      "episodes": 8,
+      "source_text_rows": 8,
+      "triplet_passes": null,
+      "facts_found": 43,
+      "facts_total": 56,
+      "tier": "compact",
+      "selected": true,
+      "timeouts": 0,
+      "critical_defects": [],
+      "median_reasoning_tokens": 0.0,
+      "p50_s": 6.74,
+      "p95_s": 8.38,
+      "wall_seconds": 276.88,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": 12,
+      "accepted_edge_proposals": 14,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {},
+      "status": "PASS",
+      "reason": null,
+      "child_status": "EXITED",
+      "child_returncode": 0,
+      "child_wall_seconds": 277.316
+    },
+    {
+      "agent": "ontology",
+      "level": "low",
+      "configuration": {
+        "ontology": "low",
+        "extractor": "off",
+        "librarian": "off",
+        "classifier": "off"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/ontology-low.json",
+      "episodes": null,
+      "source_text_rows": null,
+      "triplet_passes": null,
+      "facts_found": null,
+      "facts_total": null,
+      "tier": null,
+      "selected": false,
+      "timeouts": null,
+      "critical_defects": null,
+      "median_reasoning_tokens": null,
+      "p50_s": null,
+      "p95_s": null,
+      "wall_seconds": null,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "NOT MEASURED",
+      "reason": "missing_ontology_proposal_observation",
+      "child_status": "EXITED",
+      "child_returncode": 1,
+      "child_wall_seconds": 206.666
+    },
+    {
+      "agent": "ontology",
+      "level": "medium",
+      "configuration": {
+        "ontology": "medium",
+        "extractor": "off",
+        "librarian": "off",
+        "classifier": "off"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/ontology-medium.json",
+      "episodes": null,
+      "source_text_rows": null,
+      "triplet_passes": null,
+      "facts_found": null,
+      "facts_total": null,
+      "tier": null,
+      "selected": false,
+      "timeouts": null,
+      "critical_defects": null,
+      "median_reasoning_tokens": null,
+      "p50_s": null,
+      "p95_s": null,
+      "wall_seconds": null,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "NOT MEASURED",
+      "reason": "missing_ontology_proposal_observation",
+      "child_status": "EXITED",
+      "child_returncode": 1,
+      "child_wall_seconds": 242.34
+    },
+    {
+      "agent": "ontology",
+      "level": "high",
+      "configuration": {
+        "ontology": "high",
+        "extractor": "off",
+        "librarian": "off",
+        "classifier": "off"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/ontology-high.json",
+      "episodes": null,
+      "source_text_rows": null,
+      "triplet_passes": null,
+      "facts_found": null,
+      "facts_total": null,
+      "tier": null,
+      "selected": false,
+      "timeouts": null,
+      "critical_defects": null,
+      "median_reasoning_tokens": null,
+      "p50_s": null,
+      "p95_s": null,
+      "wall_seconds": null,
+      "valid_results": null,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "NOT MEASURED",
+      "reason": "missing_ontology_proposal_observation",
+      "child_status": "EXITED",
+      "child_returncode": 1,
+      "child_wall_seconds": 1.042
+    },
+    {
+      "agent": "classifier",
+      "level": "off",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "off",
+        "librarian": "off",
+        "classifier": "off"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/classifier-off.json",
+      "episodes": 8,
+      "source_text_rows": 8,
+      "triplet_passes": null,
+      "facts_found": 45,
+      "facts_total": 56,
+      "tier": "valid:8/8",
+      "selected": true,
+      "timeouts": 0,
+      "critical_defects": [],
+      "median_reasoning_tokens": 0.0,
+      "p50_s": 3.67,
+      "p95_s": 6.06,
+      "wall_seconds": 359.0,
+      "valid_results": 8,
+      "domain_sets": {
+        "E02": [
+          "known:domain_knowledge",
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E04": [
+          "known:technical_knowledge"
+        ],
+        "E05": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E10": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E18": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E20": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E26": [
+          "known:technical_knowledge"
+        ],
+        "E27": [
+          "known:work_context"
+        ]
+      },
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "PASS",
+      "reason": null,
+      "child_status": "EXITED",
+      "child_returncode": 0,
+      "child_wall_seconds": 359.443
+    },
+    {
+      "agent": "classifier",
+      "level": "low",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "off",
+        "librarian": "off",
+        "classifier": "low"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/classifier-low.json",
+      "episodes": 8,
+      "source_text_rows": 8,
+      "triplet_passes": null,
+      "facts_found": 46,
+      "facts_total": 56,
+      "tier": "valid:8/8",
+      "selected": false,
+      "timeouts": 0,
+      "critical_defects": [],
+      "median_reasoning_tokens": 154.5,
+      "p50_s": 8.64,
+      "p95_s": 12.71,
+      "wall_seconds": 341.38,
+      "valid_results": 8,
+      "domain_sets": {
+        "E02": [
+          "known:technical_knowledge",
+          "known:user_profile",
+          "known:work_context"
+        ],
+        "E04": [
+          "known:technical_knowledge"
+        ],
+        "E05": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E10": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E18": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E20": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E26": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E27": [
+          "known:work_context"
+        ]
+      },
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "PASS",
+      "reason": null,
+      "child_status": "EXITED",
+      "child_returncode": 0,
+      "child_wall_seconds": 341.836
+    },
+    {
+      "agent": "classifier",
+      "level": "medium",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "off",
+        "librarian": "off",
+        "classifier": "medium"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/classifier-medium.json",
+      "episodes": 8,
+      "source_text_rows": 8,
+      "triplet_passes": null,
+      "facts_found": 47,
+      "facts_total": 56,
+      "tier": "valid:8/8",
+      "selected": false,
+      "timeouts": 0,
+      "critical_defects": [],
+      "median_reasoning_tokens": 55.0,
+      "p50_s": 5.09,
+      "p95_s": 13.02,
+      "wall_seconds": 324.43,
+      "valid_results": 8,
+      "domain_sets": {
+        "E02": [
+          "known:technical_knowledge",
+          "known:user_profile",
+          "known:work_context"
+        ],
+        "E04": [
+          "known:technical_knowledge"
+        ],
+        "E05": [
+          "known:technical_knowledge"
+        ],
+        "E10": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E18": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E20": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E26": [
+          "known:technical_knowledge",
+          "known:work_context"
+        ],
+        "E27": [
+          "known:work_context"
+        ]
+      },
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "PASS",
+      "reason": null,
+      "child_status": "EXITED",
+      "child_returncode": 0,
+      "child_wall_seconds": 324.884
+    },
+    {
+      "agent": "classifier",
+      "level": "high",
+      "configuration": {
+        "ontology": "off",
+        "extractor": "off",
+        "librarian": "off",
+        "classifier": "high"
+      },
+      "cache_thinking": null,
+      "raw_path": "resources/sweep/classifier-high.json",
+      "episodes": 8,
+      "source_text_rows": 8,
+      "triplet_passes": null,
+      "facts_found": 43,
+      "facts_total": 56,
+      "tier": "valid:0/8",
+      "selected": false,
+      "timeouts": 0,
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "median_reasoning_tokens": null,
+      "p50_s": 0.04,
+      "p95_s": 0.25,
+      "wall_seconds": 285.98,
+      "valid_results": 0,
+      "domain_sets": null,
+      "accepted_node_proposals": null,
+      "accepted_edge_proposals": null,
+      "rejected_node_proposals": null,
+      "rejected_edge_proposals": null,
+      "proposal_rejection_reasons": null,
+      "status": "DISQUALIFIED",
+      "reason": "selection_gate_failed",
+      "child_status": "EXITED",
+      "child_returncode": 1,
+      "child_wall_seconds": 286.452
+    }
+  ],
+  "selections": {
+    "extractor": {
+      "level": "off",
+      "status": "SELECTED",
+      "reason": "precommitted_rule",
+      "highest_triplet_tier": 1,
+      "best_facts_in_tier": 42,
+      "two_fact_floor": 40,
+      "candidates": [
+        "off"
+      ]
+    },
+    "librarian": {
+      "level": "off",
+      "status": "SELECTED",
+      "reason": "precommitted_rule",
+      "highest_triplet_tier": 1,
+      "best_facts_in_tier": 42,
+      "two_fact_floor": 40,
+      "candidates": [
+        "off",
+        "low",
+        "medium"
+      ]
+    },
+    "ontology": {
+      "level": "off",
+      "status": "SELECTED",
+      "reason": "precommitted_rule",
+      "highest_triplet_tier": null,
+      "best_facts_in_tier": 43,
+      "two_fact_floor": 41,
+      "candidates": [
+        "off"
+      ]
+    },
+    "classifier": {
+      "level": "off",
+      "status": "SELECTED",
+      "reason": "precommitted_rule",
+      "highest_triplet_tier": null,
+      "best_facts_in_tier": null,
+      "two_fact_floor": null,
+      "candidates": [
+        "off",
+        "low",
+        "medium"
+      ]
+    }
+  },
+  "classifier_domain_agreement": {
+    "off:low": {
+      "compared": 8,
+      "equal": 6
+    },
+    "off:medium": {
+      "compared": 8,
+      "equal": 5
+    },
+    "off:high": null,
+    "low:medium": {
+      "compared": 8,
+      "equal": 7
+    },
+    "low:high": null,
+    "medium:high": null
+  }
+}

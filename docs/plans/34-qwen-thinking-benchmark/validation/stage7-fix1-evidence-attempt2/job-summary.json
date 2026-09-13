@@ -1,0 +1,20 @@
+{
+  "arm": "qwen-flash-next-compact-tuned",
+  "job_summary": {
+    "cancelled": 0,
+    "doing": 1,
+    "failed": 0,
+    "succeeded": 7,
+    "todo": 2,
+    "total": 10
+  },
+  "kind": "neocortex-stage7-job-summary",
+  "run_id": "stage7-fix1-fake-attempt2",
+  "schema_version": 1,
+  "stability": {
+    "failed_or_cancelled_rate": null,
+    "status": "NOT_MEASURED"
+  },
+  "status": "MEASURED",
+  "terminal": false
+}

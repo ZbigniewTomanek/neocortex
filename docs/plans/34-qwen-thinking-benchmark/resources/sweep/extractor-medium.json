@@ -1,0 +1,896 @@
+{
+  "run": {
+    "model": "local:qwen3.8-flash-next",
+    "thinking": "off",
+    "thinking_ontology": "off",
+    "thinking_extractor": "medium",
+    "thinking_librarian": "off",
+    "thinking_classifier": "off",
+    "cache_thinking": "off",
+    "corpus_sha256": "2394bcacfc4fcff6d8ee1f280f8642f8eaf864797cfcd4b333d57b4b9da296d3",
+    "corpus": "both",
+    "episodes": [
+      "E04",
+      "E05"
+    ],
+    "units": [
+      "E02",
+      "E04",
+      "E05",
+      "E10",
+      "E18",
+      "E20",
+      "E26",
+      "E27",
+      "S05",
+      "S11",
+      "S07"
+    ],
+    "fixture": "/Users/zbigniewtomanek/work/neocortex/docs/plans/34-qwen-thinking-benchmark/resources/fact-fixture.json",
+    "repo_mode": "fresh",
+    "stage": "all",
+    "profile": null,
+    "episode_timeout_s": 600.0,
+    "per_call_timeout_s": 300.0,
+    "max_wall_seconds": 3600.0,
+    "wall_budget_exhausted": false,
+    "chain": {
+      "status": "NOT MEASURED",
+      "reason": "repo_mode=fresh"
+    },
+    "embeddings": "none",
+    "started_at": "2026-09-13T15:08:13.718035+00:00",
+    "git_head": "0d7dd0110174d6c3a794cbe41eb91d7d1dffd3d8",
+    "pydantic_ai_version": "1.72.0",
+    "wall_seconds": 984.89
+  },
+  "episodes": [
+    {
+      "episode": "E02",
+      "words": 76,
+      "seconds_total": 62.22,
+      "requests_total": 2,
+      "nodes_after": 7,
+      "edges_after": 7,
+      "edge_types_after": {
+        "HAS_ROLE": 4,
+        "PRIORITIZES": 3
+      },
+      "fact_score": {
+        "facts_total": 8,
+        "facts_found": 4,
+        "missing_keys": [
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E04",
+      "words": 69,
+      "seconds_total": 89.49,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 9,
+        "facts_found": 0,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [
+        "agent_run_failure"
+      ],
+      "status": "error:UnexpectedModelBehavior"
+    },
+    {
+      "episode": "E05",
+      "words": 103,
+      "seconds_total": 79.09,
+      "requests_total": 3,
+      "nodes_after": 9,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 2,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          5
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E10",
+      "words": 85,
+      "seconds_total": 48.28,
+      "requests_total": 2,
+      "nodes_after": 8,
+      "edges_after": 9,
+      "edge_types_after": {
+        "REMEDIATED_BY": 6,
+        "AFFECTS": 3
+      },
+      "fact_score": {
+        "facts_total": 5,
+        "facts_found": 5,
+        "missing_keys": []
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E18",
+      "words": 104,
+      "seconds_total": 92.83,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 7,
+        "facts_found": 0,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [
+        "agent_run_failure"
+      ],
+      "status": "error:UnexpectedModelBehavior"
+    },
+    {
+      "episode": "E20",
+      "words": 95,
+      "seconds_total": 71.52,
+      "requests_total": 2,
+      "nodes_after": 4,
+      "edges_after": 3,
+      "edge_types_after": {
+        "USES_ALGORITHM": 2,
+        "REPLACED": 1
+      },
+      "fact_score": {
+        "facts_total": 9,
+        "facts_found": 5,
+        "missing_keys": [
+          0,
+          2,
+          7,
+          8
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E26",
+      "words": 108,
+      "seconds_total": 91.23,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 0,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [
+        "agent_run_failure"
+      ],
+      "status": "error:UnexpectedModelBehavior"
+    },
+    {
+      "episode": "E27",
+      "words": 102,
+      "seconds_total": 69.76,
+      "requests_total": 2,
+      "nodes_after": 5,
+      "edges_after": 3,
+      "edge_types_after": {
+        "MEMBER_OF": 2,
+        "OWNS": 1
+      },
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 6,
+        "missing_keys": []
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "S05",
+      "words": 46,
+      "seconds_total": 124.19,
+      "requests_total": null,
+      "nodes_after": 3,
+      "edges_after": 3,
+      "edge_types_after": {
+        "PART_OF": 2,
+        "SUPERSEDED_BY": 1
+      },
+      "fact_score": null,
+      "supersession": {
+        "new_present": true,
+        "old_absent": false,
+        "temporal_edge_present": false
+      },
+      "critical_defects": [
+        "agent_run_failure"
+      ],
+      "status": "error:UnexpectedModelBehavior"
+    },
+    {
+      "episode": "S11",
+      "words": 43,
+      "seconds_total": 129.26,
+      "requests_total": 5,
+      "nodes_after": 4,
+      "edges_after": 4,
+      "edge_types_after": {
+        "HAS_SCALING_LAW": 2,
+        "FITTED_ON": 1,
+        "SUPERSEDES": 1
+      },
+      "fact_score": null,
+      "supersession": {
+        "new_present": true,
+        "old_absent": false,
+        "temporal_edge_present": true
+      },
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "S07",
+      "words": 78,
+      "seconds_total": 127.03,
+      "requests_total": null,
+      "nodes_after": 4,
+      "edges_after": 3,
+      "edge_types_after": {
+        "MEMBER_OF": 3
+      },
+      "fact_score": null,
+      "supersession": {
+        "new_present": false,
+        "old_absent": true,
+        "temporal_edge_present": false
+      },
+      "critical_defects": [
+        "agent_run_failure"
+      ],
+      "status": "error:UnexpectedModelBehavior"
+    }
+  ],
+  "stages": [
+    {
+      "episode": "E02",
+      "stage": "ontology",
+      "seconds": 6.17,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 813,
+      "output_tokens": 192,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E02",
+      "stage": "extractor",
+      "seconds": 56.02,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1448,
+      "output_tokens": 1982,
+      "reasoning_tokens": 1100,
+      "entities": 7,
+      "relations": 7,
+      "status": "ok"
+    },
+    {
+      "episode": "E02",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E04",
+      "stage": "ontology",
+      "seconds": 6.75,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 837,
+      "output_tokens": 217,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E04",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:UnexpectedModelBehavior"
+    },
+    {
+      "episode": "E05",
+      "stage": "ontology",
+      "seconds": 8.82,
+      "requests": 2,
+      "tool_calls": 0,
+      "input_tokens": 1901,
+      "output_tokens": 242,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E05",
+      "stage": "extractor",
+      "seconds": 70.27,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1529,
+      "output_tokens": 2500,
+      "reasoning_tokens": 1734,
+      "entities": 9,
+      "relations": 0,
+      "status": "ok"
+    },
+    {
+      "episode": "E05",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E10",
+      "stage": "ontology",
+      "seconds": 6.82,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 833,
+      "output_tokens": 208,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E10",
+      "stage": "extractor",
+      "seconds": 41.45,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1472,
+      "output_tokens": 1553,
+      "reasoning_tokens": 423,
+      "entities": 8,
+      "relations": 9,
+      "status": "ok"
+    },
+    {
+      "episode": "E10",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E18",
+      "stage": "ontology",
+      "seconds": 6.72,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 870,
+      "output_tokens": 194,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E18",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:UnexpectedModelBehavior"
+    },
+    {
+      "episode": "E20",
+      "stage": "ontology",
+      "seconds": 6.85,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 888,
+      "output_tokens": 226,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E20",
+      "stage": "extractor",
+      "seconds": 64.62,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1557,
+      "output_tokens": 2257,
+      "reasoning_tokens": 1536,
+      "entities": 4,
+      "relations": 3,
+      "status": "ok"
+    },
+    {
+      "episode": "E20",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E26",
+      "stage": "ontology",
+      "seconds": 8.56,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 882,
+      "output_tokens": 253,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E26",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:UnexpectedModelBehavior"
+    },
+    {
+      "episode": "E27",
+      "stage": "ontology",
+      "seconds": 18.2,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 836,
+      "output_tokens": 600,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E27",
+      "stage": "extractor",
+      "seconds": 51.55,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1462,
+      "output_tokens": 1753,
+      "reasoning_tokens": 1099,
+      "entities": 5,
+      "relations": 4,
+      "status": "ok"
+    },
+    {
+      "episode": "E27",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "S05-1",
+      "stage": "ontology",
+      "seconds": 5.68,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 736,
+      "output_tokens": 182,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S05-1",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:UnexpectedModelBehavior"
+    },
+    {
+      "episode": "S05-2",
+      "stage": "ontology",
+      "seconds": 4.48,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 757,
+      "output_tokens": 121,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 0,
+      "accepted_edge_proposals": 1,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S05-2",
+      "stage": "extractor",
+      "seconds": 30.01,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1407,
+      "output_tokens": 1085,
+      "reasoning_tokens": 614,
+      "entities": 3,
+      "relations": 3,
+      "status": "ok"
+    },
+    {
+      "episode": "S05-2",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "S11-1",
+      "stage": "ontology",
+      "seconds": 6.88,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 738,
+      "output_tokens": 204,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S11-1",
+      "stage": "extractor",
+      "seconds": 47.45,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1385,
+      "output_tokens": 1444,
+      "reasoning_tokens": 1114,
+      "entities": 2,
+      "relations": 1,
+      "status": "ok"
+    },
+    {
+      "episode": "S11-1",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "S11-2",
+      "stage": "ontology",
+      "seconds": 2.72,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 767,
+      "output_tokens": 77,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 0,
+      "accepted_edge_proposals": 0,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S11-2",
+      "stage": "extractor",
+      "seconds": 69.66,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1403,
+      "output_tokens": 2206,
+      "reasoning_tokens": 1675,
+      "entities": 3,
+      "relations": 2,
+      "status": "ok"
+    },
+    {
+      "episode": "S11-2",
+      "stage": "librarian",
+      "seconds": 2.52,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 730,
+      "output_tokens": 76,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 1,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "S07-1",
+      "stage": "ontology",
+      "seconds": 13.15,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 771,
+      "output_tokens": 425,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S07-1",
+      "stage": "extractor",
+      "seconds": 23.54,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1399,
+      "output_tokens": 845,
+      "reasoning_tokens": 389,
+      "entities": 4,
+      "relations": 3,
+      "status": "ok"
+    },
+    {
+      "episode": "S07-1",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "S07-2",
+      "stage": "ontology",
+      "seconds": 3.68,
+      "requests": 2,
+      "tool_calls": 0,
+      "input_tokens": 1645,
+      "output_tokens": 94,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 0,
+      "accepted_edge_proposals": 0,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S07-2",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:UnexpectedModelBehavior"
+    }
+  ]
+}

@@ -187,15 +187,15 @@
       "id": 6,
       "title": "Per-agent thinking-level sweep",
       "file": "stages/06-per-agent-effort-sweep.md",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "depends_on": [
         4,
         5
       ],
       "commit": ["80f2b98", "0d7dd01"],
-      "note": "15:07Z session55651 active: extractorlow10/11units,39/56facts,S05/S11 old_absentfalse; no selection yet. Deadline18:56:41Z,nextpoll>=15:12:33Z; source frozen.",
+      "note": "Final3896.741s/16cells, all4selectedoff; recomputed allrawfields/selection/agreement PASS. Higher effort errors remain explicit; eligibility is not MIGRATE. No rerun.",
       "blocked_by": [],
-      "step": "REVIEWED",
+      "step": null,
       "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": "codex/gpt-5.6-sol, effort high",
@@ -215,8 +215,8 @@
       "repairReview": {
         "used": false
       },
-      "gates": {"focused unit": "PASS", "full suite": "PASS", "lint": "PASS", "full mock cells and provenance": "PASS", "unknown usage null semantics": "PASS", "live sweep": "NOT MEASURED"},
-      "evidence": ["validation/stage6-focused-coordinator-attempt1.txt", "validation/stage6-suite-coordinator-attempt1.txt", "validation/stage6-ruff-coordinator-attempt1.txt", "validation/stage6-mock-coordinator-attempt1/effort-sweep.json", "validation/stage6-instruments-testmodel-attempt1.json", "validation/stage6-review.md", "validation/stage6-fix1-focused-coordinator-attempt1.txt", "validation/stage6-fix1-suite-coordinator-attempt1.txt", "validation/stage6-fix1-ruff-coordinator-attempt1.txt", "validation/stage6-fix1-mock-coordinator-attempt1/effort-sweep.json"]
+      "gates": {"focused unit": "PASS", "full suite": "PASS", "lint": "PASS", "full mock cells and provenance": "PASS", "unknown usage null semantics": "PASS", "live sweep": "PASS", "raw recomputation and selected cleanliness": "PASS"},
+      "evidence": ["validation/stage6-focused-coordinator-attempt1.txt", "validation/stage6-suite-coordinator-attempt1.txt", "validation/stage6-ruff-coordinator-attempt1.txt", "validation/stage6-mock-coordinator-attempt1/effort-sweep.json", "validation/stage6-instruments-testmodel-attempt1.json", "validation/stage6-review.md", "validation/stage6-fix1-focused-coordinator-attempt1.txt", "validation/stage6-fix1-suite-coordinator-attempt1.txt", "validation/stage6-fix1-ruff-coordinator-attempt1.txt", "validation/stage6-fix1-mock-coordinator-attempt1/effort-sweep.json", "resources/effort-sweep.json", "resources/effort-sweep.md", "validation/verify_live_sweep.py", "validation/stage6-live-recompute-coordinator-attempt1.txt"]
     },
     {
       "id": 7,
@@ -228,23 +228,25 @@
         3,
         6
       ],
-      "commit": null,
-      "note": "Preparation gates PASS: own34focused/full1498/7/lint/dryrun300-domaintrue; frozen for implementation commit and single review. No live arm until selected levels.",
+      "commit": ["b0d6195"],
+      "note": "SinglefixF1-F4 accepted on complete diff and deterministic proofs; ownfocused48/full1512+7/lint/hooks/dryrun PASS. Livearm pending fixedcommit, no rereview.",
       "blocked_by": [],
-      "step": "FROZEN",
+      "step": "REVIEWED",
       "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
-      "reviewer": null,
+      "reviewer": "codex/gpt-5.6-sol, effort high",
       "preReview": {
         "used": false
       },
       "review": {
-        "used": false
+        "used": true,
+        "blocking": 4,
+        "file": "validation/stage7-review.md"
       },
       "gateFixes": 0,
       "repair": {
-        "used": false,
-        "rounds": 0
+        "used": true,
+        "rounds": 1
       },
       "repairReview": {
         "used": false
@@ -313,7 +315,7 @@
       "command": null
     }
   },
-  "currentStage": 6,
+  "currentStage": 7,
   "writesFrozen": true,
   "writer": null,
   "runReview": {

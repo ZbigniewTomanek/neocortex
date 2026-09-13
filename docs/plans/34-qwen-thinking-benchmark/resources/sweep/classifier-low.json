@@ -1,0 +1,764 @@
+{
+  "run": {
+    "model": "local:qwen3.8-flash-next",
+    "thinking": "off",
+    "thinking_ontology": "off",
+    "thinking_extractor": "off",
+    "thinking_librarian": "off",
+    "thinking_classifier": "low",
+    "cache_thinking": "off",
+    "corpus_sha256": "2394bcacfc4fcff6d8ee1f280f8642f8eaf864797cfcd4b333d57b4b9da296d3",
+    "corpus": "compact",
+    "episodes": [
+      "E04",
+      "E05"
+    ],
+    "units": [
+      "E02",
+      "E04",
+      "E05",
+      "E10",
+      "E18",
+      "E20",
+      "E26",
+      "E27"
+    ],
+    "fixture": "/Users/zbigniewtomanek/work/neocortex/docs/plans/34-qwen-thinking-benchmark/resources/fact-fixture.json",
+    "repo_mode": "fresh",
+    "stage": "all",
+    "profile": null,
+    "episode_timeout_s": 600.0,
+    "per_call_timeout_s": 300.0,
+    "max_wall_seconds": 3600.0,
+    "wall_budget_exhausted": false,
+    "chain": {
+      "status": "NOT MEASURED",
+      "reason": "repo_mode=fresh"
+    },
+    "embeddings": "none",
+    "started_at": "2026-09-13T15:45:45.040610+00:00",
+    "git_head": "b0d619500982607c12ad19441f88acc78c784008",
+    "pydantic_ai_version": "1.72.0",
+    "wall_seconds": 341.38
+  },
+  "episodes": [
+    {
+      "episode": "E02",
+      "words": 76,
+      "seconds_total": 45.22,
+      "requests_total": 3,
+      "nodes_after": 10,
+      "edges_after": 6,
+      "edge_types_after": {
+        "SPECIALIZES_IN": 3,
+        "USES_TOOL": 3
+      },
+      "fact_score": {
+        "facts_total": 8,
+        "facts_found": 7,
+        "missing_keys": [
+          7
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E04",
+      "words": 69,
+      "seconds_total": 39.3,
+      "requests_total": 3,
+      "nodes_after": 8,
+      "edges_after": 7,
+      "edge_types_after": {
+        "PRODUCES_TABLE": 7
+      },
+      "fact_score": {
+        "facts_total": 9,
+        "facts_found": 9,
+        "missing_keys": []
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E05",
+      "words": 103,
+      "seconds_total": 47.67,
+      "requests_total": 3,
+      "nodes_after": 10,
+      "edges_after": 8,
+      "edge_types_after": {
+        "COMPOSED_OF": 6,
+        "HAS_EXCLUSION_PATTERN": 2
+      },
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 4,
+        "missing_keys": [
+          1,
+          5
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E10",
+      "words": 85,
+      "seconds_total": 41.05,
+      "requests_total": 3,
+      "nodes_after": 7,
+      "edges_after": 7,
+      "edge_types_after": {
+        "RESOLVED_BY": 4,
+        "AFFECTS": 3
+      },
+      "fact_score": {
+        "facts_total": 5,
+        "facts_found": 5,
+        "missing_keys": []
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E18",
+      "words": 104,
+      "seconds_total": 34.08,
+      "requests_total": 3,
+      "nodes_after": 5,
+      "edges_after": 5,
+      "edge_types_after": {
+        "HAS_METRIC": 4,
+        "EVALUATED_AS_REPLACEMENT_FOR": 1
+      },
+      "fact_score": {
+        "facts_total": 7,
+        "facts_found": 6,
+        "missing_keys": [
+          4
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E20",
+      "words": 95,
+      "seconds_total": 38.44,
+      "requests_total": 3,
+      "nodes_after": 5,
+      "edges_after": 3,
+      "edge_types_after": {
+        "USES_ALGORITHM": 2,
+        "IMPLMENTS": 1
+      },
+      "fact_score": {
+        "facts_total": 9,
+        "facts_found": 8,
+        "missing_keys": [
+          8
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E26",
+      "words": 108,
+      "seconds_total": 41.83,
+      "requests_total": 3,
+      "nodes_after": 5,
+      "edges_after": 4,
+      "edge_types_after": {
+        "USES_ALGORITHM": 4
+      },
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 1,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E27",
+      "words": 102,
+      "seconds_total": 53.78,
+      "requests_total": 4,
+      "nodes_after": 8,
+      "edges_after": 6,
+      "edge_types_after": {
+        "MEMBER_OF": 4,
+        "OWNS": 2
+      },
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 6,
+        "missing_keys": []
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    }
+  ],
+  "stages": [
+    {
+      "episode": "E02",
+      "stage": "classifier",
+      "seconds": 12.71,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1030,
+      "output_tokens": 400,
+      "reasoning_tokens": 254,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "matched_domains": 3,
+      "proposed_domains": 0,
+      "domain_keys": [
+        "known:technical_knowledge",
+        "known:user_profile",
+        "known:work_context"
+      ],
+      "valid_result": true
+    },
+    {
+      "episode": "E02",
+      "stage": "ontology",
+      "seconds": 8.03,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 813,
+      "output_tokens": 254,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 4,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E02",
+      "stage": "extractor",
+      "seconds": 24.48,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1476,
+      "output_tokens": 897,
+      "reasoning_tokens": 0,
+      "entities": 10,
+      "relations": 6,
+      "status": "ok"
+    },
+    {
+      "episode": "E02",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E04",
+      "stage": "classifier",
+      "seconds": 6.37,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1054,
+      "output_tokens": 169,
+      "reasoning_tokens": 88,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "matched_domains": 1,
+      "proposed_domains": 0,
+      "domain_keys": [
+        "known:technical_knowledge"
+      ],
+      "valid_result": true
+    },
+    {
+      "episode": "E04",
+      "stage": "ontology",
+      "seconds": 7.47,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 837,
+      "output_tokens": 232,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E04",
+      "stage": "extractor",
+      "seconds": 25.45,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1504,
+      "output_tokens": 941,
+      "reasoning_tokens": 0,
+      "entities": 8,
+      "relations": 11,
+      "status": "ok"
+    },
+    {
+      "episode": "E04",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E05",
+      "stage": "classifier",
+      "seconds": 10.69,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1096,
+      "output_tokens": 323,
+      "reasoning_tokens": 217,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "matched_domains": 2,
+      "proposed_domains": 0,
+      "domain_keys": [
+        "known:technical_knowledge",
+        "known:work_context"
+      ],
+      "valid_result": true
+    },
+    {
+      "episode": "E05",
+      "stage": "ontology",
+      "seconds": 8.47,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 879,
+      "output_tokens": 248,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E05",
+      "stage": "extractor",
+      "seconds": 28.5,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1521,
+      "output_tokens": 1046,
+      "reasoning_tokens": 0,
+      "entities": 10,
+      "relations": 8,
+      "status": "ok"
+    },
+    {
+      "episode": "E05",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E10",
+      "stage": "classifier",
+      "seconds": 5.86,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1050,
+      "output_tokens": 170,
+      "reasoning_tokens": 58,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "matched_domains": 2,
+      "proposed_domains": 0,
+      "domain_keys": [
+        "known:technical_knowledge",
+        "known:work_context"
+      ],
+      "valid_result": true
+    },
+    {
+      "episode": "E10",
+      "stage": "ontology",
+      "seconds": 7.35,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 833,
+      "output_tokens": 212,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E10",
+      "stage": "extractor",
+      "seconds": 27.83,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1477,
+      "output_tokens": 1027,
+      "reasoning_tokens": 0,
+      "entities": 7,
+      "relations": 7,
+      "status": "ok"
+    },
+    {
+      "episode": "E10",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E18",
+      "stage": "classifier",
+      "seconds": 9.54,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1087,
+      "output_tokens": 282,
+      "reasoning_tokens": 168,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "matched_domains": 2,
+      "proposed_domains": 0,
+      "domain_keys": [
+        "known:technical_knowledge",
+        "known:work_context"
+      ],
+      "valid_result": true
+    },
+    {
+      "episode": "E18",
+      "stage": "ontology",
+      "seconds": 7.34,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 870,
+      "output_tokens": 218,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E18",
+      "stage": "extractor",
+      "seconds": 17.18,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1522,
+      "output_tokens": 618,
+      "reasoning_tokens": 0,
+      "entities": 5,
+      "relations": 5,
+      "status": "ok"
+    },
+    {
+      "episode": "E18",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E20",
+      "stage": "classifier",
+      "seconds": 8.64,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1105,
+      "output_tokens": 257,
+      "reasoning_tokens": 141,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "matched_domains": 2,
+      "proposed_domains": 0,
+      "domain_keys": [
+        "known:technical_knowledge",
+        "known:work_context"
+      ],
+      "valid_result": true
+    },
+    {
+      "episode": "E20",
+      "stage": "ontology",
+      "seconds": 7.09,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 888,
+      "output_tokens": 214,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E20",
+      "stage": "extractor",
+      "seconds": 22.7,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1545,
+      "output_tokens": 818,
+      "reasoning_tokens": 0,
+      "entities": 5,
+      "relations": 3,
+      "status": "ok"
+    },
+    {
+      "episode": "E20",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E26",
+      "stage": "classifier",
+      "seconds": 9.18,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1099,
+      "output_tokens": 283,
+      "reasoning_tokens": 169,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "matched_domains": 2,
+      "proposed_domains": 0,
+      "domain_keys": [
+        "known:technical_knowledge",
+        "known:work_context"
+      ],
+      "valid_result": true
+    },
+    {
+      "episode": "E26",
+      "stage": "ontology",
+      "seconds": 7.39,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 882,
+      "output_tokens": 222,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E26",
+      "stage": "extractor",
+      "seconds": 25.24,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1548,
+      "output_tokens": 915,
+      "reasoning_tokens": 0,
+      "entities": 5,
+      "relations": 5,
+      "status": "ok"
+    },
+    {
+      "episode": "E26",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E27",
+      "stage": "classifier",
+      "seconds": 4.18,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1053,
+      "output_tokens": 122,
+      "reasoning_tokens": 42,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "matched_domains": 1,
+      "proposed_domains": 0,
+      "domain_keys": [
+        "known:work_context"
+      ],
+      "valid_result": true
+    },
+    {
+      "episode": "E27",
+      "stage": "ontology",
+      "seconds": 25.15,
+      "requests": 2,
+      "tool_calls": 0,
+      "input_tokens": 2939,
+      "output_tokens": 785,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E27",
+      "stage": "extractor",
+      "seconds": 24.44,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1472,
+      "output_tokens": 906,
+      "reasoning_tokens": 0,
+      "entities": 8,
+      "relations": 6,
+      "status": "ok"
+    },
+    {
+      "episode": "E27",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    }
+  ]
+}

@@ -35,13 +35,24 @@ E2E_STATUS_PATH=""
 E2E_MANIFEST_PATH=""
 RECALL_EVIDENCE_PATH=""
 ACTIVE_E2E_PID=""
+ACTIVE_WORKLOAD_PID=""
+NEXT_WORKLOAD_RECEIPT=""
+OWNED_SERVICE_GROUP_RECEIPT=""
+OWNED_SERVICE_RECEIPT=""
+TERMINATION_LATCHED=0
+REPORT_ONLY_CONTINUATION=0
+CHILD_LAUNCH_BLOCKED=0
+POLL_FAILURE_REASON="job_poll_failed"
 TUNED_ARM="qwen-flash-next-compact-tuned"
 PLAN34_DIR="$ROOT/docs/plans/34-qwen-thinking-benchmark"
 PLAN33_DIR="$ROOT/docs/plans/33-local-qwen-migration"
 PLAN33_RESOURCES="$PLAN33_DIR/resources"
 PROVENANCE_PATH="$PLAN34_DIR/validation/provenance.json"
+SUPERVISOR_PATH="$PLAN34_DIR/validation/stage7_arm_supervisor.py"
+PARTIAL_EVIDENCE_PATH="$PLAN34_DIR/validation/stage7_partial_evidence.py"
 SKIP_EVENTS_PATH=""
 GRAPH_SAMPLE_PATH=""
+JOB_SUMMARY_PATH=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --arm) ARM="$2"; shift 2 ;;
@@ -279,7 +290,29 @@ redact_endpoint() {
   fi
 }
 
-run() { printf '+ '; printf '%q ' "$@"; printf '\n'; (( DRY_RUN )) || "$@"; }
+UV_EXECUTABLE="$(command -v uv)"
+run_owned_workload() {
+  local status
+  local -a supervisor_args=(python3 "$SUPERVISOR_PATH" --owned-workload)
+  if [[ -n "$NEXT_WORKLOAD_RECEIPT" ]]; then
+    supervisor_args+=(--owned-receipt "$NEXT_WORKLOAD_RECEIPT")
+  fi
+  NEXT_WORKLOAD_RECEIPT=""
+  "${supervisor_args[@]}" -- "$@" <&0 &
+  ACTIVE_WORKLOAD_PID=$!
+  if wait "$ACTIVE_WORKLOAD_PID"; then
+    status=0
+  else
+    status=$?
+  fi
+  ACTIVE_WORKLOAD_PID=""
+  return "$status"
+}
+uv() { run_owned_workload "$UV_EXECUTABLE" "$@"; }
+run() {
+  printf '+ '; printf '%q ' "$@"; printf '\n'
+  (( DRY_RUN )) || run_owned_workload "$@"
+}
 run_shell() { printf '+ %s\n' "$1"; (( DRY_RUN )) || bash -c "$1"; }
 is_tuned_arm() { [[ "$ARM" == "$TUNED_ARM" ]]; }
 provenance_event() {
@@ -337,7 +370,13 @@ PY
 run_external_write() {
   local action="$1" target="$2" status
   shift 2
-  provenance_event planned "$action" "$target"
+  if provenance_event planned "$action" "$target"; then
+    :
+  else
+    status=$?
+    provenance_event failed "$action" "$target" "$status" || true
+    return "$status"
+  fi
   if run "$@"; then
     provenance_event completed "$action" "$target" 0
     return 0
@@ -347,6 +386,74 @@ run_external_write() {
     return "$status"
   fi
 }
+write_unavailable_artifact() {
+  local path="$1" kind="$2" reason="$3"
+  shift 3
+  python3 "$PARTIAL_EVIDENCE_PATH" write-unavailable \
+    --path "$path" --kind "$kind" --run-id "$RUN_ID" --arm "$ARM" --reason "$reason" "$@"
+}
+artifact_fingerprint() {
+  local path="$1"
+  if [[ -f "$path" && ! -L "$path" ]]; then
+    printf '%s:%s:%s\n' "$(stat -f '%i:%m:%z' "$path")" "$(sha256_file "$path")" measured
+  else
+    printf 'absent\n'
+  fi
+}
+validate_unavailable_artifact() {
+  local path="$1" kind="$2"
+  python3 "$PARTIAL_EVIDENCE_PATH" validate-unavailable \
+    --path "$path" --kind "$kind" --run-id "$RUN_ID" --arm "$ARM"
+}
+run_evidence_write() {
+  local action="$1" target="$2" output_path="$3" kind="$4" status
+  shift 4
+  local before_fingerprint after_fingerprint
+  before_fingerprint="$(artifact_fingerprint "$output_path")"
+  if run_external_write "$action" "$target" "$@"; then
+    return 0
+  else
+    status=$?
+  fi
+  (( REPORT_ONLY_CONTINUATION != 0 )) || return "$status"
+  PRIVATE_DIAGNOSTICS_RETAIN=1
+  after_fingerprint="$(artifact_fingerprint "$output_path")"
+  if [[ "$after_fingerprint" != "$before_fingerprint" ]] \
+    && validate_unavailable_artifact "$output_path" "$kind"; then
+    printf 'evidence producer emitted validated NOT_MEASURED action=%s exit_code=%s\n' "$action" "$status"
+    return 0
+  fi
+  echo "model bake-off: evidence producer failed without valid current-run NOT_MEASURED output action=$action status=$status" >&2
+  local stop_status=0
+  if stop_owned_benchmark_services; then
+    :
+  else
+    stop_status=$?
+    echo "model bake-off: unsafe evidence finalization skipped because owned services are not proven stopped status=$stop_status" >&2
+    return "$stop_status"
+  fi
+  local evidence_status=0
+  if [[ ! -e "$output_path" && ! -L "$output_path" ]]; then
+    provenance_event planned write_not_measured_evidence "${output_path##*/}" || true
+    if write_unavailable_artifact "$output_path" "$kind" "${action}_exit_${status}" \
+      --source "$JOB_SUMMARY_PATH" --job-summary-path "$JOB_SUMMARY_PATH"; then
+      provenance_event completed write_not_measured_evidence "${output_path##*/}" 0 || true
+    else
+      evidence_status=$?
+      echo "model bake-off: NOT_MEASURED evidence writer failed status=$evidence_status" >&2
+      provenance_event failed write_not_measured_evidence "${output_path##*/}" "$evidence_status" || true
+    fi
+  fi
+  local finalizer_status=0
+  if finalize_partial_evidence "${action}_exit_${status}"; then
+    :
+  else
+    finalizer_status=$?
+    (( evidence_status != 0 )) || evidence_status="$finalizer_status"
+  fi
+  (( evidence_status == 0 )) || return "$evidence_status"
+  return "$status"
+}
 ensure_tuned_outputs_absent() {
   is_tuned_arm || return 0
   local path
@@ -355,6 +462,7 @@ ensure_tuned_outputs_absent() {
     "$RECALL_EVIDENCE_PATH" \
     "$SKIP_EVENTS_PATH" \
     "$GRAPH_SAMPLE_PATH" \
+    "$JOB_SUMMARY_PATH" \
     "$PLAN33_RESOURCES/qwen-parsing-inputs-${ARM}-${RUN_ID}.json" \
     "$PLAN33_RESOURCES/qwen-parsing-report-${ARM}-${RUN_ID}.json" \
     "$PLAN33_RESOURCES/qwen-parsing-report-${ARM}-${RUN_ID}.md"; do
@@ -368,10 +476,22 @@ poll_jobs() {
     state=$(curl --fail --silent http://127.0.0.1:8001/admin/jobs/summary -H @- \
       <<<"Authorization: Bearer ${NEOCORTEX_ADMIN_TOKEN}")
     if ! counts=$(printf '%s' "$state" | uv run python -c \
-      'import json,sys; x=json.load(sys.stdin); keys=("todo","doing","succeeded","failed","cancelled","total"); assert isinstance(x,dict) and all(type(x.get(k)) is int and x[k] >= 0 for k in keys) and x["total"] > 0 and sum(x[k] for k in keys[:-1]) == x["total"]; failure_rate_ok=(x["failed"] + x["cancelled"]) / x["total"] <= 0.10; print(" ".join(f"{k}={x[k]}" for k in keys) + f" failure_rate_ok={failure_rate_ok}")' \
+      'import json,sys; x=json.load(sys.stdin); keys=("todo","doing","succeeded","failed","cancelled","total"); assert isinstance(x,dict) and set(x) == set(keys) and all(type(x.get(k)) is int and x[k] >= 0 for k in keys) and x["total"] > 0 and sum(x[k] for k in keys[:-1]) == x["total"]; failure_rate_ok=(x["failed"] + x["cancelled"]) / x["total"] <= 0.10; print(" ".join(f"{k}={x[k]}" for k in keys) + f" failure_rate_ok={failure_rate_ok}")' \
       2>/dev/null); then
-      echo 'job summary malformed or exceeds failure-rate gate; metrics NOT_MEASURED' >&2
+      POLL_FAILURE_REASON="job_poll_malformed"
+      echo 'job summary malformed; metrics NOT_MEASURED' >&2
       return 2
+    fi
+    provenance_event planned persist_job_summary "${JOB_SUMMARY_PATH##*/}"
+    if python3 "$PARTIAL_EVIDENCE_PATH" record-summary \
+      --path "$JOB_SUMMARY_PATH" --run-id "$RUN_ID" --arm "$ARM" --summary "$state" >/dev/null; then
+      provenance_event completed persist_job_summary "${JOB_SUMMARY_PATH##*/}" 0
+    else
+      local summary_status=$?
+      provenance_event failed persist_job_summary "${JOB_SUMMARY_PATH##*/}" "$summary_status" || true
+      POLL_FAILURE_REASON="job_summary_persistence_failed"
+      echo 'job summary could not be persisted; stopping before later work' >&2
+      return "$summary_status"
     fi
     todo="${counts#*todo=}"
     todo="${todo%% *}"
@@ -381,17 +501,23 @@ poll_jobs() {
     failure_rate_ok="${failure_rate_ok%% *}"
     printf 'jobs status %s\n' "$counts"
     if [[ "$todo" == 0 && "$doing" == 0 ]]; then
-      [[ "$failure_rate_ok" == True ]] || {
+      if [[ "$failure_rate_ok" != True ]]; then
+        if is_tuned_arm; then
+          REPORT_ONLY_CONTINUATION=1
+          printf 'job summary stability status=FAIL; tuned REPORT continuation enabled\n'
+          return 0
+        fi
         echo 'job summary exceeds failure-rate gate; metrics NOT_MEASURED' >&2
         return 2
-      }
+      fi
       return 0
     fi
     if (( $(date +%s) >= deadline )); then
+      POLL_FAILURE_REASON="job_poll_timeout"
       echo 'job poll timed out; metrics NOT_MEASURED' >&2
       return 1
     fi
-    sleep 5
+    run sleep 5
   done
 }
 result_matches_child() {
@@ -416,19 +542,26 @@ run_e2e_with_test_tokens() {
   (( DRY_RUN )) && return 0
   secure_create_file "$stdout_path" stdout_fd
   secure_create_file "$stderr_path" stderr_fd
-  provenance_event planned e2e_child_reset "$child_run_id"
-  (
-    # The corpus arm uses the role-based admin map.  E2E scripts intentionally
-    # exercise Alice/Bob/Eve isolation and therefore require their test map.
-    export NEOCORTEX_DEV_TOKENS_FILE="$ROOT/dev_tokens_test.json"
-    export KEEP_POSTGRES_RUNNING=1
-    export NEOCORTEX_E2E_RUN_ID="$child_run_id"
-    export NEOCORTEX_E2E_RESULT_PATH="$result_path"
-    unset NEOCORTEX_ADMIN_TOKEN NEOCORTEX_MCP_TOKEN NEOCORTEX_RECALL_TOKEN
-    unset NEOCORTEX_TOKEN NEOCORTEX_DEV_TOKEN
-    unset NEOCORTEX_ALICE_TOKEN NEOCORTEX_BOB_TOKEN NEOCORTEX_EVE_TOKEN
-    exec "$ROOT/scripts/run_e2e.sh" "$ROOT/scripts/$test_script"
-  ) >&"$stdout_fd" 2>&"$stderr_fd" &
+  if provenance_event planned e2e_child_reset "$child_run_id"; then
+    :
+  else
+    status=$?
+    CHILD_LAUNCH_BLOCKED=1
+    provenance_event failed e2e_child_reset "$child_run_id" "$status" || true
+    exec {stdout_fd}>&-
+    exec {stderr_fd}>&-
+    return "$status"
+  fi
+  python3 "$SUPERVISOR_PATH" --owned-workload -- env \
+    -u NEOCORTEX_ADMIN_TOKEN -u NEOCORTEX_MCP_TOKEN -u NEOCORTEX_RECALL_TOKEN \
+    -u NEOCORTEX_TOKEN -u NEOCORTEX_DEV_TOKEN \
+    -u NEOCORTEX_ALICE_TOKEN -u NEOCORTEX_BOB_TOKEN -u NEOCORTEX_EVE_TOKEN \
+    NEOCORTEX_DEV_TOKENS_FILE="$ROOT/dev_tokens_test.json" \
+    KEEP_POSTGRES_RUNNING=1 \
+    NEOCORTEX_E2E_RUN_ID="$child_run_id" \
+    NEOCORTEX_E2E_RESULT_PATH="$result_path" \
+    "$ROOT/scripts/run_e2e.sh" "$ROOT/scripts/$test_script" \
+    >&"$stdout_fd" 2>&"$stderr_fd" &
   ACTIVE_E2E_PID=$!
   if wait "$ACTIVE_E2E_PID"; then
     status=0
@@ -530,6 +663,13 @@ cleanup_e2e_workdir() {
 }
 restore_preserved_snapshot() {
   local exit_code=$?
+  # Restoration is mandatory recovery, not benchmark workload.  The outer
+  # supervisor signals only this control shell, and recovery ignores later
+  # control signals until the preserved snapshot is loaded.
+  trap '' INT TERM
+  if [[ -n "${NEOCORTEX_BAKEOFF_RECOVERY_MARKER:-}" ]]; then
+    : >"$NEOCORTEX_BAKEOFF_RECOVERY_MARKER"
+  fi
   if (( PRIVATE_DIAGNOSTICS_RETAIN != 0 )); then
     if ! publish_diagnostics_index; then
       echo "model bake-off: failed to finalize retained diagnostics index" >&2
@@ -563,14 +703,120 @@ restore_preserved_snapshot() {
   exit "$exit_code"
 }
 trap restore_preserved_snapshot EXIT
+finalize_partial_evidence() {
+  local reason="$1" status=0
+  is_tuned_arm || return 0
+  local report_json="$PLAN33_RESOURCES/qwen-parsing-report-${ARM}-${RUN_ID}.json"
+  local report_md="$PLAN33_RESOURCES/qwen-parsing-report-${ARM}-${RUN_ID}.md"
+  local metrics="$PLAN33_RESOURCES/metrics-${ARM}.json"
+  local -a command=(
+    python3 "$PARTIAL_EVIDENCE_PATH" finalize
+    --run-id "$RUN_ID" --arm "$ARM" --reason "$reason"
+    --job-summary-path "$JOB_SUMMARY_PATH"
+    --metrics-path "$metrics" --recall-path "$RECALL_EVIDENCE_PATH"
+    --manifest-path "$E2E_MANIFEST_PATH" --skip-events-path "$SKIP_EVENTS_PATH"
+    --sample-path "$GRAPH_SAMPLE_PATH" --report-json-path "$report_json"
+    --report-md-path "$report_md"
+  )
+  [[ -n "$E2E_STATUS_PATH" ]] && command+=(--statuses-path "$E2E_STATUS_PATH")
+  provenance_event planned finalize_partial_evidence "$reason" || true
+  if "${command[@]}"; then
+    provenance_event completed finalize_partial_evidence "$reason" 0 || true
+  else
+    status=$?
+    echo "model bake-off: partial evidence finalizer failed status=$status" >&2
+    provenance_event failed finalize_partial_evidence "$reason" "$status" || true
+    return "$status"
+  fi
+}
+stop_owned_benchmark_services() {
+  [[ -n "$OWNED_SERVICE_RECEIPT" ]] || return 0
+  local pgid status
+  if pgid=$(python3 "$SUPERVISOR_PATH" --verify-services --service-receipt "$OWNED_SERVICE_RECEIPT"); then
+    :
+  else
+    status=$?
+    echo "model bake-off: owned service identity verification failed status=$status" >&2
+    return "$status"
+  fi
+  provenance_event planned stop_owned_service_group "$RUN_ID" || true
+  if kill -TERM -- "-$pgid" 2>/dev/null; then
+    :
+  else
+    status=$?
+    echo "model bake-off: owned service group termination failed status=$status" >&2
+    provenance_event failed stop_owned_service_group "$RUN_ID" "$status" || true
+    return "$status"
+  fi
+  local remaining=300
+  while kill -0 -- "-$pgid" 2>/dev/null && (( remaining > 0 )); do
+    sleep 0.1
+    remaining=$((remaining - 1))
+  done
+  if kill -0 -- "-$pgid" 2>/dev/null; then
+    echo "model bake-off: owned service group did not stop" >&2
+    provenance_event failed stop_owned_service_group "$RUN_ID" 1 || true
+    return 1
+  fi
+  provenance_event completed stop_owned_service_group "$RUN_ID" 0 || true
+  OWNED_SERVICE_RECEIPT=""
+}
+stop_owned_control_process() {
+  local variable_name="$1" label="$2" pid="${!1}" status=0
+  [[ -n "$pid" ]] || return 0
+  if kill -TERM "$pid" 2>/dev/null; then
+    :
+  else
+    status=$?
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "model bake-off: owned $label termination failed status=$status" >&2
+      return "$status"
+    fi
+  fi
+  wait "$pid" 2>/dev/null || true
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "model bake-off: owned $label did not stop" >&2
+    return 1
+  fi
+  printf -v "$variable_name" ''
+}
 interrupt_bakeoff() {
   local exit_code="$1" signal_name="$2"
-  trap - INT TERM
+  local had_active_e2e=0 shutdown_status=0 current_status=0
+  (( TERMINATION_LATCHED == 0 )) || return 0
+  TERMINATION_LATCHED=1
+  trap '' INT TERM
   PRIVATE_DIAGNOSTICS_RETAIN=1
   provenance_event failed workload_deadline "$signal_name" "$exit_code" || true
+  if [[ -n "$ACTIVE_WORKLOAD_PID" ]]; then
+    if stop_owned_control_process ACTIVE_WORKLOAD_PID workload; then
+      :
+    else
+      shutdown_status=$?
+    fi
+  fi
   if [[ -n "$ACTIVE_E2E_PID" ]]; then
-    wait "$ACTIVE_E2E_PID" 2>/dev/null || true
-    ACTIVE_E2E_PID=""
+    had_active_e2e=1
+    if stop_owned_control_process ACTIVE_E2E_PID e2e; then
+      :
+    else
+      current_status=$?
+      (( shutdown_status != 0 )) || shutdown_status="$current_status"
+    fi
+  fi
+  if (( had_active_e2e == 0 )); then
+    if stop_owned_benchmark_services; then
+      :
+    else
+      current_status=$?
+      (( shutdown_status != 0 )) || shutdown_status="$current_status"
+    fi
+  fi
+  if (( shutdown_status != 0 )); then
+    echo "model bake-off: unsafe partial finalization skipped because owned processes are not proven stopped status=$shutdown_status" >&2
+  fi
+  if (( shutdown_status == 0 )); then
+    finalize_partial_evidence "workload_${signal_name,,}" || true
   fi
   if [[ -n "$PRIVATE_RUN_DIR" ]]; then
     printf 'private_diagnostics_path=%s\n' "$PRIVATE_RUN_DIR"
@@ -584,6 +830,7 @@ E2E_MANIFEST_PATH="$PLAN33_RESOURCES/e2e-manifest-${ARM}-${RUN_ID}.json"
 RECALL_EVIDENCE_PATH="$PLAN33_RESOURCES/recall-results-${ARM}-${RUN_ID}.json"
 SKIP_EVENTS_PATH="$PLAN33_RESOURCES/skip-events-${ARM}-${RUN_ID}.json"
 GRAPH_SAMPLE_PATH="$PLAN33_RESOURCES/quality-sample-${ARM}-${RUN_ID}.json"
+JOB_SUMMARY_PATH="$PLAN33_RESOURCES/job-summary-${ARM}-${RUN_ID}.json"
 
 if (( DRY_RUN )); then
   print_configuration
@@ -621,6 +868,8 @@ else
   DIAGNOSTIC_ROWS_PATH="$PRIVATE_RUN_DIR/.diagnostics.tsv"
   secure_create_file "$DIAGNOSTIC_ROWS_PATH" DIAGNOSTIC_ROWS_FD
   E2E_STATUS_PATH="$E2E_WORKDIR/status.tsv"
+  OWNED_SERVICE_GROUP_RECEIPT="$PRIVATE_RUN_DIR/service-group.json"
+  OWNED_SERVICE_RECEIPT="$PRIVATE_RUN_DIR/services.json"
   export NEOCORTEX_SNAPSHOT_PATH_FILE="$E2E_WORKDIR/snapshot-path"
   if is_tuned_arm; then
     provenance_event planned quarantine_previous_metrics "metrics-${ARM}.json"
@@ -670,7 +919,16 @@ if (( ! DRY_RUN )); then
   provenance_event completed preserved_snapshot_identity "${PRE_SNAPSHOT_FILE##*/}" 0
 fi
 
+if (( ! DRY_RUN )); then
+  NEXT_WORKLOAD_RECEIPT="$OWNED_SERVICE_GROUP_RECEIPT"
+fi
 run_external_write reset_local_graph "$RUN_ID" "$ROOT/scripts/manage.sh" start --fresh
+if (( ! DRY_RUN )); then
+  python3 "$SUPERVISOR_PATH" --capture-services \
+    --group-receipt "$OWNED_SERVICE_GROUP_RECEIPT" --service-receipt "$OWNED_SERVICE_RECEIPT" \
+    --pid-file "$ROOT/.mcp.pid" --pid-file "$ROOT/.ingestion.pid" \
+    || die "benchmark service process group could not be captured safely"
+fi
 if (( ! DRY_RUN )); then
   run uv run python -c 'import asyncio, os; from scripts.e2e_common import wait_for_ready; asyncio.run(wait_for_ready(os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001"), os.environ.get("NEOCORTEX_ADMIN_TOKEN")))'
   uv run python -c 'import asyncio, os; from neocortex.embedding_service import EmbeddingService; from neocortex.mcp_settings import MCPSettings; assert os.environ.get("GOOGLE_API_KEY"), "GOOGLE_API_KEY is required; embedding health NOT MEASURED"; v=asyncio.run(EmbeddingService(model=MCPSettings().embedding_model).embed("bakeoff probe")); assert v is not None and len(v)==768, "EMBEDDINGS DEAD"; print("embeddings OK")'
@@ -680,7 +938,20 @@ if (( ! DRY_RUN )); then
   run uv run python "$ROOT/scripts/auth_self_check.py"
 fi
 run_external_write load_corpus "$CORPUS_PROFILE" uv run python "$ROOT/scripts/corpus_loader.py" --corpus-profile "$CORPUS_PROFILE"
-run poll_jobs
+if (( DRY_RUN )); then
+  printf '+ poll_jobs\n'
+elif poll_jobs; then
+  :
+else
+  poll_status=$?
+  if stop_owned_benchmark_services; then
+    finalize_partial_evidence "$POLL_FAILURE_REASON" || true
+  else
+    stop_status=$?
+    echo "model bake-off: unsafe poll-failure finalization skipped because owned services are not proven stopped status=$stop_status" >&2
+  fi
+  exit "$poll_status"
+fi
 POST_SNAPSHOT_NAME="${ARM}-${RUN_ID}"
 run_external_write save_measured_snapshot "$POST_SNAPSHOT_NAME" "$ROOT/scripts/manage.sh" snapshot save "$POST_SNAPSHOT_NAME"
 if (( DRY_RUN )); then
@@ -690,11 +961,17 @@ else
   POST_SNAPSHOT_SHA256="$(sha256_file "$POST_SNAPSHOT")"
   provenance_event completed measured_snapshot_identity "${POST_SNAPSHOT##*/}" 0
 fi
-run_external_write write_corpus_metrics "metrics-${ARM}.json" uv run python "$ROOT/scripts/compute_metrics.py" --corpus-profile "$CORPUS_PROFILE" --arm "$ARM" --phase corpus --snapshot-path "$POST_SNAPSHOT" --snapshot-sha256 "$POST_SNAPSHOT_SHA256" --run-id "$RUN_ID"
+run_evidence_write write_corpus_metrics "metrics-${ARM}.json" \
+  "$PLAN33_RESOURCES/metrics-${ARM}.json" metrics \
+  uv run python "$ROOT/scripts/compute_metrics.py" --corpus-profile "$CORPUS_PROFILE" --arm "$ARM" --phase corpus --snapshot-path "$POST_SNAPSHOT" --snapshot-sha256 "$POST_SNAPSHOT_SHA256" --run-id "$RUN_ID"
 if is_tuned_arm; then
-  run_external_write export_skip_events "${SKIP_EVENTS_PATH##*/}" uv run python "$ROOT/scripts/export_skip_events.py" --run-id "$RUN_ID" --arm "$ARM" --output "$SKIP_EVENTS_PATH"
-  run_external_write export_graph_sample "${GRAPH_SAMPLE_PATH##*/}" uv run python "$ROOT/scripts/export_graph_sample.py" --run-id "$RUN_ID" --arm "$ARM" --check-temporal "$SKIP_EVENTS_PATH" --sample 20 --output "$GRAPH_SAMPLE_PATH"
-  run_external_write merge_consistency_metrics "metrics-${ARM}.json" uv run python "$ROOT/scripts/compute_metrics.py" --corpus-profile "$CORPUS_PROFILE" --arm "$ARM" --phase e2e --run-id "$RUN_ID" --skip-events "$SKIP_EVENTS_PATH" --merge
+  run_evidence_write export_skip_events "${SKIP_EVENTS_PATH##*/}" "$SKIP_EVENTS_PATH" skip_events \
+    uv run python "$ROOT/scripts/export_skip_events.py" --run-id "$RUN_ID" --arm "$ARM" --output "$SKIP_EVENTS_PATH"
+  run_evidence_write export_graph_sample "${GRAPH_SAMPLE_PATH##*/}" "$GRAPH_SAMPLE_PATH" quality_sample \
+    uv run python "$ROOT/scripts/export_graph_sample.py" --run-id "$RUN_ID" --arm "$ARM" --check-temporal "$SKIP_EVENTS_PATH" --sample 20 --output "$GRAPH_SAMPLE_PATH"
+  run_evidence_write merge_consistency_metrics "metrics-${ARM}.json" \
+    "$PLAN33_RESOURCES/metrics-${ARM}.json" metrics \
+    uv run python "$ROOT/scripts/compute_metrics.py" --corpus-profile "$CORPUS_PROFILE" --arm "$ARM" --phase e2e --run-id "$RUN_ID" --skip-events "$SKIP_EVENTS_PATH" --merge
 fi
 if (( DRY_RUN )); then
   run_external_write write_recall_evidence "${RECALL_EVIDENCE_PATH##*/}" uv run python "$ROOT/scripts/recall_scorer.py" --corpus-profile "$CORPUS_PROFILE" --output "$RECALL_EVIDENCE_PATH"
@@ -718,7 +995,7 @@ recall_stderr_fd=""
 secure_create_file "$recall_stdout" recall_stdout_fd
 secure_create_file "$recall_stderr" recall_stderr_fd
 provenance_event planned write_recall_evidence "${RECALL_EVIDENCE_PATH##*/}"
-if uv run python "$ROOT/scripts/recall_scorer.py" --corpus-profile "$CORPUS_PROFILE" --output "$RECALL_EVIDENCE_PATH" \
+if run_owned_workload uv run python "$ROOT/scripts/recall_scorer.py" --corpus-profile "$CORPUS_PROFILE" --output "$RECALL_EVIDENCE_PATH" \
   >&"$recall_stdout_fd" 2>&"$recall_stderr_fd"; then
   RECALL_STATUS=0
   provenance_event completed write_recall_evidence "${RECALL_EVIDENCE_PATH##*/}" 0
@@ -751,21 +1028,29 @@ for test in e2e_extraction_pipeline_test.py e2e_plan15_scenarios_test.py e2e_pla
     :
   else
     e2e_status=$?
+    if (( CHILD_LAUNCH_BLOCKED != 0 )); then
+      exit "$e2e_status"
+    fi
     if (( E2E_FAILURE_STATUS == 0 )); then
       E2E_FAILURE_STATUS="$e2e_status"
     fi
     printf 'e2e failure recorded index=%s exit_code=%s\n' "$index" "$e2e_status"
   fi
 done
-run_external_write build_e2e_manifest "${E2E_MANIFEST_PATH##*/}" uv run python "$ROOT/scripts/e2e_manifest.py" build \
+run_evidence_write build_e2e_manifest "${E2E_MANIFEST_PATH##*/}" "$E2E_MANIFEST_PATH" e2e_manifest \
+  uv run python "$ROOT/scripts/e2e_manifest.py" build \
   --arm "$ARM" --run-id "$RUN_ID" \
   --metrics-path "$ROOT/docs/plans/33-local-qwen-migration/resources/metrics-${ARM}.json" \
   --snapshot-path "$POST_SNAPSHOT" --snapshot-sha256 "$POST_SNAPSHOT_SHA256" \
   --recall-path "$RECALL_EVIDENCE_PATH" --statuses-path "$E2E_STATUS_PATH" --output-path "$E2E_MANIFEST_PATH"
-run uv run python "$ROOT/scripts/e2e_manifest.py" validate \
-  --manifest-path "$E2E_MANIFEST_PATH" --run-id "$RUN_ID"
+if (( REPORT_ONLY_CONTINUATION == 0 )); then
+  run uv run python "$ROOT/scripts/e2e_manifest.py" validate \
+    --manifest-path "$E2E_MANIFEST_PATH" --run-id "$RUN_ID"
+fi
 if is_tuned_arm; then
-  run_external_write generate_tuned_report "qwen-parsing-report-${ARM}-${RUN_ID}" uv run python "$ROOT/scripts/generate_qwen_parsing_report.py" generate \
+  run_evidence_write generate_tuned_report "qwen-parsing-report-${ARM}-${RUN_ID}" \
+    "$PLAN33_RESOURCES/qwen-parsing-report-${ARM}-${RUN_ID}.json" report \
+    uv run python "$ROOT/scripts/generate_qwen_parsing_report.py" generate \
     --plan-dir "$PLAN33_DIR" --output-dir "$PLAN33_RESOURCES" --run-id "$RUN_ID" --arm "$ARM"
 fi
 publish_diagnostics_index

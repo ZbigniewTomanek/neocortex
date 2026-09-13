@@ -1,0 +1,15 @@
+{
+  "arm": "qwen-flash-next-compact-tuned",
+  "artifact_kind": "skip_events",
+  "available_sources": {
+    "e2e_manifest": "docs/plans/34-qwen-thinking-benchmark/validation/stage7-fix1-evidence-attempt2/manifest.json",
+    "job_summary": "docs/plans/34-qwen-thinking-benchmark/validation/stage7-fix1-evidence-attempt2/job-summary.json",
+    "metrics": "docs/plans/34-qwen-thinking-benchmark/validation/stage7-fix1-evidence-attempt2/metrics.json",
+    "recall": "docs/plans/34-qwen-thinking-benchmark/validation/stage7-fix1-evidence-attempt2/recall.json"
+  },
+  "kind": "neocortex-stage7-partial-evidence",
+  "reason": "fake_active_jobs_timeout",
+  "run_id": "stage7-fix1-fake-attempt2",
+  "schema_version": 1,
+  "status": "NOT_MEASURED"
+}

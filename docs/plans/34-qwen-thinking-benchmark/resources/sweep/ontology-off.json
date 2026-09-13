@@ -1,0 +1,608 @@
+{
+  "run": {
+    "model": "local:qwen3.8-flash-next",
+    "thinking": "off",
+    "thinking_ontology": "off",
+    "thinking_extractor": "off",
+    "thinking_librarian": "off",
+    "thinking_classifier": "off",
+    "cache_thinking": "off",
+    "corpus_sha256": "2394bcacfc4fcff6d8ee1f280f8642f8eaf864797cfcd4b333d57b4b9da296d3",
+    "corpus": "compact",
+    "episodes": [
+      "E04",
+      "E05"
+    ],
+    "units": [
+      "E02",
+      "E04",
+      "E05",
+      "E10",
+      "E18",
+      "E20",
+      "E26",
+      "E27"
+    ],
+    "fixture": "/Users/zbigniewtomanek/work/neocortex/docs/plans/34-qwen-thinking-benchmark/resources/fact-fixture.json",
+    "repo_mode": "fresh",
+    "stage": "all",
+    "profile": null,
+    "episode_timeout_s": 600.0,
+    "per_call_timeout_s": 300.0,
+    "max_wall_seconds": 3600.0,
+    "wall_budget_exhausted": false,
+    "chain": {
+      "status": "NOT MEASURED",
+      "reason": "repo_mode=fresh"
+    },
+    "embeddings": "none",
+    "started_at": "2026-09-13T15:27:38.183913+00:00",
+    "git_head": "b0d619500982607c12ad19441f88acc78c784008",
+    "pydantic_ai_version": "1.72.0",
+    "wall_seconds": 276.88
+  },
+  "episodes": [
+    {
+      "episode": "E02",
+      "words": 76,
+      "seconds_total": 34.26,
+      "requests_total": 2,
+      "nodes_after": 7,
+      "edges_after": 3,
+      "edge_types_after": {
+        "EVALUATED_BY": 3
+      },
+      "fact_score": {
+        "facts_total": 8,
+        "facts_found": 4,
+        "missing_keys": [
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E04",
+      "words": 69,
+      "seconds_total": 41.11,
+      "requests_total": 2,
+      "nodes_after": 9,
+      "edges_after": 13,
+      "edge_types_after": {
+        "PRODUCES_TABLE": 7,
+        "USES_PARTITIONING": 6
+      },
+      "fact_score": {
+        "facts_total": 9,
+        "facts_found": 9,
+        "missing_keys": []
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E05",
+      "words": 103,
+      "seconds_total": 41.6,
+      "requests_total": 3,
+      "nodes_after": 12,
+      "edges_after": 13,
+      "edge_types_after": {
+        "HAS_PROPERTY": 9,
+        "REFERENCES": 2,
+        "TARGETS": 2
+      },
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 6,
+        "missing_keys": []
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E10",
+      "words": 85,
+      "seconds_total": 33.18,
+      "requests_total": 2,
+      "nodes_after": 8,
+      "edges_after": 7,
+      "edge_types_after": {
+        "AFFECTS": 4,
+        "REMEDIATED_BY": 3
+      },
+      "fact_score": {
+        "facts_total": 5,
+        "facts_found": 5,
+        "missing_keys": []
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E18",
+      "words": 104,
+      "seconds_total": 24.5,
+      "requests_total": 2,
+      "nodes_after": 6,
+      "edges_after": 5,
+      "edge_types_after": {
+        "MEASURED_BY": 4,
+        "EVALUATED_AS_REPLACEMENT_FOR": 1
+      },
+      "fact_score": {
+        "facts_total": 7,
+        "facts_found": 6,
+        "missing_keys": [
+          4
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E20",
+      "words": 95,
+      "seconds_total": 32.77,
+      "requests_total": 2,
+      "nodes_after": 5,
+      "edges_after": 3,
+      "edge_types_after": {
+        "USES_ALGORITHM": 2,
+        "REPLACED_BY": 1
+      },
+      "fact_score": {
+        "facts_total": 9,
+        "facts_found": 6,
+        "missing_keys": [
+          2,
+          7,
+          8
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E26",
+      "words": 108,
+      "seconds_total": 39.42,
+      "requests_total": 2,
+      "nodes_after": 5,
+      "edges_after": 4,
+      "edge_types_after": {
+        "USES_ALGORITHM": 4
+      },
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 1,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    },
+    {
+      "episode": "E27",
+      "words": 102,
+      "seconds_total": 30.03,
+      "requests_total": 2,
+      "nodes_after": 11,
+      "edges_after": 2,
+      "edge_types_after": {
+        "DEFERRED_TO": 1,
+        "TOOK_OVER_RESPONSIBILITIES_FROM": 1
+      },
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 6,
+        "missing_keys": []
+      },
+      "supersession": null,
+      "critical_defects": [],
+      "status": "ok"
+    }
+  ],
+  "stages": [
+    {
+      "episode": "E02",
+      "stage": "ontology",
+      "seconds": 6.51,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 813,
+      "output_tokens": 209,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E02",
+      "stage": "extractor",
+      "seconds": 27.72,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1464,
+      "output_tokens": 1044,
+      "reasoning_tokens": 0,
+      "entities": 7,
+      "relations": 7,
+      "status": "ok"
+    },
+    {
+      "episode": "E02",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E04",
+      "stage": "ontology",
+      "seconds": 7.28,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 837,
+      "output_tokens": 225,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E04",
+      "stage": "extractor",
+      "seconds": 33.82,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1493,
+      "output_tokens": 1238,
+      "reasoning_tokens": 0,
+      "entities": 9,
+      "relations": 13,
+      "status": "ok"
+    },
+    {
+      "episode": "E04",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E05",
+      "stage": "ontology",
+      "seconds": 7.41,
+      "requests": 2,
+      "tool_calls": 0,
+      "input_tokens": 2027,
+      "output_tokens": 184,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 0,
+      "accepted_edge_proposals": 0,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E05",
+      "stage": "extractor",
+      "seconds": 34.18,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1440,
+      "output_tokens": 1268,
+      "reasoning_tokens": 0,
+      "entities": 12,
+      "relations": 13,
+      "status": "ok"
+    },
+    {
+      "episode": "E05",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E10",
+      "stage": "ontology",
+      "seconds": 6.54,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 833,
+      "output_tokens": 193,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E10",
+      "stage": "extractor",
+      "seconds": 26.64,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1473,
+      "output_tokens": 969,
+      "reasoning_tokens": 0,
+      "entities": 8,
+      "relations": 7,
+      "status": "ok"
+    },
+    {
+      "episode": "E10",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E18",
+      "stage": "ontology",
+      "seconds": 6.74,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 870,
+      "output_tokens": 207,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E18",
+      "stage": "extractor",
+      "seconds": 17.75,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1521,
+      "output_tokens": 638,
+      "reasoning_tokens": 0,
+      "entities": 6,
+      "relations": 5,
+      "status": "ok"
+    },
+    {
+      "episode": "E18",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E20",
+      "stage": "ontology",
+      "seconds": 7.11,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 888,
+      "output_tokens": 228,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E20",
+      "stage": "extractor",
+      "seconds": 25.66,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1554,
+      "output_tokens": 931,
+      "reasoning_tokens": 0,
+      "entities": 5,
+      "relations": 4,
+      "status": "ok"
+    },
+    {
+      "episode": "E20",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E26",
+      "stage": "ontology",
+      "seconds": 8.38,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 882,
+      "output_tokens": 230,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E26",
+      "stage": "extractor",
+      "seconds": 31.03,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1554,
+      "output_tokens": 926,
+      "reasoning_tokens": 0,
+      "entities": 5,
+      "relations": 5,
+      "status": "ok"
+    },
+    {
+      "episode": "E26",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    },
+    {
+      "episode": "E27",
+      "stage": "ontology",
+      "seconds": 6.08,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 836,
+      "output_tokens": 144,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 0,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E27",
+      "stage": "extractor",
+      "seconds": 23.94,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 1432,
+      "output_tokens": 677,
+      "reasoning_tokens": 0,
+      "entities": 11,
+      "relations": 2,
+      "status": "ok"
+    },
+    {
+      "episode": "E27",
+      "stage": "librarian",
+      "seconds": 0.0,
+      "requests": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "trajectory": {
+        "requests": 0,
+        "provider_tool_calls": 0
+      }
+    }
+  ]
+}

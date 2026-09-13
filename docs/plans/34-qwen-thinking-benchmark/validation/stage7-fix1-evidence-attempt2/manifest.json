@@ -1,0 +1,46 @@
+{
+  "arm": "qwen-flash-next-compact-tuned",
+  "artifact_kind": "e2e_manifest",
+  "available_sources": {
+    "job_summary": "docs/plans/34-qwen-thinking-benchmark/validation/stage7-fix1-evidence-attempt2/job-summary.json",
+    "metrics": "docs/plans/34-qwen-thinking-benchmark/validation/stage7-fix1-evidence-attempt2/metrics.json",
+    "recall": "docs/plans/34-qwen-thinking-benchmark/validation/stage7-fix1-evidence-attempt2/recall.json"
+  },
+  "children": [
+    {
+      "child_run_id": "stage7-fix1-fake-attempt2.e2e.01",
+      "reason": "fake_active_jobs_timeout",
+      "script": "e2e_extraction_pipeline_test.py",
+      "status": "NOT_MEASURED"
+    },
+    {
+      "child_run_id": "stage7-fix1-fake-attempt2.e2e.02",
+      "reason": "fake_active_jobs_timeout",
+      "script": "e2e_plan15_scenarios_test.py",
+      "status": "NOT_MEASURED"
+    },
+    {
+      "child_run_id": "stage7-fix1-fake-attempt2.e2e.03",
+      "reason": "fake_active_jobs_timeout",
+      "script": "e2e_plan17_validation.py",
+      "status": "NOT_MEASURED"
+    },
+    {
+      "child_run_id": "stage7-fix1-fake-attempt2.e2e.04",
+      "reason": "fake_active_jobs_timeout",
+      "script": "e2e_episodic_memory_test.py",
+      "status": "NOT_MEASURED"
+    },
+    {
+      "child_run_id": "stage7-fix1-fake-attempt2.e2e.05",
+      "reason": "fake_active_jobs_timeout",
+      "script": "e2e_cognitive_recall_test.py",
+      "status": "NOT_MEASURED"
+    }
+  ],
+  "kind": "neocortex-stage7-partial-evidence",
+  "reason": "fake_active_jobs_timeout",
+  "run_id": "stage7-fix1-fake-attempt2",
+  "schema_version": 1,
+  "status": "NOT_MEASURED"
+}

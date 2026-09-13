@@ -598,3 +598,109 @@ question -- whether the local endpoint honours `reasoning_effort` at all -- is S
 - Ownfocused34/52.85s, full1498/7/65.12s, lint/bashsyntaxPASS. Exactown dryrun shows300s/domaintrue/allfourmockfalse/compact and expectedorder. Implementerhooksattempt2PASS afterformat-onlyattempt1; docsselfchecksPASS. Sourcefrozen, executable0755.
 - Failed preparation attempts retained: fakeerrorfixture also failedrestore, inheritedlow violatedmockfalse assertion, initialdryrun600/domainfalse, one prose semicolon. These were fixture/configuration/style corrections before final gates, not live experiments. No Stage7 service/DB/embedding/inference occurred.
 - Implementationcommit and single independentreview next. Actual selectedsettings/livequality stillNOTMEASURED. Stage6 live source remains untouched; its untracked incremental outputs are excluded from this commit.
+
+- Stage7 implementationb0d6195 exists, allcommithooksPASS. Independent Sol/high singlepostreview dispatched on frozen commit; no pre-review/rereview. Stage6 live measurement continues independently.
+
+## 2026-09-13 -- Third Stage6 live poll
+
+- At15:13Z extractorlow complete11units/14sources,39/56facts,1/3triplets,0timeouts/critical, childwall692.266s. Targetextractor medianreasoning705.5,p50=38.64s,p95=67.06s. Offbaseline42/56,1/3,p50=17.70s. No selectedlevel until extractorremainingcells finish.
+- Extractormedium4/11units: E02=4/8,E04=errorUnexpectedModelBehavior withagent_run_failure,E05=2/6,E10=5/5. No retry. Session55651 active; nextpoll>=15:18:49Z, deadline18:56:41Z.
+- Stage7 implementer reported repeated external signal can reach restore after deadlineTERM. Candidate added to the currently running single review before completefinding set, not a second review. Source remains frozen until normal triage/repair.
+
+## 2026-09-13 -- Fourth Stage6 live poll
+
+- At15:19Z extractormedium8/11units, compact22/56facts. E04/E18/E26 record UnexpectedModelBehavior andcriticalagent_run_failure, making level ineligible underfixedrule. Remainingtriplets stillmeasuring; no finalselection/aggregatecell yet.
+- Session55651 active, no retry. Nextpoll>=15:24:07Z; harddeadline18:56:41Z unchanged.
+
+## 2026-09-13 -- Stage7 single review triaged
+
+- Completefinding set saved and review.used spent beforetriage. Coordinator inspected allfourpaths: F1 group signals hitrestore (priorityP1 due timing, stillblocking),F2 terminalrate abortsREPORT,F3 timeout lacks partialevidence,F4 if-calledfunction ignores failedprovenance under errexit.
+- Allfouraccepted in one self-contained fixsection. Scope extends narrowly to local evidencefinalizer/necessary evidence APIs only, not product models. Tunedbehavior corrected without changing historicalarms. True partial artifacts must remainunavailable, not fabricatedsuccess/sample rows.
+- SoleSol/high writer dispatched; no rereview, only samefinding deterministicverification. Stage6 live source staysfrozen and unaffected. No Stage7 livewrite beforefixaccepted.
+
+## 2026-09-13 -- Fifth Stage6 live poll
+
+- At15:25Z extractormedium complete11units/14sources: DISQUALIFIED,22/56facts,0/3triplets,0timeouts,agent_run_failure; child985.36s/raw984.89s. S05/S07 haveUnexpectedModelBehavior, S11retainsoldvalue. No retry.
+- Extractorhigh4/11units allModelHTTPError withagent_run_failure/model_request_failure. Offselection notyetfinalized. Session55651 active; nextpoll>=15:30:17Z, deadline18:56:41Z unchanged.
+
+## 2026-09-13 -- Sixth Stage6 live poll: two selected agents
+
+- At15:30Z eightcells complete. ExtractorhighDISQUALIFIED0/56,0/3,117.995s. ExtractoroffSELECTED: highesttriplet tier1,bestfacts42,floor40,onlyoffinsideband (low39 outside).
+- Librarianoff/low/medium allPASS42/56,1/3,0timeouts/critical. Childwall11.866/28.654/19.785s; cached upstream shared across these cells. HighDISQUALIFIED42/56,0/3,0.820s withrequest/agent failures. Offchosenlowestofthreeeligiblelevels.
+- Raw librariantriplets reopened: S05/S11old_absentfalse, S07fullypasses atoff/low/medium. A PASScell is eligible measurement, not MIGRATE. Ontology/classifier stillpending. Session55651active,nextpoll>=15:35:41Z,deadline18:56:41Z.
+
+## 2026-09-13 -- Seventh Stage6 live poll
+
+- At15:36Z ontologyoffPASS8units,43/56facts,0timeouts/critical,277.316schild. Ontologylow raw8units:7UnexpectedModelBehavior/1ok,8facts observed,agent_run_failure. Aggregate correctlyNOTMEASURED reasonmissing_ontology_proposal_observation, countersnull,206.666schild; failed runs do not establish proposal counts.
+- Ontologymedium/high andclassifier incomplete. Existingextractor/librarianoffselections unchanged. Session55651 active,nextpoll>=15:41:12Z,deadline18:56:41Z.
+
+## 2026-09-13 -- Eighth Stage6 live poll: ontology selected
+
+- At15:42Z ontologyoffSELECTED,43facts/floor41/onlyeligibleoff. Mediumraw8units with5UnexpectedModelBehavior/3ok,242.340schild; high8HTTPerrors/1.042schild. BothaggregateNOTMEASURED due missingproposalobservations, not zero counts or successful inference.
+- Classifieroff2/8units persistedstatusok/criticalempty; remainingclassifiercells pending. Threeagentsselectedoff. Session55651active,nextpoll>=15:47:12Z,deadline18:56:41Z unchanged.
+
+## 2026-09-13 -- Ninth Stage6 live poll: classifieroff qualifies
+
+- At15:47Z classifieroffPASS8/8valid with actualdomainsets, reasoning0all8,0timeouts/critical,359.443schild. Low2/8units validsofar (reasoning254/88). E02off domains domain_knowledge/technical_knowledge/work_context versuslow technical_knowledge/user_profile/work_context, proving counts alone miss disagreement.
+- Classifierselection notyetfinalized; offmeetsvalidity/cleanliness rule. Session55651active,nextpoll>=15:52:42Z,deadline18:56:41Z unchanged.
+
+## 2026-09-13 -- Stage7 deadline daemon-lifecycle check
+
+- Within acceptedF1/F3, coordinator requested bounded strong read-only diagnosis of manage.sh daemon ownership and stop ordering. This is same-finding verification, not a second review. No real service/process/model actions permitted.
+- Brief clarifies authorized mandatorycleanup stopsworkers before localfinalization when needed, so they cannot issue newrequests afterdeadline. No newbenchmark/health/model work authorized during recovery.
+
+- Strong diagnosis confirms initial startup's new-session daemons outlive transient helperPID; poll-jobs timeout currently finalizes before snapshotload stops them. ExistingF1/F3 fix must retain exact ownedgroup/receipt and stop+wait workers before localfinalizer. ActiveE2E cleanup already stopsitsworkers. Brief corrected with persistent-daemon regression; no realprocess/service touched.
+
+## 2026-09-13 -- Tenth Stage6 live poll
+
+- At15:53Z classifierlowPASS8/8valid,0timeouts/critical, reasoningmedian154.5, targetp50=8.64s/p95=12.71s, child341.836s. Reopened all8 raw classifier rows; actual domain sets agree withoff6/8, differE02/E26. These are agreement observations, not domain correctness scores.
+- Medium/high remain incomplete; session55651 active. Nextpoll>=15:58:03Z, deadline18:56:41Z unchanged. Stage7 singlefix still inprogress, no livearm or new review.
+
+## 2026-09-13 -- Final sweep verification prepared
+
+- Coordinator added read-only validation/verify_live_sweep.py as an executable gate, not feature implementation. It reopens16rawcells, recomputes every analysis field/selection/agreement, validates selected raw defect counts, configuration and total childwall. It refuses incomplete runs and will execute only after the live runner finishes. No running source or artifacts changed.
+
+## 2026-09-13 -- Eleventh Stage6 live poll
+
+- At15:58Z classifiermediumPASS8/8valid,0timeouts/critical, reasoningmedian55, child324.884s. Aggregate domainagreementoff:medium5/8, low:medium7/8; allrawvalues will be reopened by final gate. High is the last pendingcell.
+- Session55651 remainsactive, nextpoll>=16:03:24Z, deadline18:56:41Z. No new run or liveStage7 action.
+
+## 2026-09-13 -- Stage6 complete
+
+- Final runnerwall3896.741s, measuredchildwall3896.725s, budgetexhaustedfalse,16cells. All4agents selectoff by precommittedrule. Reopened everyrawartifact and recomputed allanalysisfields/selection/agreement with validation/verify_live_sweep.py; PASS in validation/stage6-live-recompute-coordinator-attempt1.txt. Realartifacts resources/effort-sweep.json/.md and resources/sweep/*.json.
+- ClassifierhighDISQUALIFIED0/8valid, agent/requestfailures, unknownreasoningmedian,286.452schild. Off/low/mediumvalid8/8. Domainagreementoff:low6/8, off:medium5/8, low:medium7/8; highunavailable. No causal domain-correctness claim.
+- Selectedextractor/librarian42/56facts,1/3supersession; selectedontology43/56compactfacts; classifieroff8/8valid. Clean eligible observations do not approve migration. Positiveontologycells retain NOTMEASURED proposalcounts, not zero failures.
+- Session55651 endedexit0; no more Stage6 requests. Coordinator accidentally made finalpoll at16:02:24Z, about1minute before the five-minute interval ended. Polling-only deviation, no rerun or added inference. Futurelivepolls retain five-minute floor.
+- Stage6review/fixspent, no rereview. Existingimplementation80f2b98/fix0d7dd01; liveevidence will be included with next authorizedstagecommit. Stage7samefindingverification continues before realarm.
+
+## 2026-09-13 -- Stage7 same-finding verification corrections
+
+- Coordinator read the whole fixdiff and localfinalizer. Fullsuite1506/7 passed92.21s; focused41passed/1failed77.52s because the2s fixture deadline hit before expectedsummary. Bothattempt1 files retained. No real service touched.
+- ExistingF1/F3 remain incomplete: ignored daemonstopfailure can finalize with workerslive; poll_jobs errors finalize before daemonstop; tests lack requestmarkers and finalizer-orderassertion. ExistingF2 continuation treats arbitraryproducererrors as expectedunavailable. Finalizerstatus after if-withoutelse can become0. Brief now contains complete correction/proof requirements for these samefindings.
+- Return to same sole strongwriter after allcoordinatorchecks ended. One repair remains inprogress, no secondreview and no livearm.
+
+## 2026-09-13 -- Stage7 read-only preflight inventory
+
+- Dockercontextdesktop-linux withDOCKER_HOSTunset reports existingPostgreSQLcontainer a4934b49b4b0 healthy. Existingbackuparchives remainpresent. No restart, snapshot or reset issued.
+- Environment has LITELLM_API_KEY and GEMINI_API_KEY, but not GOOGLE_API_KEY. EmbeddingService reads GOOGLE_API_KEY only. The live launch will map the existing authorized GEMINI_API_KEY into GOOGLE_API_KEY in its childenvironment only, without printing or persisting either value. No embeddingcall made by this inventory.
+
+## 2026-09-13 -- Fake fixture residue preserved
+
+- Coordinator inspected seven untracked Plan33 tuned test-run artifacts, all generated fake partialevidence from earlier fixtureattempts. Moved manifest, canonicalmetrics, sample, JSON/Markdownreport, recall andskip files to .tmp/plan34/fake-fixture-residue.e31HCo/ with nooverwrite. Recoverable there, not deleted or committed as liveevidence. Currenttests use isolatedfixtureprojects and do not rewrite these realresourcepaths.
+
+## 2026-09-13 -- Stage7 final fixed-tree checks
+
+- Implementer48focused and finalfull1512/7 PASS105.36s, hooks/lint/dryrunPASS. Coordinator read allfourfixedpaths andgeneratedfakeattempt2JSON: unavailablecountsnull,5unlaunchedchildrenwithoutinventedexits, nofakesample. Ownfull1512/7 PASS106.84s, ownhooks/lint/exactdryrunPASS.
+- Ownfocusedattempt2 gives47passed/1failure92.26s: unchanged run_e2e TERMfixture hits communicate2s timeout aftercleanupstarts. Sameintermittentcase occurred implementerattempt6. Sourcefrozen; strongread-onlysameF1 diagnosis assigned to identify concretetiming chain and deterministicfixturecorrection. No extra review or livearm.
+- Authenticated localmodel listingmatchesexpectedQwen; actualMCPSettingsall4local/all4false/domaintrue/300s. Plannedrun20260913T162930Z-tuned1 has initialsafeprovenance, but no externalwrite or modelmeasurementstarted.
+
+## 2026-09-13 -- Same-F1 fixture timing diagnosis
+
+- Strongdiagnosis: fakeuv emits readinessbefore sleep30spawn; groupTERM in Bashspawncriticalsection can missnewchild retainingstdout/stderrpipes. Failurelogs alreadyshowuvterminated andcleanupstarted. Fakemanagecleanup is nonblockinglogappend, so no productchange warranted.
+- Briefcorrected with test-only synchronization: spawn/capturechild beforeREADY, thenwait; observerwaitsREADYbeforeTERM. Keep2slimit/143/exactlyonecleanup, no retryorweakenedassertion. Returnsolewriter for this sameF1 verificationcorrection, no rereview/livework.
+
+## 2026-09-13 -- Stage7 single fix accepted
+
+- FinalsameF1fixturechange preserves2s/143/onecleanup and passes10isolatedruns. Coordinator read exactdiff; ownfocused48PASS101.60s, ownfull1512passed/7skippedPASS116.92s (bothattempt3). OwnfullRuff, scopedhooksattempt2, shellsyntax andexactdryrun PASS. No sourcewriter remains.
+- F1-F4 proof/acceptance appended to validation/stage7-review.md. Fakeattempt2JSON reopens withactual2todo/1doing/7success counts, unknownstability,5unlaunchedchildrenwithoutfakeexitcodes, nofabricatedsample. Failurecodes71/72/73/74/75 exercised; workersstopbeforefinalizer, finalizerbeforerestore, unrelatedsentinel survives. Infrastructurefailures stop laterbenchmarkwork.
+- One repair consumed, no rereview. Commit pending; livearm will begin only after fixcommit exists. Hosted productpaths andhistoricalevidence unchanged. Sevenfakeresiduefiles remainrecoverable under .tmp/plan34/fake-fixture-residue.e31HCo/.

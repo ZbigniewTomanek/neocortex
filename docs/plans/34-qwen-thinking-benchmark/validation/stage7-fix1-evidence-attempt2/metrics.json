@@ -1,0 +1,24 @@
+{
+  "arm": "qwen-flash-next-compact-tuned",
+  "artifact_kind": "metrics",
+  "available_sources": {
+    "job_summary": "docs/plans/34-qwen-thinking-benchmark/validation/stage7-fix1-evidence-attempt2/job-summary.json"
+  },
+  "job_summary": {
+    "cancelled": 0,
+    "doing": 1,
+    "failed": 0,
+    "succeeded": 7,
+    "todo": 2,
+    "total": 10
+  },
+  "kind": "neocortex-stage7-partial-evidence",
+  "reason": "fake_active_jobs_timeout",
+  "run_id": "stage7-fix1-fake-attempt2",
+  "schema_version": 1,
+  "stability": {
+    "failed_or_cancelled_rate": null,
+    "status": "NOT_MEASURED"
+  },
+  "status": "NOT_MEASURED"
+}

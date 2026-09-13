@@ -1,0 +1,769 @@
+{
+  "run": {
+    "model": "local:qwen3.8-flash-next",
+    "thinking": "off",
+    "thinking_ontology": "off",
+    "thinking_extractor": "high",
+    "thinking_librarian": "off",
+    "thinking_classifier": "off",
+    "cache_thinking": "off",
+    "corpus_sha256": "2394bcacfc4fcff6d8ee1f280f8642f8eaf864797cfcd4b333d57b4b9da296d3",
+    "corpus": "both",
+    "episodes": [
+      "E04",
+      "E05"
+    ],
+    "units": [
+      "E02",
+      "E04",
+      "E05",
+      "E10",
+      "E18",
+      "E20",
+      "E26",
+      "E27",
+      "S05",
+      "S11",
+      "S07"
+    ],
+    "fixture": "/Users/zbigniewtomanek/work/neocortex/docs/plans/34-qwen-thinking-benchmark/resources/fact-fixture.json",
+    "repo_mode": "fresh",
+    "stage": "all",
+    "profile": null,
+    "episode_timeout_s": 600.0,
+    "per_call_timeout_s": 300.0,
+    "max_wall_seconds": 3600.0,
+    "wall_budget_exhausted": false,
+    "chain": {
+      "status": "NOT MEASURED",
+      "reason": "repo_mode=fresh"
+    },
+    "embeddings": "none",
+    "started_at": "2026-09-13T15:24:39.063372+00:00",
+    "git_head": "b0d619500982607c12ad19441f88acc78c784008",
+    "pydantic_ai_version": "1.72.0",
+    "wall_seconds": 117.55
+  },
+  "episodes": [
+    {
+      "episode": "E02",
+      "words": 76,
+      "seconds_total": 6.38,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 8,
+        "facts_found": 0,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E04",
+      "words": 69,
+      "seconds_total": 4.54,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 9,
+        "facts_found": 0,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E05",
+      "words": 103,
+      "seconds_total": 7.82,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 0,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E10",
+      "words": 85,
+      "seconds_total": 6.86,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 5,
+        "facts_found": 0,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E18",
+      "words": 104,
+      "seconds_total": 6.9,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 7,
+        "facts_found": 0,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E20",
+      "words": 95,
+      "seconds_total": 7.73,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 9,
+        "facts_found": 0,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E26",
+      "words": 108,
+      "seconds_total": 7.01,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 0,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E27",
+      "words": 102,
+      "seconds_total": 18.91,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": {
+        "facts_total": 6,
+        "facts_found": 0,
+        "missing_keys": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      "supersession": null,
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "S05",
+      "words": 46,
+      "seconds_total": 10.49,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": null,
+      "supersession": {
+        "new_present": false,
+        "old_absent": true,
+        "temporal_edge_present": false
+      },
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "S11",
+      "words": 43,
+      "seconds_total": 10.45,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": null,
+      "supersession": {
+        "new_present": false,
+        "old_absent": true,
+        "temporal_edge_present": false
+      },
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "S07",
+      "words": 78,
+      "seconds_total": 30.43,
+      "requests_total": null,
+      "nodes_after": 0,
+      "edges_after": 0,
+      "edge_types_after": {},
+      "fact_score": null,
+      "supersession": {
+        "new_present": false,
+        "old_absent": true,
+        "temporal_edge_present": false
+      },
+      "critical_defects": [
+        "agent_run_failure",
+        "model_request_failure"
+      ],
+      "status": "error:ModelHTTPError"
+    }
+  ],
+  "stages": [
+    {
+      "episode": "E02",
+      "stage": "ontology",
+      "seconds": 6.33,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 813,
+      "output_tokens": 198,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E02",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E04",
+      "stage": "ontology",
+      "seconds": 4.5,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 837,
+      "output_tokens": 124,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 0,
+      "accepted_edge_proposals": 0,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E04",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E05",
+      "stage": "ontology",
+      "seconds": 7.7,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 879,
+      "output_tokens": 228,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E05",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E10",
+      "stage": "ontology",
+      "seconds": 6.81,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 833,
+      "output_tokens": 209,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E10",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E18",
+      "stage": "ontology",
+      "seconds": 6.84,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 870,
+      "output_tokens": 208,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E18",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E20",
+      "stage": "ontology",
+      "seconds": 7.58,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 888,
+      "output_tokens": 232,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E20",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E26",
+      "stage": "ontology",
+      "seconds": 6.96,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 882,
+      "output_tokens": 213,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E26",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "E27",
+      "stage": "ontology",
+      "seconds": 18.86,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 836,
+      "output_tokens": 600,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 0,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "E27",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "S05-1",
+      "stage": "ontology",
+      "seconds": 6.07,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 736,
+      "output_tokens": 189,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S05-1",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "S05-2",
+      "stage": "ontology",
+      "seconds": 4.31,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 757,
+      "output_tokens": 123,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 0,
+      "accepted_edge_proposals": 1,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S05-2",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "S11-1",
+      "stage": "ontology",
+      "seconds": 6.98,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 738,
+      "output_tokens": 213,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S11-1",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "S11-2",
+      "stage": "ontology",
+      "seconds": 3.3,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 765,
+      "output_tokens": 94,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 0,
+      "accepted_edge_proposals": 0,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S11-2",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "S07-1",
+      "stage": "ontology",
+      "seconds": 25.99,
+      "requests": 2,
+      "tool_calls": 0,
+      "input_tokens": 2842,
+      "output_tokens": 795,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 2,
+      "accepted_edge_proposals": 2,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S07-1",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    },
+    {
+      "episode": "S07-2",
+      "stage": "ontology",
+      "seconds": 4.33,
+      "requests": 1,
+      "tool_calls": 0,
+      "input_tokens": 761,
+      "output_tokens": 122,
+      "reasoning_tokens": 0,
+      "entities": null,
+      "relations": null,
+      "status": "ok",
+      "accepted_node_proposals": 0,
+      "accepted_edge_proposals": 0,
+      "rejected_node_proposals": 0,
+      "rejected_edge_proposals": 0,
+      "proposal_rejection_reasons": {}
+    },
+    {
+      "episode": "S07-2",
+      "stage": "extractor",
+      "seconds": null,
+      "requests": null,
+      "tool_calls": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "reasoning_tokens": null,
+      "entities": null,
+      "relations": null,
+      "status": "error:ModelHTTPError"
+    }
+  ]
+}

@@ -20,6 +20,15 @@ The coordinator owns this plan's journal, state, backlog, briefs and review reco
 ## Evidence
 
 Read the actual Stage5 identity, Stage6 sweep, and Stage7 service artifacts.
+Stage6 is now finalized: resources/effort-sweep.json and every resources/sweep/
+raw file were reopened by validation/verify_live_sweep.py. Runnerwall3896.741s,
+15new cells plus reused baseline, all4selectedoff. Do not rerun any cell.
+Classifier domainagreementoff:low6/8, off:medium5/8, low:medium7/8 is setagreement,
+not correctness. High0/8valid; its extractedfacts43/56 do not credit classification.
+Librarianoff/low/medium reasoningmedians are observed0 in these cached-input cells,
+not proof that positive levels are ignored for every agent or request shape.
+Positiveontologycells contain rawfailedruns but aggregateproposalcounts unknown.
+Do not describe them as unattempted cells. Ontologyoff was the only eligiblelevel.
 Read the Plan33 rubric and the Stage7 parsing report.
 Do not use a stage status or an agent summary as a measured rubric value.
 Rubric authority: this plan's index.md Success Criteria and decisions.md D-3/D-7,
@@ -36,6 +45,8 @@ State that the service arm measured the combined configuration, not isolated per
 MIGRATE requires every specified rubric input to be measured and passing.
 Any failed or NOT MEASURED input gives HOLD.
 Do not convert an incomplete sample, unresolved temporal survival, or missing attribution to PASS.
+A sweep cell's PASS means eligible measured evidence, not a migration verdict.
+Keep that distinction explicit when a PASS cell has low fact or correction scores.
 
 If Stage5 proves cancellation, explain the observed failure to distinguish positive effort levels.
 Keep the claim limited to this endpoint, model and sample.
@@ -78,6 +89,11 @@ If Stage7 attribution and sample evidence pass, mark Plan33 item16 RESOLVED with
 Otherwise record DEFERRED to Plan34 with the measured reason.
 Append the decision path to the Plan33 journal for Stage9.
 Add only durable, measured lessons. Link each lesson to this plan.
+Read this plan's entire append-only backlog, including later dispositions.
+Items6/7/8/10/11 are resolved by Stage4 despite the historical table's OPEN text.
+Report remaining items1/2/3/4/5/9/12/13/14 with their recorded next trigger/owner.
+Do not imply that item5 currently reproduces or that item12 requires a Stage1 rerun.
+Any new confirmed non-blocking review finding must also appear with its owner.
 
 ## Checks
 
