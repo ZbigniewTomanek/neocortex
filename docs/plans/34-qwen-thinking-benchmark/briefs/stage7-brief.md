@@ -48,7 +48,8 @@ artifact ids, each write and any partial failure. Never include credentials or g
 The recorded owner permission authorizes local development snapshots and the fresh
 graph benchmark, with restoration. Read permissions in goal.md before the reset.
 
-Run detached under `.tmp/plan34/`, with 300 s maximum per model call and 2 h maximum
+Run in a managed asynchronous command session under `.tmp/plan34/` (D-16),
+with 300 s maximum per model call and 2 h maximum
 per arm. The launch must include a bounded supervisory mechanism that terminates only
 this run's processes on deadline and lets restoration execute. Poll at least five
 minutes apart. Preserve last job summary and partial artifacts on deadline; do not

@@ -56,7 +56,8 @@ Prepare the complete cell plan and TestModel run before any live launch. Use
 env -u GOOGLE_API_KEY -u GEMINI_API_KEY for in-memory probes, explicitly pin
 http://127.0.0.1:24000/v1, and retain LITELLM_API_KEY only in the environment.
 Per-call maximum 300 seconds; stage budget 14,400 seconds total, no extension.
-Launch detached under .tmp/plan34/, persist incremental raw and aggregate JSON,
+Launch through managed asynchronous command sessions under .tmp/plan34/ (D-16),
+not shell-background nohup. Persist incremental raw and aggregate JSON,
 poll no more often than every five minutes. Stop launching at the budget and
 record all unlaunched cells as NOT MEASURED. A rerun requires a coordinator-recorded
 root-caused code change; a timeout does not authorize a retry.

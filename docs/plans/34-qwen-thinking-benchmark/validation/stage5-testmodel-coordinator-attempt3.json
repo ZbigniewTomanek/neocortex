@@ -1,0 +1,275 @@
+{
+  "schema_version": 1,
+  "run": {
+    "model": "test-model",
+    "configured_model": "local:qwen3.8-flash-next",
+    "test_model": true,
+    "episode": "E04",
+    "compact_corpus_path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+    "compact_corpus_sha256": "2394bcacfc4fcff6d8ee1f280f8642f8eaf864797cfcd4b333d57b4b9da296d3",
+    "pydantic_ai_version": "1.72.0",
+    "levels": [
+      "off",
+      "low",
+      "medium",
+      "high"
+    ],
+    "repeats": 3,
+    "planned_requests": 12,
+    "per_call_timeout_s": 300.0,
+    "max_wall_seconds": 1200.0,
+    "started_at": "2026-09-13T13:38:47.571049+00:00",
+    "finished_at": "2026-09-13T13:38:47.617298+00:00",
+    "wall_seconds": 0.046,
+    "budget_exhausted": false,
+    "finalized": true
+  },
+  "rows": [
+    {
+      "level": "off",
+      "repeat": 1,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": false,
+      "enable_thinking": false,
+      "resolved_reasoning_effort": "none",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.004,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "off",
+      "repeat": 2,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": false,
+      "enable_thinking": false,
+      "resolved_reasoning_effort": "none",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.001,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "off",
+      "repeat": 3,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": false,
+      "enable_thinking": false,
+      "resolved_reasoning_effort": "none",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.001,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "low",
+      "repeat": 1,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": "low",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "low",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.001,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "low",
+      "repeat": 2,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": "low",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "low",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.001,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "low",
+      "repeat": 3,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": "low",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "low",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.001,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "medium",
+      "repeat": 1,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": "medium",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "medium",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.001,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "medium",
+      "repeat": 2,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": "medium",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "medium",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.001,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "medium",
+      "repeat": 3,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": "medium",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "medium",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.001,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "high",
+      "repeat": 1,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": "high",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "high",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.001,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "high",
+      "repeat": 2,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": "high",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "high",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.001,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "high",
+      "repeat": 3,
+      "status": "NOT MEASURED",
+      "reason": "missing_usage:reasoning_tokens",
+      "thinking": "high",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "high",
+      "reasoning_tokens": null,
+      "output_tokens": 2,
+      "elapsed_s": 0.001,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    }
+  ],
+  "analysis": {
+    "levels": {
+      "off": {
+        "measured_valid_rows": 0,
+        "expected_rows": 3,
+        "median_reasoning_tokens": null,
+        "min_reasoning_tokens": null,
+        "max_reasoning_tokens": null
+      },
+      "low": {
+        "measured_valid_rows": 0,
+        "expected_rows": 3,
+        "median_reasoning_tokens": null,
+        "min_reasoning_tokens": null,
+        "max_reasoning_tokens": null
+      },
+      "medium": {
+        "measured_valid_rows": 0,
+        "expected_rows": 3,
+        "median_reasoning_tokens": null,
+        "min_reasoning_tokens": null,
+        "max_reasoning_tokens": null
+      },
+      "high": {
+        "measured_valid_rows": 0,
+        "expected_rows": 3,
+        "median_reasoning_tokens": null,
+        "min_reasoning_tokens": null,
+        "max_reasoning_tokens": null
+      }
+    },
+    "pairwise_alias": {
+      "off": {
+        "off": true,
+        "low": false,
+        "medium": false,
+        "high": false
+      },
+      "low": {
+        "off": false,
+        "low": true,
+        "medium": null,
+        "high": null
+      },
+      "medium": {
+        "off": false,
+        "low": null,
+        "medium": true,
+        "high": null
+      },
+      "high": {
+        "off": false,
+        "low": null,
+        "medium": null,
+        "high": true
+      }
+    },
+    "distinct_levels": [
+      "off",
+      "low",
+      "medium",
+      "high"
+    ],
+    "cancellation_fired": null,
+    "cancellation_reason": "missing_measured_valid_rows"
+  }
+}

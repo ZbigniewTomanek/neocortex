@@ -446,3 +446,25 @@ question -- whether the local endpoint honours `reasoning_effort` at all -- is S
 - Strong read-only diagnosis reproduced command-boundary cleanup on two harmless nohup jobs. Managed asynchronous sessions survive; launchd was rejected because its default can restart jobs.
 - D-16 records the execution-method correction before any new inference. Original attempt remains NOT MEASURED; no claim of zero requests. Attempt2 uses separate paths and only time remaining before13:39:43 UTC.
 - Stage3 implementer released the lock: final suite1445 passed/7 skipped, helper9 passed, lint and scoped hooks pass. Coordinator inspection and commit/review follow; no source writer active.
+
+## 2026-09-13 -- Stage3 committed and post-review dispatched
+
+- Coordinator read the full Stage3 diff and tests, ran helper9/0.01s, full1445 passed/7 skipped/44.05s, lint and structural checks. Evidence: stage3-*-coordinator-attempt1 files. Formatter REPORT remains not reproduced, product recall unchanged.
+- Commit a06a2de exists and all hooks pass. Single independent Sol/high post-review dispatched on this frozen commit; no source writer active.
+
+## 2026-09-13 -- Stage5 provider-timeout gate correction
+
+- Coordinator read the full probe: its TimeoutError handler excludes the provider APITimeoutError already demonstrated in Stage4; generic ERROR/timeout=false misclassifies that measured timeout.
+- Brief corrected before live calls. Dispatch bounded Stage5-only fix and direct regression as gatefix1, Sol/high. Stage3 review reads committed disjoint files; only Stage5 writes source.
+
+## 2026-09-13 -- Stage3 done
+
+- Single Sol/high review PASS, no confirmed findings; complete disposition saved in validation/stage3-review.md before triage and review flag spent.
+- Coordinator accepts on full diff and own gates: helper9, full1445/7, structural7 and lint PASS. Commit a06a2de. No fix or re-review required.
+- Formatter symptom did not reproduce in memory; no recall product edit. Live E2E remains Stage7, not claimed measured here.
+
+## 2026-09-13 -- Stage5 deterministic gates accepted
+
+- Coordinator read probe/test files, verified provider-timeout regression red as ERROR and fixed TIMEOUT, no retry or exception-text persistence. One pre-review gatefix, not repair.
+- Own focused19/0.31s, full1446 passed/7 skipped/41.81s, lint PASS. Fresh stage5-testmodel-coordinator-attempt3.json has12 valid rows, exact none/low/medium/high boundaries, null reasoning and cancellation. Synthetic values do not prove endpoint behavior.
+- Stage4 first valid poll at13:38:12Z showed eight compact rows ok,42/56 facts, critical-defects empty; one supersession row also present. Partial only; final poll no earlier13:43:12Z. Internal350s budget controls remaining work.

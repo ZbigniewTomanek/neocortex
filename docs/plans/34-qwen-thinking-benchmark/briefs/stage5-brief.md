@@ -26,6 +26,9 @@ model text. Do not serialize exception messages, prompts, entity names or creden
 Every planned request has a row; unlaunched requests are NOT MEASURED. Incrementally
 write JSON atomically after each request; always finalize partial results on budget exit.
 Maximum twelve live requests, 300 s per call, 1200 s total. Do not retry timed-out rows.
+Treat provider `openai.APITimeoutError` as TIMEOUT with timeout=true, just like
+asyncio TimeoutError. It is not a subclass of built-in TimeoutError. Add a direct
+mocked-provider regression before live execution; preserve error-class-only privacy.
 
 Implement the stage's deterministic pairwise alias relation and ascending reduction.
 Cancellation requires measured, valid inputs; missing rows cannot prove the endpoint
@@ -50,7 +53,8 @@ call. Coordinator will inspect and gate it, then dispatch live work separately.
 ## Bounded live assignment (not yet dispatched)
 
 Use the same validated CLI without --test-model, with output under `.tmp/plan34/`,
-launched detached. Poll no more often than every five minutes; copy final JSON and
+launched through a managed asynchronous command session (D-16), never shell `nohup &`.
+Poll no more often than every five minutes; copy final JSON and
 Markdown to `resources/effort-levels.{json,md}`. Report each gate using the actual rows,
 compare measured medians with Plan 33's committed identity probe artifacts, and mark
 any incomplete criterion NOT MEASURED. No rerun without a root-caused change recorded
