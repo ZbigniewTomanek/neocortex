@@ -1,11 +1,19 @@
 # Stage 6 brief — bounded per-agent sweep
 
-Status: DRAFT; finalize against actual Stage4/5 artifacts before dispatch.
+Status: FROZEN; finalized against actual Stage4/5 artifacts, 2026-09-13.
 Implementer: codex/gpt-5.6-sol/high, strong tier.
 Reviewer: codex/gpt-5.6-sol/high, single post-review.
 Authority: stages/06-per-agent-effort-sweep.md, decisions D-8/D-10, goal.md.
 
 ## Preconditions and scope
+
+Stage4 resources/sweep/off.json:11 units,42/56 compact facts,1/3 supersession,
+no observed critical defects/timeouts;396.67s versus350s limit, D-17 correction
+now implemented. Reuse this actual quality evidence without a baseline rerun.
+Stage5 resources/effort-levels.json: finalized12 actual rows/418.004s; off gate
+and request-boundary gates pass. Low3/3, medium1/3, high0/3 valid samples.
+Cancellation is null, NOT true; distinct_levels retains off/low/medium/high due
+missing positive comparisons. Run the declared cells once; do not repeat identity.
 
 Read resources/sweep/off.json and resources/effort-levels.json directly. Do not
 infer completed measurements from state notes. Stage4 baseline is reusable only
@@ -31,6 +39,9 @@ The episodes count in a cell means raw summary row count, not number of calls.
 Count timeouts by distinct source-text labels in raw stage rows, not once per
 agent row; do not undercount two timeouts in the same triplet. Missing rows or
 missing defect observations are NOT MEASURED, not clean zeros.
+Missing/null stage status also makes timeout evidence NOT MEASURED. Validate
+the exact local model against finalized identity for baseline and new cells;
+another non-TestModel model is not equivalent. Refuse hosted-model launch.
 
 Disqualify critical defects and more than one timeout. Rank eligible levels by
 triplet passes, then compact facts_found, then choose the lowest effort within
@@ -122,6 +133,22 @@ No recursive retries or remeasurement. Use a process-level timeout for each chil
 bounded by the remaining stage deadline; terminate only the child it created.
 If termination leaves a partial raw artifact, retain it and classify incomplete
 evidence honestly. Never pad raw measurements or score absent rows as zero.
+
+Mock invocation uses identity validation/stage5-fix1-testmodel-coordinator-attempt1.json
+and baseline validation/stage4-fix1-testmodel-coordinator-attempt1.json, isolated
+.tmp/plan34/stage6-mock cache/output. Live uses resources/effort-levels.json and
+resources/sweep/off.json only after coordinator reads final identity. Mock identity
+has null usage and retains all four levels; do not invent an endpoint conclusion.
+For cell p50/p95 and median reasoning use the target agent's actual stage rows;
+score fact/triplet quality from summaries. Keep total cell wall as a separate field.
+Classifier cells pin all selected upstream levels explicitly, with --thinking off.
+Librarian uses --cache-thinking off and exact selected extractor/ontologyoff pins.
+Prepare every mock cell including a distinct librarianoff/ontologyoff/classifieroff.
+Do not change frozen identity/baseline artifacts, including to add new fields.
+If isolated mock caches lack the baselineoff extraction entries, prepare a fresh
+TestModel all-off baseline in that same isolated mock cache/output before testing
+the runner and pass its new JSON as --baseline-json. This is offline setup only,
+not permission to rerun the live baseline or silently populate a missing live cache.
 
 Test actual selection arithmetic: higher triplet tier beats any facts count;
 two-fact band selects lowest level; a critical defect or two timeouts excludes;

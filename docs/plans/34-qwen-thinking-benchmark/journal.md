@@ -499,3 +499,55 @@ question -- whether the local endpoint honours `reasoning_effort` at all -- is S
 - Own focused30/0.32s, full1462 passed/7 skipped/41.10s, lint PASS; fresh mock12 valid/0.045s, exactefforts, reasoningnull/cancellationnull. Evidence stage5-fix1-*-coordinator-attempt1.
 - Stage6 owner annotated only intentional fullwidth fixture with noqaRUF001, then released lock; full lint restored without touching that source in Stage5 commit.
 - Review and single repair spent, no re-review. Commit fix then launch bounded identity once. No live calls occurred during fix verification.
+
+## 2026-09-13 -- Live identity launched
+
+- Fix88bddc5 exists, hooks pass after final-newline-only normalization of off.json; Stage6 source checkpoint preserved unstaged.
+- At13:53Z launched Stage5 managed asynchronous session, exact verified12-request CLI, per-call300s/wall1200s, local endpoint explicit, Google/Gemini keys unset. Output .tmp/plan34/effort-levels.json/log; both absent before launch.
+- Poll no earlier13:58:30Z. Review/fix spent; no rerun without a new root-caused decision. Stage6 may resume only probe/test preparation while frozen Stage5 file runs.
+
+- Exact launch tool time13:53:45Z, session11295; correct earliest poll13:58:46Z.
+
+## 2026-09-13 -- First live identity poll
+
+- At13:58:56Z session still running, finalizationfalse. All3 off rows measuredOK, reasoning0, positiveoutput830/887/852, no markers/timeouts. All3 low rows measuredOK, reasoning719/472/879 (median719).
+- Thus positive effort differs from off in this sample; full alias/cancellation result remains unmeasured until remaining rows finish. First medium row records ERROR with unavailable usage; no retry authorized. Next poll no earlier14:03:56Z.
+
+## 2026-09-13 -- Stage5 live measurement done
+
+- Final artifact read at14:04Z; finalized14:00:44.109Z,418.004s, no budget exhaustion/timeouts. Copied actual JSON/Markdown to resources/effort-levels.*. Process exit1 correctly represents invalid response rows, not an unrecorded run.
+- All12 requests have actual elapsed/status rows and correct request-side effort. Off3/3 valid with reasoning0, positive output and no markers. These named gates PASS. Low3/3, median719/range472–879; medium1/3 (609), two UnexpectedModelBehavior; high0/3, ModelHTTPError. No exception-message inference or retry.
+- Positive pairwise relations/cancellation NOT MEASURED because samples incomplete; all four levels retained conservatively, not declared mutually distinct. Low versus off effect measured. Historical196/229.5/224/180 medians are classifier-only/different corpus, not a controlled before/after extractor comparison.
+- Stage5 DONE on named gate evidence with incomplete REPORT values. Single review/fix spent. Stage6 runner may now consume finalized identity; no Stage5 rerun.
+
+## 2026-09-13 -- Stage6 preparations accepted for runner handoff
+
+- Coordinator read full final diff and actual mock11units/14sources, classifier safe sets and ontology counts. Own focused47 passed before final added sorting test; implementer final48/0.82s, full1464/7/41.73s, Ruff/hooks PASS. Entire Stage6 gates will run again after runner implementation.
+- Actual TestModel cancellation test proves first triplet request cancelled; second text/later units do not start, partial unknown counts null. D-17 enforcement is implemented, no live rerun.
+
+## 2026-09-13 -- Stage6 runner dispatched, Stage7 supervision checked independently
+
+- Stage6 brief finalized from actual identity/baseline. Sole Sol/high writer implements validation/effort_sweep_runner.py and its tests; no live until whole-stage gates/commit/single review.
+- Final preparation added sorting/deduplication test:48 focused and full1464/7, no new product change. Classifier blank rows explicitly carry null keys on cancellation.
+- Independent strong read-only Stage7 supervision diagnosis checks existing restore trap and safe deadline behavior with harmless signal tests only. No service, Docker, graph or inference mutation authorized for diagnosis.
+
+- Stage6 mock setup clarification: a fresh TestModel baseline may populate its
+  isolated mock cache before runner verification. This avoids missing cached-off
+  extractions when syntheticoff wins. No live baseline rerun or silent live cache fill.
+
+## 2026-09-13 -- Stage7 restoration-order prerequisite
+
+- Strong harmless signal experiments demonstrate groupTERM can race parent restore with E2E child cleanup; shell-onlyTERM waits on foreground work and combined child traps clean twice. No live systems touched.
+- Stage7 brief adds isolated owned-process supervisor, explicit status-preserving traps, tracked child wait before restore, exactly-once cleanup and fake-service tests. Existing restore must remain.
+- Reserve600s inside7200s arm budget, stop workload at6600s. Do not kill data restoration to claim budget compliance; any unexpected cleanup overrun is recorded, benchmark NOT MEASURED, required recovery completed. No extension of model work or extra arm authorized.
+
+## 2026-09-13 -- Stage6 runner gate clarification
+
+- Coordinator read full runner and identified absent/null raw stage status being counted as no timeout. Require explicit status observation before a measured zero, with mutation regression.
+- Raw model identity must match the finalized local model, not merely differ from TestModel. Refuse hosted identity launches. Brief corrected and sole implementer notified before final gates/review.
+
+## 2026-09-13 -- Stage6 implementation gates accepted
+
+- Coordinator read complete probe/runner/test changes including final source-status/model safeguards and classifier7/8 rejection test. Own focused69/0.95s, full1485 passed/7 skipped/46.30s, lint PASS.
+- Own exact mock sweep at14400s configured budget finished7.208s:16 cells, reused mockoff +15 launches; raw16 files reopened. Both cells11units/14sources, compact8/8; all synthetic0/56 facts, no observed defects/timeouts; classifier8/8 each. Lowestoff chosen by the rule, not a live quality conclusion.
+- Actual raw and aggregates live under validation/stage6-mock-coordinator-attempt1 for committed review evidence. Separate mockcache; no live calls. Source lock released; commit and single post-review next.

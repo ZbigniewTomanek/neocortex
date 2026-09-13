@@ -1,0 +1,280 @@
+{
+  "schema_version": 1,
+  "run": {
+    "model": "local:qwen3.8-flash-next",
+    "configured_model": "local:qwen3.8-flash-next",
+    "test_model": false,
+    "episode": "E04",
+    "compact_corpus_path": "docs/plans/33-local-qwen-migration/resources/compact-corpus.md",
+    "compact_corpus_sha256": "2394bcacfc4fcff6d8ee1f280f8642f8eaf864797cfcd4b333d57b4b9da296d3",
+    "pydantic_ai_version": "1.72.0",
+    "levels": [
+      "off",
+      "low",
+      "medium",
+      "high"
+    ],
+    "repeats": 3,
+    "planned_requests": 12,
+    "per_call_timeout_s": 300.0,
+    "max_wall_seconds": 1200.0,
+    "started_at": "2026-09-13T13:53:46.102128+00:00",
+    "finished_at": "2026-09-13T14:00:44.108910+00:00",
+    "wall_seconds": 418.004,
+    "budget_exhausted": false,
+    "finalized": true
+  },
+  "rows": [
+    {
+      "level": "off",
+      "repeat": 1,
+      "status": "OK",
+      "reason": null,
+      "thinking": false,
+      "enable_thinking": false,
+      "resolved_reasoning_effort": "none",
+      "reasoning_tokens": 0,
+      "output_tokens": 830,
+      "elapsed_s": 23.073,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "off",
+      "repeat": 2,
+      "status": "OK",
+      "reason": null,
+      "thinking": false,
+      "enable_thinking": false,
+      "resolved_reasoning_effort": "none",
+      "reasoning_tokens": 0,
+      "output_tokens": 887,
+      "elapsed_s": 24.014,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "off",
+      "repeat": 3,
+      "status": "OK",
+      "reason": null,
+      "thinking": false,
+      "enable_thinking": false,
+      "resolved_reasoning_effort": "none",
+      "reasoning_tokens": 0,
+      "output_tokens": 852,
+      "elapsed_s": 23.294,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "low",
+      "repeat": 1,
+      "status": "OK",
+      "reason": null,
+      "thinking": "low",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "low",
+      "reasoning_tokens": 719,
+      "output_tokens": 1621,
+      "elapsed_s": 46.342,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "low",
+      "repeat": 2,
+      "status": "OK",
+      "reason": null,
+      "thinking": "low",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "low",
+      "reasoning_tokens": 472,
+      "output_tokens": 1382,
+      "elapsed_s": 39.128,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "low",
+      "repeat": 3,
+      "status": "OK",
+      "reason": null,
+      "thinking": "low",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "low",
+      "reasoning_tokens": 879,
+      "output_tokens": 1673,
+      "elapsed_s": 48.926,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "medium",
+      "repeat": 1,
+      "status": "ERROR",
+      "reason": "model_request_error",
+      "thinking": "medium",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "medium",
+      "reasoning_tokens": null,
+      "output_tokens": null,
+      "elapsed_s": 86.446,
+      "valid_output": null,
+      "timeout": false,
+      "reasoning_marker_detected": null,
+      "error_class": "UnexpectedModelBehavior"
+    },
+    {
+      "level": "medium",
+      "repeat": 2,
+      "status": "OK",
+      "reason": null,
+      "thinking": "medium",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "medium",
+      "reasoning_tokens": 609,
+      "output_tokens": 1531,
+      "elapsed_s": 42.743,
+      "valid_output": true,
+      "timeout": false,
+      "reasoning_marker_detected": false
+    },
+    {
+      "level": "medium",
+      "repeat": 3,
+      "status": "ERROR",
+      "reason": "model_request_error",
+      "thinking": "medium",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "medium",
+      "reasoning_tokens": null,
+      "output_tokens": null,
+      "elapsed_s": 83.866,
+      "valid_output": null,
+      "timeout": false,
+      "reasoning_marker_detected": null,
+      "error_class": "UnexpectedModelBehavior"
+    },
+    {
+      "level": "high",
+      "repeat": 1,
+      "status": "ERROR",
+      "reason": "model_request_error",
+      "thinking": "high",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "high",
+      "reasoning_tokens": null,
+      "output_tokens": null,
+      "elapsed_s": 0.045,
+      "valid_output": null,
+      "timeout": false,
+      "reasoning_marker_detected": null,
+      "error_class": "ModelHTTPError"
+    },
+    {
+      "level": "high",
+      "repeat": 2,
+      "status": "ERROR",
+      "reason": "model_request_error",
+      "thinking": "high",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "high",
+      "reasoning_tokens": null,
+      "output_tokens": null,
+      "elapsed_s": 0.044,
+      "valid_output": null,
+      "timeout": false,
+      "reasoning_marker_detected": null,
+      "error_class": "ModelHTTPError"
+    },
+    {
+      "level": "high",
+      "repeat": 3,
+      "status": "ERROR",
+      "reason": "model_request_error",
+      "thinking": "high",
+      "enable_thinking": null,
+      "resolved_reasoning_effort": "high",
+      "reasoning_tokens": null,
+      "output_tokens": null,
+      "elapsed_s": 0.045,
+      "valid_output": null,
+      "timeout": false,
+      "reasoning_marker_detected": null,
+      "error_class": "ModelHTTPError"
+    }
+  ],
+  "analysis": {
+    "levels": {
+      "off": {
+        "measured_valid_rows": 3,
+        "expected_rows": 3,
+        "median_reasoning_tokens": 0.0,
+        "min_reasoning_tokens": 0,
+        "max_reasoning_tokens": 0
+      },
+      "low": {
+        "measured_valid_rows": 3,
+        "expected_rows": 3,
+        "median_reasoning_tokens": 719.0,
+        "min_reasoning_tokens": 472,
+        "max_reasoning_tokens": 879
+      },
+      "medium": {
+        "measured_valid_rows": 1,
+        "expected_rows": 3,
+        "median_reasoning_tokens": 609.0,
+        "min_reasoning_tokens": 609,
+        "max_reasoning_tokens": 609
+      },
+      "high": {
+        "measured_valid_rows": 0,
+        "expected_rows": 3,
+        "median_reasoning_tokens": null,
+        "min_reasoning_tokens": null,
+        "max_reasoning_tokens": null
+      }
+    },
+    "pairwise_alias": {
+      "off": {
+        "off": true,
+        "low": false,
+        "medium": false,
+        "high": false
+      },
+      "low": {
+        "off": false,
+        "low": true,
+        "medium": null,
+        "high": null
+      },
+      "medium": {
+        "off": false,
+        "low": null,
+        "medium": true,
+        "high": null
+      },
+      "high": {
+        "off": false,
+        "low": null,
+        "medium": null,
+        "high": true
+      }
+    },
+    "distinct_levels": [
+      "off",
+      "low",
+      "medium",
+      "high"
+    ],
+    "cancellation_fired": null,
+    "cancellation_reason": "missing_measured_valid_rows"
+  }
+}

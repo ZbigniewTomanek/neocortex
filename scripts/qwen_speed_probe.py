@@ -3,13 +3,15 @@
 
 Runs the real ``run_extraction`` over compact-corpus episodes on an
 ``InMemoryRepository`` (no PostgreSQL, no services), aggregates the structured
-``action_log`` events the pipeline already emits, and writes a counts-only JSON
+``action_log`` events the pipeline already emits, and writes a privacy-safe JSON
 summary.  Extraction results are cached under ``--cache-dir`` so later work can
 iterate on the librarian stage alone (``--stage librarian``).
 
-The summary holds stage names, durations, counts, and normalized ontology edge
-type names.  Those names are structural metadata: model-proposed names reach
-``edge_types_after`` only after ``InMemoryRepository.get_or_create_edge_type``
+The summary holds stage names, durations, counts, privacy-safe classifier domain
+keys, and normalized ontology edge type names.  Known classifier domains are
+allowlisted code-owned slugs; proposed domains are represented only by hashes of
+canonical names.  Ontology names are structural metadata: model-proposed names
+reach ``edge_types_after`` only after ``InMemoryRepository.get_or_create_edge_type``
 accepts the result of ``normalize_edge_type``.  Episode text, prompts, entity
 names, and all other model output never reach the summary.
 """
@@ -25,6 +27,7 @@ import re
 import subprocess
 import sys
 import time
+import unicodedata
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -38,7 +41,7 @@ from openai import APITimeoutError
 from pydantic_ai.settings import ThinkingLevel
 
 from neocortex.db.mock import InMemoryRepository
-from neocortex.domains.models import SEED_DOMAINS
+from neocortex.domains.models import SEED_DOMAINS, ClassificationResult
 from neocortex.extraction.agents import AgentInferenceConfig
 from neocortex.extraction.pipeline import run_extraction
 from neocortex.extraction.schemas import ExtractionResult
@@ -103,6 +106,15 @@ TRAJECTORY_FIELDS = ("requests", "provider_tool_calls", "reads", "mutations_atte
                      "duplicates", "validation_rejections", "max_read_streak", "hard_reason")  # fmt: skip
 _REASONING_MARKER = re.compile(r"</?think>", re.IGNORECASE)
 _TIMEOUT_ERROR_TYPES = frozenset({"APITimeoutError", "CancelledError", "TimeoutError"})
+_KNOWN_DOMAIN_SLUGS = frozenset(domain.slug for domain in SEED_DOMAINS)
+_ONTOLOGY_PROPOSAL_FIELDS = (
+    "accepted_node_proposals",
+    "accepted_edge_proposals",
+    "rejected_node_proposals",
+    "rejected_edge_proposals",
+    "proposal_rejection_reasons",
+)
+_ONTOLOGY_REJECTION_REASONS = frozenset({"normalization_rejected", "already_exists"})
 
 
 class ActionLogCollector:
@@ -133,7 +145,7 @@ def install_collector() -> ActionLogCollector:
 
 
 def _blank_row(episode: str, stage: str, status: str) -> dict[str, Any]:
-    return {
+    result = {
         "episode": episode,
         "stage": stage,
         "seconds": None,
@@ -142,6 +154,18 @@ def _blank_row(episode: str, stage: str, status: str) -> dict[str, Any]:
         "relations": None,
         "status": status,
     }
+    if stage == "ontology":
+        result.update(dict.fromkeys(_ONTOLOGY_PROPOSAL_FIELDS))
+    elif stage == "classifier":
+        result.update(
+            {
+                "matched_domains": None,
+                "proposed_domains": None,
+                "domain_keys": None,
+                "valid_result": False,
+            }
+        )
+    return result
 
 
 def aggregate_stage_rows(episode: str, records: list[dict[str, Any]], *, outcome: str = "ok") -> list[dict[str, Any]]:
@@ -157,10 +181,29 @@ def aggregate_stage_rows(episode: str, records: list[dict[str, Any]], *, outcome
 
     for record in records:
         fields = record["fields"]
+        event = record["event"]
+        if event == "ontology_proposal_rejected":
+            # This privacy-safe validator event deliberately carries no stage or
+            # source text.  ActionLogCollector is reset before each sequential
+            # source-text run, which makes it attributable inside this probe.
+            kind = fields.get("kind")
+            if kind not in {"node", "edge"}:
+                continue
+            current = row("ontology")
+            count_field = f"rejected_{kind}_proposals"
+            current[count_field] = int(current[count_field] or 0) + 1
+            reason = fields.get("reason_code")
+            reason_key = str(reason) if reason in _ONTOLOGY_REJECTION_REASONS else "other"
+            reasons = current["proposal_rejection_reasons"]
+            if reasons is None:
+                reasons = {}
+                current["proposal_rejection_reasons"] = reasons
+            bucket = f"{kind}:{reason_key}"
+            reasons[bucket] = int(reasons.get(bucket) or 0) + 1
+            continue
         stage = STAGE_NAMES.get(str(fields.get("stage") or fields.get("agent") or ""))
         if stage is None:
             continue
-        event = record["event"]
         if event == "agent_run_started":
             row(stage)
         elif event == "stage_timing":
@@ -177,10 +220,44 @@ def aggregate_stage_rows(episode: str, records: list[dict[str, Any]], *, outcome
             current = row("extractor")
             current["entities"] = int(fields.get("entity_count") or 0)
             current["relations"] = int(fields.get("relation_count") or 0)
+        elif event == "ontology_agent_complete":
+            current = row("ontology")
+            current["accepted_node_proposals"] = (
+                int(fields["proposed_node_types"]) if "proposed_node_types" in fields else None
+            )
+            current["accepted_edge_proposals"] = (
+                int(fields["proposed_edge_types"]) if "proposed_edge_types" in fields else None
+            )
+            for kind in ("node", "edge"):
+                count_field = f"rejected_{kind}_proposals"
+                if current[count_field] is None:
+                    current[count_field] = 0
+            if current["proposal_rejection_reasons"] is None:
+                current["proposal_rejection_reasons"] = {}
         elif event == "librarian_trajectory":
             row("librarian")["trajectory"] = {name: fields.get(name) for name in TRAJECTORY_FIELDS if name in fields}
 
     return [rows[stage] for stage in STAGE_ORDER if stage in rows]
+
+
+def partial_stage_rows(episode: str, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return only evidence observed before a wall-deadline cancellation.
+
+    The normal aggregator's zero counters mean a completed audit emitted no
+    usage.  During cancellation, absence of ``agent_usage`` is not such proof,
+    so those counters remain null rather than becoming invented zeros.
+    """
+    rows = aggregate_stage_rows(episode, records, outcome="timeout")
+    stages_with_usage = {
+        STAGE_NAMES.get(str(record["fields"].get("stage") or record["fields"].get("agent") or ""))
+        for record in records
+        if record["event"] == "agent_usage"
+    }
+    for current in rows:
+        if current["stage"] not in stages_with_usage:
+            for field in COUNT_FIELDS:
+                current[field] = None
+    return rows
 
 
 def cache_key(
@@ -394,11 +471,12 @@ async def _classify(
     thinking: ThinkingLevel,
     timeout: float,
     cache_dir: Path,
-) -> tuple[float, str, int, int]:
+) -> tuple[float, str, int, int, list[str] | None]:
     """Run the domain classifier once.
 
-    Returns (seconds, status, matched domain count, proposal count).  Counts
-    only: no domain slug, text, or model output reaches the summary.
+    Returns seconds, status, counts, and privacy-safe domain keys.  Only
+    allowlisted known slugs and hashes of canonical proposed names reach the
+    summary; all other model output remains private.
     """
     from pydantic_ai import capture_run_messages
 
@@ -409,6 +487,7 @@ async def _classify(
     )
     status = "ok"
     matched = proposed = 0
+    domain_keys: list[str] | None = None
     started = time.monotonic()
     with capture_run_messages() as messages:
         try:
@@ -419,12 +498,37 @@ async def _classify(
                 )
             matched = len(result.matched_domains)
             proposed = int(result.proposed_domain is not None)
+            domain_keys = _classifier_domain_keys(result)
+            if domain_keys is None:
+                status = "error:InvalidClassifierDomainKeys"
         except (TimeoutError, APITimeoutError):
             status = "timeout"
         except Exception as exc:  # a classifier failure is a recorded measurement
             status = f"error:{type(exc).__name__}"
             print(f"classifier capture: {_write_classifier_capture(cache_dir, episode, exc, messages)}")
-    return round(time.monotonic() - started, 2), status, matched, proposed
+    return round(time.monotonic() - started, 2), status, matched, proposed, domain_keys
+
+
+def _classifier_domain_keys(result: ClassificationResult) -> list[str] | None:
+    """Return sorted privacy-safe keys, or null when a result is unusable.
+
+    Proposal hashes are pseudonymous equality keys, not anonymous values.  They
+    must not be interpreted beyond comparisons inside the same measurement run.
+    """
+    keys: set[str] = set()
+    for match in result.matched_domains:
+        if match.domain_slug not in _KNOWN_DOMAIN_SLUGS:
+            return None
+        keys.add(f"known:{match.domain_slug}")
+
+    if result.proposed_domain is not None:
+        canonical_name = " ".join(unicodedata.normalize("NFKC", result.proposed_domain.name).split()).casefold()
+        if not canonical_name:
+            return None
+        digest = hashlib.sha256(canonical_name.encode("utf-8")).hexdigest()
+        keys.add(f"proposed:sha256:{digest}")
+
+    return sorted(keys)
 
 
 @dataclass(frozen=True)
@@ -440,6 +544,14 @@ class Unit:
     kind: str  # "episode" | "triplet"
     texts: tuple[tuple[str, str], ...]  # (stage-row label, text)
     importance: float
+
+
+@dataclass
+class UnitProgress:
+    """Mutable evidence retained if a wall deadline cancels ``run_unit``."""
+
+    rows: list[dict[str, Any]]
+    active_label: str | None = None
 
 
 def resolve_thinking_levels(args: argparse.Namespace) -> dict[str, str]:
@@ -653,6 +765,7 @@ async def run_text(
     fixture_revision: int | None,
 ) -> tuple[float, str, list[dict[str, Any]], list[str]]:
     """Run one text and return seconds, outcome, stage rows, and defects."""
+    collector.reset()
     episode_id = await repo.store_episode(
         AGENT_ID, text, importance=importance, metadata={"importance_hint": importance}
     )
@@ -667,7 +780,6 @@ async def run_text(
         ontology_thinking=THINKING[levels["ontology"]],
         extractor_thinking=THINKING[levels["extractor"]],
     )
-    collector.reset()
     graph_before = snapshot_graph(repo)
 
     precomputed: dict[int, ExtractionResult] | None = None
@@ -695,7 +807,7 @@ async def run_text(
             precomputed = {episode_id: cached}
 
         if args.classify:
-            seconds, status, matched, proposed = await _classify(
+            seconds, status, matched, proposed, domain_keys = await _classify(
                 text,
                 label,
                 episode_id,
@@ -708,7 +820,8 @@ async def run_text(
             classifier_row["seconds"] = seconds
             classifier_row["matched_domains"] = matched
             classifier_row["proposed_domains"] = proposed
-            classifier_row["valid_result"] = status == "ok"
+            classifier_row["domain_keys"] = domain_keys
+            classifier_row["valid_result"] = status == "ok" and domain_keys is not None
             if status != "ok":
                 outcome = status
 
@@ -750,6 +863,7 @@ async def run_text(
             collected["status"] = classifier_row["status"]
             collected["matched_domains"] = classifier_row["matched_domains"]
             collected["proposed_domains"] = classifier_row["proposed_domains"]
+            collected["domain_keys"] = classifier_row["domain_keys"]
             collected["valid_result"] = classifier_row["valid_result"]
 
     defects = detect_critical_defects(graph_before, snapshot_graph(repo), collector.records, outcome)
@@ -766,6 +880,7 @@ async def run_unit(
     embeddings: Any,
     corpus_sha256: str,
     fixture: Fixture | None,
+    progress: UnitProgress,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Run one unit's texts in order and return its summary plus stage rows.
 
@@ -774,10 +889,11 @@ async def run_unit(
     would read as a measured full-marks result.
     """
     seconds_total = 0.0
-    rows: list[dict[str, Any]] = []
+    rows = progress.rows
     critical_defects: set[str] = set()
     outcome = "ok"
     for label, text in unit.texts:
+        progress.active_label = label
         seconds, text_outcome, text_rows, text_defects = await run_text(
             label,
             text,
@@ -793,6 +909,7 @@ async def run_unit(
         )
         seconds_total += seconds
         rows.extend(text_rows)
+        progress.active_label = None
         critical_defects.update(text_defects)
         if text_outcome != "ok" and outcome == "ok":
             outcome = text_outcome
@@ -913,8 +1030,10 @@ async def main(argv: list[str] | None = None) -> int:
     summaries: list[dict[str, Any]] = []
     all_rows: list[dict[str, Any]] = []
     wall_started = time.monotonic()
+    wall_deadline = wall_started + args.max_wall_seconds if args.max_wall_seconds is not None else None
     for index, unit in enumerate(units):
-        if args.max_wall_seconds is not None and time.monotonic() - wall_started >= args.max_wall_seconds:
+        remaining = wall_deadline - time.monotonic() if wall_deadline is not None else None
+        if remaining is not None and remaining <= 0:
             # Stop launching, but record every unlaunched unit rather than dropping it.
             run_meta["wall_budget_exhausted"] = True
             for pending in units[index:]:
@@ -926,7 +1045,40 @@ async def main(argv: list[str] | None = None) -> int:
         # A triplet always runs its two texts on one repository of its own, so
         # ``--repo`` cannot separate the update from the text it corrects.
         repo = InMemoryRepository() if unit.kind == "triplet" or args.repo == "fresh" else shared_repo
-        summary, rows = await run_unit(unit, repo, args, collector, configs, levels, embeddings, corpus_sha256, fixture)
+        progress = UnitProgress(rows=[])
+        pending = run_unit(
+            unit,
+            repo,
+            args,
+            collector,
+            configs,
+            levels,
+            embeddings,
+            corpus_sha256,
+            fixture,
+            progress,
+        )
+        try:
+            summary, rows = (
+                await asyncio.wait_for(pending, timeout=remaining) if remaining is not None else await pending
+            )
+        except TimeoutError:
+            run_meta["wall_budget_exhausted"] = True
+            rows = list(progress.rows)
+            if progress.active_label is not None:
+                rows.extend(partial_stage_rows(progress.active_label, collector.records))
+            summary = blank_summary(unit.key, "TIMEOUT", "wall_budget_during_unit")
+            summaries.append(summary)
+            all_rows.extend(rows)
+            print_rows(summary, rows)
+            for unlaunched in units[index + 1 :]:
+                unmeasured = blank_summary(unlaunched.key, "NOT MEASURED", "wall_budget")
+                summaries.append(unmeasured)
+                print_rows(unmeasured, [])
+            run_meta["chain"] = {"status": "NOT MEASURED", "reason": "wall_budget"}
+            run_meta["wall_seconds"] = round(time.monotonic() - wall_started, 2)
+            write_output(output, run_meta, summaries, all_rows)
+            break
         summaries.append(summary)
         all_rows.extend(rows)
         print_rows(summary, rows)

@@ -153,14 +153,14 @@
       "id": 5,
       "title": "Thinking-level identity probe",
       "file": "stages/05-effort-level-identity.md",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "depends_on": [
         1
       ],
-      "commit": ["3c52202"],
-      "note": "F1/F2 fixed and coordinator verified30 focused/full1462/7/lint/mock12; single repair spent, no re-review. Commit/live next.",
+      "commit": ["3c52202", "88bddc5"],
+      "note": "Live418.004s,12 actual rows: off3/3 reasoning0; low3/3 median719; medium1/3; high0/3 HTTP errors. Boundary/off/row gates PASS; positive aliases/cancellation NOT MEASURED, retain all levels. No rerun.",
       "blocked_by": [],
-      "step": "REVIEWED",
+      "step": null,
       "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": "codex/gpt-5.6-sol, effort high",
@@ -180,8 +180,8 @@
       "repairReview": {
         "used": false
       },
-      "gates": {"focused unit": "PASS", "TestModel boundary": "PASS", "full suite": "PASS", "lint": "PASS", "live identity": "NOT MEASURED"},
-      "evidence": ["validation/stage5-focused-coordinator-attempt3.txt", "validation/stage5-suite-coordinator-attempt1.txt", "validation/stage5-ruff-coordinator-attempt2.txt", "validation/stage5-testmodel-coordinator-attempt3.json", "validation/stage5-gatefix1-red-attempt1.txt"]
+      "gates": {"focused unit": "PASS", "TestModel boundary": "PASS", "full suite": "PASS", "lint": "PASS", "live boundaries": "PASS", "off is off": "PASS", "every request recorded": "PASS", "positive aliases and cancellation": "NOT MEASURED"},
+      "evidence": ["validation/stage5-focused-coordinator-attempt3.txt", "validation/stage5-suite-coordinator-attempt1.txt", "validation/stage5-ruff-coordinator-attempt2.txt", "validation/stage5-testmodel-coordinator-attempt3.json", "validation/stage5-gatefix1-red-attempt1.txt", "validation/stage5-review.md", "validation/stage5-fix1-testmodel-coordinator-attempt1.json", "resources/effort-levels.json", "resources/effort-levels.md"]
     },
     {
       "id": 6,
@@ -193,7 +193,7 @@
         5
       ],
       "commit": null,
-      "note": "Independent PreparationA probe/tests checkpoint saved, gates pending; PreparationB hard-deadline fix required. No sweep runner/live work until Stage5 gate.",
+      "note": "Implementation gates PASS: coordinator69 focused/full1485/7/lint, fullmock16 cells/7.208s with repository raw evidence. Source frozen for commit/review; no live sweep yet.",
       "blocked_by": [],
       "step": "WRITING",
       "writer": null,
@@ -213,8 +213,8 @@
       "repairReview": {
         "used": false
       },
-      "gates": {},
-      "evidence": []
+      "gates": {"focused unit": "PASS", "full suite": "PASS", "lint": "PASS", "full mock cells and provenance": "PASS", "live sweep": "NOT MEASURED"},
+      "evidence": ["validation/stage6-focused-coordinator-attempt1.txt", "validation/stage6-suite-coordinator-attempt1.txt", "validation/stage6-ruff-coordinator-attempt1.txt", "validation/stage6-mock-coordinator-attempt1/effort-sweep.json", "validation/stage6-instruments-testmodel-attempt1.json"]
     },
     {
       "id": 7,
@@ -311,7 +311,7 @@
       "command": null
     }
   },
-  "currentStage": 5,
+  "currentStage": 6,
   "writesFrozen": false,
   "writer": null,
   "runReview": {

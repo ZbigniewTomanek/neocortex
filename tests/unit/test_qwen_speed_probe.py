@@ -11,6 +11,7 @@ import pytest
 from scripts import qwen_speed_probe as probe  # ty: ignore[unresolved-import]
 
 from neocortex.db.mock import InMemoryRepository
+from neocortex.domains.models import ClassificationResult, DomainClassification, ProposedDomain
 from neocortex.extraction.agents import AgentInferenceConfig
 from neocortex.extraction.pipeline import run_extraction
 from neocortex.extraction.schemas import ExtractedEntity, ExtractedRelation, ExtractionResult
@@ -71,11 +72,51 @@ def test_aggregate_stage_rows_two_stages_one_timeout() -> None:
         "reasoning_tokens": 0,
         "entities": None,
         "relations": None,
+        "accepted_node_proposals": None,
+        "accepted_edge_proposals": None,
+        "rejected_node_proposals": None,
+        "rejected_edge_proposals": None,
+        "proposal_rejection_reasons": None,
         "status": "ok",
     }
     assert extractor["status"] == "timeout"
     assert extractor["seconds"] is None
     assert extractor["requests"] == 0
+
+
+def test_aggregate_stage_rows_records_host_ontology_proposal_counts() -> None:
+    """Post-validator acceptances and privacy-safe rejection reasons are exact."""
+    records = [
+        _record("ontology_proposal_rejected", kind="node", reason_code="already_exists"),
+        _record("ontology_proposal_rejected", kind="node", reason_code="normalization_rejected"),
+        _record("ontology_proposal_rejected", kind="edge", reason_code="already_exists"),
+        _record(
+            "ontology_agent_complete",
+            stage="ontology_agent",
+            proposed_node_types=2,
+            proposed_edge_types=1,
+        ),
+    ]
+
+    [ontology] = probe.aggregate_stage_rows("E04", records)
+
+    assert ontology["accepted_node_proposals"] == 2
+    assert ontology["accepted_edge_proposals"] == 1
+    assert ontology["rejected_node_proposals"] == 2
+    assert ontology["rejected_edge_proposals"] == 1
+    assert ontology["proposal_rejection_reasons"] == {
+        "node:already_exists": 1,
+        "node:normalization_rejected": 1,
+        "edge:already_exists": 1,
+    }
+
+
+def test_aggregate_stage_rows_leaves_unobserved_ontology_counts_null() -> None:
+    """A timeout before ontology completion cannot certify zero proposals."""
+    [ontology] = probe.aggregate_stage_rows("E04", [_record("agent_run_started", agent="ontology")], outcome="timeout")
+
+    assert ontology["status"] == "timeout"
+    assert all(ontology[field] is None for field in probe._ONTOLOGY_PROPOSAL_FIELDS)
 
 
 def test_aggregate_stage_rows_records_cardinality_and_trajectory() -> None:
@@ -293,11 +334,75 @@ async def test_classifier_provider_timeout_is_normalized(monkeypatch: pytest.Mon
     levels = probe.resolve_thinking_levels(args)
     config = probe.build_configs(args, levels, probe.resolve_local_endpoint(args.per_call_timeout))["classifier"]
 
-    _seconds, status, matched, proposed = await probe._classify(
+    _seconds, status, matched, proposed, domain_keys = await probe._classify(
         "Alpha works on Beta.", "E04", 1, config, probe.THINKING[levels["classifier"]], 1, tmp_path
     )
 
-    assert (status, matched, proposed) == ("timeout", 0, 0)
+    assert (status, matched, proposed, domain_keys) == ("timeout", 0, 0, None)
+
+
+def test_classifier_domain_keys_distinguish_equal_counts() -> None:
+    """Agreement evidence contains actual known sets, not merely cardinality."""
+    technical = ClassificationResult(
+        matched_domains=[DomainClassification(domain_slug="technical_knowledge", confidence=0.9, reasoning="private")]
+    )
+    work = ClassificationResult(
+        matched_domains=[DomainClassification(domain_slug="work_context", confidence=0.9, reasoning="private")]
+    )
+
+    assert probe._classifier_domain_keys(technical) == ["known:technical_knowledge"]
+    assert probe._classifier_domain_keys(work) == ["known:work_context"]
+
+
+def test_classifier_domain_keys_sort_and_deduplicate() -> None:
+    result = ClassificationResult(
+        matched_domains=[
+            DomainClassification(domain_slug="work_context", confidence=0.9),
+            DomainClassification(domain_slug="technical_knowledge", confidence=0.8),
+            DomainClassification(domain_slug="work_context", confidence=0.7),
+        ]
+    )
+
+    assert probe._classifier_domain_keys(result) == ["known:technical_knowledge", "known:work_context"]
+
+
+def test_classifier_domain_keys_canonicalize_and_redact_proposed_names() -> None:
+    """Equivalent proposed names share a hash and no model text is serialized."""
+    private_name = "  Ｒｅｌｅａｓｅ\u2003Ｐｌａｎｎｉｎｇ  "  # noqa: RUF001 - Unicode normalization fixture
+    first = ClassificationResult(
+        proposed_domain=ProposedDomain(
+            slug="private-release-slug",
+            name=private_name,
+            description="private description",
+            reasoning="private reasoning",
+        )
+    )
+    second = ClassificationResult(
+        proposed_domain=ProposedDomain(slug="different-private-slug", name="release planning")
+    )
+
+    first_keys = probe._classifier_domain_keys(first)
+    second_keys = probe._classifier_domain_keys(second)
+
+    assert first_keys == second_keys
+    assert first_keys is not None and first_keys[0].startswith("proposed:sha256:")
+    serialized = json.dumps(first_keys)
+    assert all(
+        private not in serialized
+        for private in (private_name, "private-release-slug", "private description", "private reasoning")
+    )
+
+
+def test_classifier_domain_keys_distinguish_empty_from_unusable() -> None:
+    """A valid empty set is measured; unknown or empty keys are not evidence."""
+    unknown = ClassificationResult(
+        matched_domains=[DomainClassification(domain_slug="model_private_slug", confidence=0.9)]
+    )
+    empty_proposal = ClassificationResult(proposed_domain=ProposedDomain(slug="private", name="  \u2003 "))
+
+    assert probe._classifier_domain_keys(ClassificationResult()) == []
+    assert probe._classifier_domain_keys(unknown) is None
+    assert probe._classifier_domain_keys(empty_proposal) is None
 
 
 def test_timeout_does_not_hide_an_independent_stored_marker() -> None:
@@ -858,6 +963,7 @@ async def test_classifier_test_model_runs_eight_rows_without_a_provider_request(
         "E27",
     ]
     assert all(row["status"] == "ok" and row["valid_result"] is True for row in classifier_rows)
+    assert all(isinstance(row["domain_keys"], list) for row in classifier_rows)
     assert all(row["critical_defects"] == [] for row in payload["episodes"])
 
 
@@ -868,8 +974,8 @@ async def test_classifier_failure_remains_the_unit_outcome(tmp_path: Path, monke
 
     from loguru import logger
 
-    async def fail_classifier(*args: Any, **kwargs: Any) -> tuple[float, str, int, int]:
-        return 0.01, "error:UnexpectedModelBehavior", 0, 0
+    async def fail_classifier(*args: Any, **kwargs: Any) -> tuple[float, str, int, int, list[str] | None]:
+        return 0.01, "error:UnexpectedModelBehavior", 0, 0, None
 
     monkeypatch.setattr(probe, "_classify", fail_classifier)
     output = tmp_path / "classifier-failure.json"
@@ -897,6 +1003,7 @@ async def test_classifier_failure_remains_the_unit_outcome(tmp_path: Path, monke
     classifier_row = next(row for row in payload["stages"] if row["stage"] == "classifier")
     assert classifier_row["status"] == "error:UnexpectedModelBehavior"
     assert classifier_row["valid_result"] is False
+    assert classifier_row["domain_keys"] is None
 
 
 @pytest.mark.asyncio
@@ -967,6 +1074,83 @@ async def test_max_wall_seconds_zero_launches_nothing_and_still_writes(tmp_path:
     assert all(episode["words"] is None for episode in payload["episodes"])
     assert all(episode["critical_defects"] is None for episode in payload["episodes"])
     assert payload["stages"] == []
+    assert payload["run"]["wall_budget_exhausted"] is True
+    assert payload["run"]["chain"] == {"status": "NOT MEASURED", "reason": "wall_budget"}
+
+
+@pytest.mark.asyncio
+async def test_max_wall_seconds_cancels_an_inflight_triplet_and_stops_later_requests(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The hard wall deadline cancels a request before any later text starts."""
+    import asyncio
+    import sys
+    import time
+
+    from loguru import logger
+    from pydantic_ai.models.test import TestModel
+
+    from neocortex.extraction import agents as extraction_agents
+
+    request_starts: list[float] = []
+    cancellation_observed = False
+
+    class SlowTestModel(TestModel):
+        async def request(self, messages: Any, model_settings: Any, model_request_parameters: Any) -> Any:
+            nonlocal cancellation_observed
+            request_starts.append(time.monotonic())
+            try:
+                await asyncio.sleep(2)
+            except asyncio.CancelledError:
+                cancellation_observed = True
+                raise
+            return await super().request(messages, model_settings, model_request_parameters)
+
+    monkeypatch.setattr(extraction_agents, "TestModel", SlowTestModel)
+    output = tmp_path / "during-unit-budget.json"
+    started = time.monotonic()
+    try:
+        exit_code = await probe.main(
+            [
+                "--test-model",
+                "--corpus",
+                "supersession",
+                "--fixture",
+                str(FIXTURE_PATH),
+                "--episode-timeout",
+                "600",
+                "--per-call-timeout",
+                "300",
+                "--max-wall-seconds",
+                "0.05",
+                "--cache-dir",
+                str(tmp_path / "cache"),
+                "--output",
+                str(output),
+            ]
+        )
+    finally:
+        logger.remove()
+        logger.add(sys.stderr)
+    elapsed = time.monotonic() - started
+
+    assert exit_code == 1
+    assert cancellation_observed is True
+    assert len(request_starts) == 1
+    assert elapsed < 0.5
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert [episode["episode"] for episode in payload["episodes"]] == ["S05", "S11", "S07"]
+    assert [episode["status"] for episode in payload["episodes"]] == [
+        "TIMEOUT",
+        "NOT MEASURED",
+        "NOT MEASURED",
+    ]
+    assert payload["episodes"][0]["reason"] == "wall_budget_during_unit"
+    assert payload["episodes"][0]["critical_defects"] is None
+    assert payload["episodes"][0]["supersession"] is None
+    assert all(episode["reason"] == "wall_budget" for episode in payload["episodes"][1:])
+    assert {row["episode"] for row in payload["stages"]} == {"S05-1"}
+    assert all(row["requests"] is None for row in payload["stages"])
     assert payload["run"]["wall_budget_exhausted"] is True
     assert payload["run"]["chain"] == {"status": "NOT MEASURED", "reason": "wall_budget"}
 
