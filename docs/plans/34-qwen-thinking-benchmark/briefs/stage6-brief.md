@@ -64,6 +64,65 @@ root-caused code change; a timeout does not authorize a retry.
 
 ## Checks
 
+## Preparation A — instrument gap, before runner or live work
+
+Bounded scope: scripts/qwen_speed_probe.py and tests/unit/test_qwen_speed_probe.py.
+No product code or live calls. This preparation is independent of selected levels.
+Current equal counts cannot distinguish technical_knowledge from work_context.
+Add sorted unique domain_keys to classifier raw stage rows via _classify/run_text:
+known:<allowlisted seed slug>, proposed:sha256:<hex> of NFKC, whitespace-collapsed,
+trimmed, casefolded proposal name. Do not serialize unknown model-provided slugs,
+names, descriptions, reasoning or hash preimages. Hashes are pseudonymous, not
+anonymous; limit their interpretation to within-run equality.
+Valid empty set is []; timeout/error/unknown matched slug/unusable name is null.
+Unknown/unusable keys cannot count as valid agreement evidence.
+Test differing known sets with equal counts; canonicalization; empty versus absent;
+unknown/empty refusal; serialization privacy; provider-timeout tuple propagation.
+
+Aggregate exact accepted node/edge counts from ontology_agent_complete and each
+ontology_proposal_rejected by kind/reason_code (before stage lookup: no stage field).
+Fields are nullable; zero rejections only when completion establishes observation.
+Test accepted/rejected events and timeout before completion. These are host-validator
+proposal counts, not malformed outputs, budget truncations or persistence outcomes.
+Collector reset per text permits attribution only in this sequential probe.
+Run focused probe tests, full suite/ruff, and fresh TestModel both+classify with
+all thinking off, per-call300, episode600, max-wall1200, isolated mock cache.
+Save validation/stage6-instruments-<check>-attempt<n> evidence; no commits or run edits.
+
+## Preparation B — hard deadline correction (D-17)
+
+After PreparationA checkpoint, same probe/test scope, sequential sole writer.
+Compute one monotonic deadline; cap run_unit with remaining time via wait_for.
+On expiry persist launched unit TIMEOUT reason wall_budget_during_unit, null
+unobserved scoring/defect values, exhaustedtrue; remaining units NOT MEASURED.
+Retain actual partial stage evidence where already observed, never invent zeros.
+No later text/stage/provider request may start after expiry; cancellation must
+propagate through the pipeline. Persist partial JSON immediately and stop.
+Use short deterministic tests to prove cancellation despite longer episode/call
+timeouts; no second triplet text/later request; all planned summary units present;
+valid incremental JSON; exhaustedtrue and chain NOT MEASURED; small elapsed tolerance.
+The future runner caps each cell to remaining global14,400s and refuses launches
+after expiry, with a managed-process termination backstop. No Stage4 rerun.
+
+## Runner checks
+
+Runner path: validation/effort_sweep_runner.py (committed executable evidence,
+not raw stdout); tests/unit/test_effort_sweep_runner.py. Import by path in tests.
+Accept --test-model, --output-dir, --identity-json, --baseline-json,
+--cache-dir and --max-wall-seconds (at most14400). Refuse accidental overwrite
+of existing live raw cells. Reuse completed extractor off only, never relaunch it.
+Build the same level/configuration plan for TestModel; mock cells finish in seconds.
+Read selected upstream levels from just-completed raw evidence before next agent.
+Unknown or no eligible measured level yields explicitly unmeasured fallbackoff.
+Run subprocesses without shell, environment-only credentials, no hosted keys.
+Managed parent execution survives command-tool yields per D-16. Capture child
+stdout privately under .tmp/plan34, not in public result JSON. Persist aggregate
+after each cell; after budget exhaustion represent every remaining planned cell.
+No recursive retries or remeasurement. Use a process-level timeout for each child
+bounded by the remaining stage deadline; terminate only the child it created.
+If termination leaves a partial raw artifact, retain it and classify incomplete
+evidence honestly. Never pad raw measurements or score absent rows as zero.
+
 Test actual selection arithmetic: higher triplet tier beats any facts count;
 two-fact band selects lowest level; a critical defect or two timeouts excludes;
 unmeasured cannot win as measured; classifier needs all eight; raw row mismatch

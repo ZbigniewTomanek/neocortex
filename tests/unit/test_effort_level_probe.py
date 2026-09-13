@@ -15,6 +15,7 @@ from pydantic_ai.messages import ModelResponse, TextPart
 from scripts import effort_level_probe as probe  # ty: ignore[unresolved-import]
 
 from neocortex.extraction.agents import AgentInferenceConfig, build_extractor_agent
+from neocortex.extraction.schemas import ExtractionResult
 
 
 def _row(
@@ -153,6 +154,42 @@ def test_response_marker_is_reduced_to_a_boolean() -> None:
     assert probe.reasoning_marker_detected(result) is True
 
 
+def _probe_result(
+    *,
+    output: Any | None = None,
+    reasoning_tokens: int | None = 0,
+    output_tokens: int | None = 10,
+    marker: bool = False,
+) -> SimpleNamespace:
+    result_output = ExtractionResult() if output is None else output
+    content = "<think>hidden chain</think>" if marker else "clean"
+    return SimpleNamespace(
+        output=result_output,
+        usage=lambda: SimpleNamespace(
+            details={"reasoning_tokens": reasoning_tokens},
+            output_tokens=output_tokens,
+        ),
+        all_messages=lambda: [ModelResponse(parts=[TextPart(content=content)])],
+    )
+
+
+def _mock_agent_and_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Exercise either exit policy without constructing a provider or making HTTP calls."""
+
+    monkeypatch.setattr(probe, "build_extractor_agent", lambda _config: object())
+
+    def boundary(_agent: object, config: AgentInferenceConfig, *, test_model: bool) -> dict[str, Any]:
+        del test_model
+        effort = "none" if config.thinking_effort is False else config.thinking_effort
+        return {
+            "thinking": config.thinking_effort,
+            "enable_thinking": False if config.thinking_effort is False else None,
+            "resolved_reasoning_effort": effort,
+        }
+
+    monkeypatch.setattr(probe, "boundary_settings", boundary)
+
+
 @pytest.mark.asyncio
 async def test_test_model_cli_writes_twelve_rows_and_real_boundary_settings(tmp_path: Path) -> None:
     output = tmp_path / "effort.json"
@@ -201,6 +238,31 @@ async def test_zero_wall_budget_records_every_unlaunched_request(tmp_path: Path)
     assert all(row["status"] == "NOT MEASURED" for row in payload["rows"])
     assert all(row["reason"] == "wall_budget_before_launch" for row in payload["rows"])
     assert payload["analysis"]["cancellation_fired"] is None
+
+
+@pytest.mark.asyncio
+async def test_final_wall_limited_timeout_marks_budget_exhausted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = SimpleNamespace(now=0.0)
+    monkeypatch.setattr(probe.time, "monotonic", lambda: clock.now)
+
+    async def timeout_at_deadline(*_args: Any, **_kwargs: Any) -> Any:
+        clock.now = 5.0
+        raise TimeoutError
+
+    monkeypatch.setattr(probe, "_run_one", timeout_at_deadline)
+    output = tmp_path / "final-timeout.json"
+    exit_code, payload = await probe.run_probe(
+        _args(output, levels="off", repeats=1, per_call_timeout=300.0, max_wall_seconds=5.0)
+    )
+
+    assert exit_code == 1
+    assert payload["rows"][0]["status"] == "TIMEOUT"
+    assert payload["run"]["wall_seconds"] == 5.0
+    assert payload["run"]["budget_exhausted"] is True
+    assert payload["run"]["finalized"] is True
+    assert json.loads(output.read_text(encoding="utf-8"))["run"]["budget_exhausted"] is True
 
 
 @pytest.mark.asyncio
@@ -274,6 +336,78 @@ async def test_provider_timeout_is_recorded_as_timeout_without_exception_text(
     assert payload["rows"][0]["status"] == "TIMEOUT"
     assert payload["rows"][0]["timeout"] is True
     assert "secret.example" not in output.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("result", "expected_reason"),
+    [
+        (_probe_result(marker=True), "reasoning_marker_detected"),
+        (_probe_result(output_tokens=0), "nonpositive_output_tokens"),
+        (_probe_result(output=object()), "invalid_structured_output"),
+    ],
+)
+@pytest.mark.parametrize("test_model", [False, True], ids=["live-policy", "test-model-policy"])
+@pytest.mark.asyncio
+async def test_invalid_observation_is_non_ok_and_fails_the_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    result: SimpleNamespace,
+    expected_reason: str,
+    test_model: bool,
+) -> None:
+    _mock_agent_and_boundary(monkeypatch)
+
+    async def return_result(*_args: Any, **_kwargs: Any) -> SimpleNamespace:
+        return result
+
+    monkeypatch.setattr(probe, "_run_one", return_result)
+    output = tmp_path / f"{expected_reason}-{test_model}.json"
+    exit_code, payload = await probe.run_probe(_args(output, levels="off", repeats=1, test_model=test_model))
+
+    assert exit_code == 1
+    assert payload["rows"][0]["status"] == "ERROR"
+    assert payload["rows"][0]["reason"] == expected_reason
+    stored = json.loads(output.read_text(encoding="utf-8"))["rows"][0]
+    assert stored["status"] == "ERROR"
+    assert stored["reason"] == expected_reason
+
+
+@pytest.mark.parametrize("test_model", [False, True], ids=["live-policy", "test-model-policy"])
+@pytest.mark.asyncio
+async def test_off_nonzero_reasoning_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, test_model: bool
+) -> None:
+    _mock_agent_and_boundary(monkeypatch)
+
+    async def return_result(*_args: Any, **_kwargs: Any) -> SimpleNamespace:
+        return _probe_result(reasoning_tokens=1)
+
+    monkeypatch.setattr(probe, "_run_one", return_result)
+    output = tmp_path / "off-nonzero.json"
+    exit_code, payload = await probe.run_probe(_args(output, levels="off", repeats=1, test_model=test_model))
+
+    assert exit_code == 1
+    assert payload["rows"][0]["status"] == "ERROR"
+    assert payload["rows"][0]["reason"] == "off_reasoning_nonzero"
+
+
+@pytest.mark.parametrize("test_model", [False, True], ids=["live-policy", "test-model-policy"])
+@pytest.mark.asyncio
+async def test_valid_off_observation_passes_all_live_gates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, test_model: bool
+) -> None:
+    _mock_agent_and_boundary(monkeypatch)
+
+    async def return_result(*_args: Any, **_kwargs: Any) -> SimpleNamespace:
+        return _probe_result(reasoning_tokens=0, output_tokens=10)
+
+    monkeypatch.setattr(probe, "_run_one", return_result)
+    output = tmp_path / "valid-off.json"
+    exit_code, payload = await probe.run_probe(_args(output, levels="off", repeats=1, test_model=test_model))
+
+    assert exit_code == 0
+    assert payload["rows"][0]["status"] == "OK"
+    assert payload["rows"][0]["reason"] is None
 
 
 def test_limits_enforce_twelve_calls_and_live_budgets() -> None:

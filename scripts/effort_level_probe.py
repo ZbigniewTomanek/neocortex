@@ -337,11 +337,43 @@ def _write_markdown(path: Path, payload: Mapping[str, Any]) -> None:
 
 def _refresh_payload(payload: dict[str, Any], started: float, *, finalized: bool) -> None:
     run = payload["run"]
-    run["wall_seconds"] = round(time.monotonic() - started, 3)
+    elapsed = time.monotonic() - started
+    run["wall_seconds"] = round(elapsed, 3)
     run["finalized"] = finalized
     if finalized:
+        if elapsed >= run["max_wall_seconds"]:
+            run["budget_exhausted"] = True
         run["finished_at"] = datetime.now(UTC).isoformat()
     payload["analysis"] = analyze_rows(payload["rows"], run["levels"], run["repeats"])
+
+
+def _boundary_matches_level(row: Mapping[str, Any]) -> bool:
+    expected = "none" if row.get("level") == "off" else row.get("level")
+    if row.get("resolved_reasoning_effort") != expected:
+        return False
+    return row.get("level") != "off" or (row.get("thinking") is False and row.get("enable_thinking") is False)
+
+
+def _live_gate_row(row: Mapping[str, Any]) -> bool:
+    """Return whether one live row satisfies every declared identity gate."""
+    return (
+        _usable_row(row)
+        and _boundary_matches_level(row)
+        and (row.get("level") != "off" or row.get("reasoning_tokens") == 0)
+    )
+
+
+def _test_model_gate_row(row: Mapping[str, Any]) -> bool:
+    """Allow only TestModel's known absence of synthetic reasoning usage."""
+    if not _boundary_matches_level(row):
+        return False
+    if row.get("valid_output") is not True or row.get("reasoning_marker_detected") is not False:
+        return False
+    if row.get("timeout") is not False or (_safe_nonnegative_int(row.get("output_tokens")) or 0) <= 0:
+        return False
+    if row.get("reasoning_tokens") is None:
+        return row.get("status") == "NOT MEASURED" and row.get("reason") == "missing_usage:reasoning_tokens"
+    return _live_gate_row(row)
 
 
 async def _run_one(agent: Any, config: AgentInferenceConfig, text: str, timeout_s: float) -> Any:
@@ -435,9 +467,22 @@ async def run_probe(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                 continue
             agent, config = agents[level]
             request_started = time.monotonic()
+            wall_limited = remaining <= args.per_call_timeout
             try:
                 result = await _run_one(agent, config, source_text, min(args.per_call_timeout, remaining))
-            except (TimeoutError, APITimeoutError):
+            except TimeoutError:
+                row.update(
+                    status="TIMEOUT",
+                    reason="per_call_or_wall_timeout",
+                    elapsed_s=round(time.monotonic() - request_started, 3),
+                    timeout=True,
+                )
+                if wall_limited:
+                    payload["run"]["budget_exhausted"] = True
+                    for pending in payload["rows"][index + 1 :]:
+                        if pending["reason"] == "pending":
+                            pending["reason"] = "wall_budget_before_launch"
+            except APITimeoutError:
                 row.update(
                     status="TIMEOUT",
                     reason="per_call_or_wall_timeout",
@@ -456,9 +501,21 @@ async def run_probe(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                 valid_output = isinstance(result.output, ExtractionResult)
                 marker = reasoning_marker_detected(result)
                 missing = [name for name, value in counts.items() if value is None]
+                if not valid_output:
+                    status, reason = "ERROR", "invalid_structured_output"
+                elif marker:
+                    status, reason = "ERROR", "reasoning_marker_detected"
+                elif counts["output_tokens"] is not None and counts["output_tokens"] <= 0:
+                    status, reason = "ERROR", "nonpositive_output_tokens"
+                elif missing:
+                    status, reason = "NOT MEASURED", "missing_usage:" + ",".join(missing)
+                elif level == "off" and counts["reasoning_tokens"] != 0:
+                    status, reason = "ERROR", "off_reasoning_nonzero"
+                else:
+                    status, reason = "OK", None
                 row.update(
-                    status="NOT MEASURED" if missing else "OK",
-                    reason="missing_usage:" + ",".join(missing) if missing else None,
+                    status=status,
+                    reason=reason,
                     elapsed_s=round(time.monotonic() - request_started, 3),
                     valid_output=valid_output,
                     reasoning_marker_detected=marker,
@@ -466,6 +523,8 @@ async def run_probe(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                 )
             _refresh_payload(payload, started, finalized=False)
             _atomic_write_json(args.output, payload)
+            if payload["run"]["budget_exhausted"]:
+                break
     finally:
         _refresh_payload(payload, started, finalized=True)
         _atomic_write_json(args.output, payload)
@@ -473,17 +532,9 @@ async def run_probe(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
 
     complete = len(payload["rows"]) == payload["run"]["planned_requests"]
     if args.test_model:
-        expected_efforts = {"off": "none", "low": "low", "medium": "medium", "high": "high"}
-        harness_valid = complete and all(
-            row["resolved_reasoning_effort"] == expected_efforts[row["level"]]
-            and row["valid_output"] is True
-            and row["timeout"] is False
-            and row["status"] not in {"ERROR", "TIMEOUT"}
-            for row in payload["rows"]
-        )
+        harness_valid = complete and all(_test_model_gate_row(row) for row in payload["rows"])
         return (0 if harness_valid else 1), payload
-    statuses = {row["status"] for row in payload["rows"]}
-    return (0 if complete and statuses == {"OK"} else 1), payload
+    return (0 if complete and all(_live_gate_row(row) for row in payload["rows"]) else 1), payload
 
 
 async def main(argv: list[str] | None = None) -> int:

@@ -25,6 +25,10 @@ NOT MEASURED, never synthetic zero. Detect leaked reasoning markers without pers
 model text. Do not serialize exception messages, prompts, entity names or credentials.
 Every planned request has a row; unlaunched requests are NOT MEASURED. Incrementally
 write JSON atomically after each request; always finalize partial results on budget exit.
+Final wall-limited request exhaustion must be reflected even without a next iteration.
+Row OK/live exit0 require full gate validity, not merely present token fields:
+valid output, positive output count, no marker, exact effort and off reasoning0.
+TestModel may lack synthetic reasoning usage, but must satisfy other validity checks.
 Maximum twelve live requests, 300 s per call, 1200 s total. Do not retry timed-out rows.
 Treat provider `openai.APITimeoutError` as TIMEOUT with timeout=true, just like
 asyncio TimeoutError. It is not a subclass of built-in TimeoutError. Add a direct

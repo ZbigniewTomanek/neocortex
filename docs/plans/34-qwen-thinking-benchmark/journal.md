@@ -468,3 +468,34 @@ question -- whether the local endpoint honours `reasoning_effort` at all -- is S
 - Coordinator read probe/test files, verified provider-timeout regression red as ERROR and fixed TIMEOUT, no retry or exception-text persistence. One pre-review gatefix, not repair.
 - Own focused19/0.31s, full1446 passed/7 skipped/41.81s, lint PASS. Fresh stage5-testmodel-coordinator-attempt3.json has12 valid rows, exact none/low/medium/high boundaries, null reasoning and cancellation. Synthetic values do not prove endpoint behavior.
 - Stage4 first valid poll at13:38:12Z showed eight compact rows ok,42/56 facts, critical-defects empty; one supersession row also present. Partial only; final poll no earlier13:43:12Z. Internal350s budget controls remaining work.
+
+## 2026-09-13 -- Stage6 independent instrument preparation
+
+- Strong read-only diagnosis confirms count-only classifier output cannot establish set agreement; host ontology completion/rejection hooks can expose bounded proposal counts.
+- Stage6 brief PreparationA authorizes only probe/tests, privacy-safe canonical keys and nullable host-validator counts. No live calls or level selection before Stage4/5 completion.
+- Single source writer Sol/high; Stage5 review reads committed disjoint files. Preparation does not claim Stage6 dependency gates passed.
+- Historical Plan33 probe usage rows come only from domain_classifier; old medians196/229.5/224/180 are not controlled before/after comparisons to the new E04 extractor probe.
+
+## 2026-09-13 -- Final off baseline measured, budget defect surfaced
+
+- Managed session exited0; copied actual JSON unchanged to resources/sweep/off.json. All11 summary units complete: compact42/56 facts, supersession1/3 (S07 pass; S05/S11 retain old value), no observed critical defects. No quality PASS inferred.
+- Actual wall396.67s exceeds configured350s; wall_budget_exhausted incorrectly remainsfalse. Start13:33:07.008Z gives finish approximately13:39:43.678Z, about0.7s after original overall deadline. Do not claim hard-budget compliance.
+- Strong read-only diagnosis dispatched for Stage6 hard-budget dependency. No Stage4 rerun permitted or needed; retain raw overrun evidence. Stage6 source writer continues only declared disjoint fields.
+
+## 2026-09-13 -- Stage5 review spent, single fix queued
+
+- Complete review saved before triage: F1 final timeout misreports budget flag; F2 marker/zero-output rows reportOK and live exit0. Coordinator traced both concrete paths and accepts; brief corrected.
+- Stage6 source writer requested checkpoint/release. Single Stage5 fix waits for lock, no concurrent writer. Fix1 brief covers full declared live validity and deterministic final-budget regression. No re-review and no live identity launched.
+
+## 2026-09-13 -- Stage6 checkpoint and deadline diagnosis
+
+- Stage6 saved only probe/tests (194 insertions17 deletions), diffcheck PASS; no gates run yet. Source lock released; Stage5 single fix now sole Sol/high writer.
+- Diagnosis proves S07 began345.95s before350s deadline and continued50.68s, with four requests starting after the configured deadline. Absolute timings inferred from rounded stage durations; raw artifact unchanged.
+- D-17 and Stage6 PreparationB require in-flight cancellation/partial persistence and global runner backstop before sweep calls. No Stage4 rerun. Stage4 measurement is complete with the operational deviation, not a budget PASS; hard-limit correction is a Stage6 prerequisite.
+
+## 2026-09-13 -- Stage5 single fix accepted
+
+- Coordinator read complete fix and tests. F1 final timeout records exhaustion; F2 live and mock policies reject marker/output0/invalid structure/off nonzero reasoning with non-OK status and exit1.
+- Own focused30/0.32s, full1462 passed/7 skipped/41.10s, lint PASS; fresh mock12 valid/0.045s, exactefforts, reasoningnull/cancellationnull. Evidence stage5-fix1-*-coordinator-attempt1.
+- Stage6 owner annotated only intentional fullwidth fixture with noqaRUF001, then released lock; full lint restored without touching that source in Stage5 commit.
+- Review and single repair spent, no re-review. Commit fix then launch bounded identity once. No live calls occurred during fix verification.

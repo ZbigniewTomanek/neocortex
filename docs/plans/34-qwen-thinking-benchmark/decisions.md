@@ -194,3 +194,20 @@ by the runner's asynchronous session. A harmless test survived intervening calls
 This is the detached execution mechanism for this harness, not a model-code change.
 **Rerun boundary**: one corrected launch, distinct attempt2 paths, only the remaining
 time before the original 13:39:43 UTC deadline. No reset of the 20-minute budget.
+
+### D-17: Enforce probe deadlines during units, not only between them
+**Date**: 2026-09-13 - **Stage**: 6 preparation
+**Evidence**: Stage4 off baseline started S07 at approximately345.95s of350s;
+that triplet took50.68s and made five requests. Four requests started after the
+configured probe deadline (inferred from rounded sequential stage durations).
+Actual wall396.67s, exhaustedfalse. Original overall20min deadline exceeded by
+approximately0.7s. Raw evidence remains unchanged in resources/sweep/off.json.
+**Root cause**: main checks elapsed only before run_unit; neither triplet text
+nor stage execution is bounded by remaining overall time. No next unit means
+the exhausted flag staysfalse.
+**Change**: before further Stage6 live calls, cap each unit with the remaining
+monotonic deadline; cancel/persist launched TIMEOUT and unlaunched NOT MEASURED.
+The sweep runner additionally caps each cell to its remaining global budget and
+uses a process-level backstop. This strengthens enforcement of existing limits.
+**Disposition**: no baseline rerun. Its quality values remain observations, not
+proof of budget compliance. Stage6 must prove no later request begins after expiry.

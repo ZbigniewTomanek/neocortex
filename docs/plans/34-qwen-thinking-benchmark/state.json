@@ -119,14 +119,14 @@
       "id": 4,
       "title": "Numeric-fact preservation in the Qwen path",
       "file": "stages/04-numeric-fact-preservation.md",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "depends_on": [
         1
       ],
       "commit": ["2f199a3", "639b0d6"],
-      "note": "Attempt1 lifecycle failure NOT MEASURED. D-16 attempt2 managed session89965 launched13:33:07Z with350s remaining budget; poll>=13:38:07Z; original deadline13:39:43Z. Review/fix spent.",
+      "note": "Baseline measured11 units,42/56 facts,1/3 supersession,0 observed critical defects/timeouts. Actual396.67s exceeds350s limit; budget defect promoted to Stage6. Review/fix spent; no rerun.",
       "blocked_by": [],
-      "step": "REVIEWED",
+      "step": null,
       "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": "codex/gpt-5.6-sol, effort high",
@@ -146,8 +146,8 @@
       "repairReview": {
         "used": false
       },
-      "gates": {"scalar tests red then green": "PASS", "hosted identity": "PASS", "full suite": "PASS", "lint and hooks": "PASS", "exact TestModel baseline": "PASS", "live off baseline": "NOT MEASURED"},
-      "evidence": ["validation/stage4-s05-red-attempt1.txt", "validation/stage4-scalars-focused-attempt2.txt", "validation/stage4-scalars-hosted-attempt2.txt", "validation/stage4-scalars-hosted-identity-attempt1.txt", "validation/stage4-suite-coordinator-attempt1.txt", "validation/stage4-ruff-coordinator-attempt1.txt", "validation/stage4-testmodel-coordinator-attempt1.json"]
+      "gates": {"scalar tests red then green": "PASS", "hosted identity": "PASS", "full suite": "PASS", "lint and hooks": "PASS", "exact TestModel baseline": "PASS", "live off baseline measurement": "PASS", "live quality": "REPORT: 42/56 facts; 1/3 supersession", "hard wall budget": "DEFERRED: observed overrun; fix before Stage6"},
+      "evidence": ["validation/stage4-s05-red-attempt1.txt", "validation/stage4-scalars-focused-attempt2.txt", "validation/stage4-scalars-hosted-attempt2.txt", "validation/stage4-scalars-hosted-identity-attempt1.txt", "validation/stage4-suite-coordinator-attempt1.txt", "validation/stage4-ruff-coordinator-attempt1.txt", "validation/stage4-testmodel-coordinator-attempt1.json", "validation/stage4-review.md", "validation/stage4-fix1-testmodel-coordinator-attempt1.json", "resources/sweep/off.json"]
     },
     {
       "id": 5,
@@ -157,23 +157,25 @@
       "depends_on": [
         1
       ],
-      "commit": null,
-      "note": "Provider-timeout gatefix1 complete; coordinator checking final19 focused tests and12 valid TestModel rows; live, commit and review pending.",
+      "commit": ["3c52202"],
+      "note": "F1/F2 fixed and coordinator verified30 focused/full1462/7/lint/mock12; single repair spent, no re-review. Commit/live next.",
       "blocked_by": [],
-      "step": "WRITING",
+      "step": "REVIEWED",
       "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
-      "reviewer": null,
+      "reviewer": "codex/gpt-5.6-sol, effort high",
       "preReview": {
         "used": false
       },
       "review": {
-        "used": false
+        "used": true,
+        "blocking": 2,
+        "file": "validation/stage5-review.md"
       },
       "gateFixes": 1,
       "repair": {
-        "used": false,
-        "rounds": 0
+        "used": true,
+        "rounds": 1
       },
       "repairReview": {
         "used": false
@@ -185,17 +187,17 @@
       "id": 6,
       "title": "Per-agent thinking-level sweep",
       "file": "stages/06-per-agent-effort-sweep.md",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "depends_on": [
         4,
         5
       ],
       "commit": null,
-      "note": null,
+      "note": "Independent PreparationA probe/tests checkpoint saved, gates pending; PreparationB hard-deadline fix required. No sweep runner/live work until Stage5 gate.",
       "blocked_by": [],
-      "step": null,
+      "step": "WRITING",
       "writer": null,
-      "implementer": null,
+      "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": null,
       "preReview": {
         "used": false
