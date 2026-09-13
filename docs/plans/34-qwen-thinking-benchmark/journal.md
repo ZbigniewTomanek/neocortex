@@ -569,3 +569,32 @@ question -- whether the local endpoint honours `reasoning_effort` at all -- is S
 - Initial fix verification found downstream int(None), corrected within same round; failures retained. Own focused74/0.89s, full1498/7/55.44s, lintPASS; full includes8 paused Stage7 tests. HooksPASS from implementer; no Stage7 source included in fix.
 - Own exact14400s-configured mock finished7.316s,16raw reopened: both11units/14sources, compact8/8; allsynthetic0/56facts,0timeouts/critical, classifier8/8. Evidence validation/stage6-fix1-mock-coordinator-attempt1 with baseline from stage6-fix1-mock-attempt1.
 - Review/single repair spent. No re-review. Stage7 paused until fixcommit exists; its brief now explicitly requires durable planned provenance before childlaunch, found during coordinator checkpoint inspection.
+
+## 2026-09-13 -- Stage6 live sweep launched
+
+- Fix0d7dd01 exists; allhooksPASS after final-newline-only normalization of mockJSON. Safe local models/settings preflightPASS. No hosted keys in probe environment.
+- At14:56:41Z launched exact validated runner through managed asynchronous session55651, maxwall14400, percall300, existing livecache, originaloffbaseline reused. No prior aggregate/extractorlow/log existed. Output resources/effort-sweep.json and resources/sweep; private log .tmp/plan34/effort-sweep.log.
+- Hard deadline18:56:41Z; first poll no earlier15:01:42Z. No other model/service calls alongside sweep. One launch per cell; no rerun without root-caused decision.
+- Stage7 resumes disjoint harness preparation while committed probe/runner stay frozen and only live evidence is written. This extends the committed-review overlap exception to frozen live measurement: one source writer remains, no shared source paths or endpoint contention. No Stage7 service/DB/inference writes before its own gates/review and selected levels.
+
+## 2026-09-13 -- Stage7 operational documentation correction
+
+- Coordinator found resources/commands.md still prescribes nohup and after-arm exports, superseded by D-16 and capture-before-reset integration. Added explicit correction to Stage7 brief and same sole writer scope, not a new review or model experiment.
+- Documentation will describe current managed runner/supervisor, automatic snapshots and integrated exports, without changing product defaults or migration criteria. Simple-English structural rules apply. No external write is added.
+
+## 2026-09-13 -- First Stage6 live poll
+
+- At15:02:01Z session55651 active; reused extractoroff accepted at42/56facts,1/3triplets. Extractorlow completed5/11units: E02=4/8,E04=9/9,E05=3/6,E10=5/5,E18=6/7; allstatusok and observed criticaldefects empty. Triplets not yet measured, no selection.
+- Incremental aggregate wallfields remain0 until cell finalization; those are not a measured zero runtime. Harddeadline unchanged18:56:41Z. Next poll no earlier15:07:07Z.
+
+## 2026-09-13 -- Second Stage6 live poll
+
+- At15:07:27Z extractorlow10/11units persisted, allstatusok/observed criticaldefects empty. Eightcompact39/56facts; S05 andS11 new_presenttrue butold_absentfalse. S07 unfinished, nolevelselection. This is not evidence that more effort helps.
+- Managedsession55651 active, deadline unchanged18:56:41Z. Next poll no earlier15:12:33Z. No retry or extra measurement.
+
+## 2026-09-13 -- Stage7 preparation gates accepted
+
+- Coordinator read full harness/test/supervisor/doc diff. Planned childreset durable before backgroundlaunch and fakechild proves it. Tuned-only corpus exports/metricmerge precede childreset and manifestdigest; reportlast. Existing snapshotrestore retained, childcleanup serialized, TERM124/restorefailure3 distinct, unrelatedsentinel survives.
+- Ownfocused34/52.85s, full1498/7/65.12s, lint/bashsyntaxPASS. Exactown dryrun shows300s/domaintrue/allfourmockfalse/compact and expectedorder. Implementerhooksattempt2PASS afterformat-onlyattempt1; docsselfchecksPASS. Sourcefrozen, executable0755.
+- Failed preparation attempts retained: fakeerrorfixture also failedrestore, inheritedlow violatedmockfalse assertion, initialdryrun600/domainfalse, one prose semicolon. These were fixture/configuration/style corrections before final gates, not live experiments. No Stage7 service/DB/embedding/inference occurred.
+- Implementationcommit and single independentreview next. Actual selectedsettings/livequality stillNOTMEASURED. Stage6 live source remains untouched; its untracked incremental outputs are excluded from this commit.

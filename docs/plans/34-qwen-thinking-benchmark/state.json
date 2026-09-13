@@ -192,8 +192,8 @@
         4,
         5
       ],
-      "commit": ["80f2b98"],
-      "note": "F1 single fix verified: unknown timeout/error usage and requests_total null; own74/full1498/7/lint/mock16 PASS. Review/fix spent, no rereview; commit then live sweep.",
+      "commit": ["80f2b98", "0d7dd01"],
+      "note": "15:07Z session55651 active: extractorlow10/11units,39/56facts,S05/S11 old_absentfalse; no selection yet. Deadline18:56:41Z,nextpoll>=15:12:33Z; source frozen.",
       "blocked_by": [],
       "step": "REVIEWED",
       "writer": null,
@@ -229,9 +229,9 @@
         6
       ],
       "commit": null,
-      "note": "Preparation paused at atomic checkpoint for Stage6 single fix; no services/live arm until selected levels and preparation gates.",
+      "note": "Preparation gates PASS: own34focused/full1498/7/lint/dryrun300-domaintrue; frozen for implementation commit and single review. No live arm until selected levels.",
       "blocked_by": [],
-      "step": "WRITING",
+      "step": "FROZEN",
       "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": null,
@@ -249,8 +249,8 @@
       "repairReview": {
         "used": false
       },
-      "gates": {},
-      "evidence": []
+      "gates": {"focused harness": "PASS", "full suite": "PASS", "lint and hooks": "PASS", "exact dry-run and order": "PASS", "live arm artifacts": "NOT MEASURED"},
+      "evidence": ["validation/stage7-focused-coordinator-attempt1.txt", "validation/stage7-suite-coordinator-attempt1.txt", "validation/stage7-ruff-coordinator-attempt1.txt", "validation/stage7-dryrun-coordinator-attempt1.txt", "validation/stage7-preparation-hooks-attempt2.txt", "validation/stage7-preparation-docs-attempt2.txt"]
     },
     {
       "id": 8,

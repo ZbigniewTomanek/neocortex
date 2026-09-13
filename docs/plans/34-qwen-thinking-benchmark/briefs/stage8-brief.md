@@ -22,6 +22,12 @@ The coordinator owns this plan's journal, state, backlog, briefs and review reco
 Read the actual Stage5 identity, Stage6 sweep, and Stage7 service artifacts.
 Read the Plan33 rubric and the Stage7 parsing report.
 Do not use a stage status or an agent summary as a measured rubric value.
+Rubric authority: this plan's index.md Success Criteria and decisions.md D-3/D-7,
+plus ../33-local-qwen-migration/stages/07-quality-gate.md. Stage7's sample follows
+this plan's privacy-safe schema, not the incompatible historical sample schema.
+Use all five child exits0, Plan15>=11/14 PASS, Plan17>=13/14 ACCEPTABLE and0FAIL,
+20actual nodes/20actual edges with required validity booleans, skip consistency
+and temporal survival, terminal stability and critical integrity as required inputs.
 
 Create one decision row for each agent: ontology, extractor, librarian and domain classifier.
 Include its selected level, five E2E exits, Plan15/17 scores, sample result and skip result.
@@ -34,6 +40,11 @@ Do not convert an incomplete sample, unresolved temporal survival, or missing at
 If Stage5 proves cancellation, explain the observed failure to distinguish positive effort levels.
 Keep the claim limited to this endpoint, model and sample.
 Do not infer cancellation from missing usage counts.
+Stage5 retained all four levels because positive pairwise comparisons were
+incomplete. That is not proof that all four levels are mutually distinct.
+Its high-level rows expose ModelHTTPError only, not HTTP status/body or root cause.
+Historical Plan33 reasoning medians came from classifier-only rows on a different
+corpus. Do not present them as a controlled before/after extractor comparison.
 If the sweep did not measure an agent, state that its off value is a fallback.
 Do not call that value a measured winner.
 
@@ -53,6 +64,13 @@ per-agent decisions, limitations, and the next action.
 Give each number a source. Keep synthetic TestModel results separate from live results.
 Name unmeasured criteria and their causes.
 Do not imply that the recall formatter was fixed unless its regression failed first.
+Record the Stage4 operational overrun beside its measured quality:396.67s versus
+configured350s. D-17 corrected later deadlines; the historical run did not pass
+its budget. Keep its42/56facts and1/3supersession as observed results, not universal
+success of scalar correction. Stage6 F1 preserves unknown timeout/error usage as
+null; missing usage is not evidence that a request consumed zero reasoning tokens.
+Proposal observations cover host validators in the sequential probe; they do
+not establish complete coverage of malformed output or pre-hook rejected calls.
 
 ## Handoff
 

@@ -6,7 +6,10 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
+import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -14,9 +17,10 @@ import pytest
 ROOT = Path(__file__).parents[2]
 SCRIPT = ROOT / "scripts" / "model_bakeoff.sh"
 RUN_E2E_SCRIPT = ROOT / "scripts" / "run_e2e.sh"
+SUPERVISOR = ROOT / "docs/plans/34-qwen-thinking-benchmark/validation/stage7_arm_supervisor.py"
 
 
-def _dry_run(**overrides: str) -> subprocess.CompletedProcess[str]:
+def _dry_run(*, arm: str = "test", **overrides: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env.update(
         {
@@ -28,7 +32,7 @@ def _dry_run(**overrides: str) -> subprocess.CompletedProcess[str]:
     )
     env.update(overrides)
     return subprocess.run(
-        [str(SCRIPT), "--arm", "test", "--dry-run"],
+        [str(SCRIPT), "--arm", arm, "--dry-run"],
         cwd=ROOT,
         env=env,
         capture_output=True,
@@ -225,6 +229,33 @@ fi
 """)
     (scripts / "run_e2e.sh").write_text("""#!/usr/bin/env bash
 set -euo pipefail
+cleanup() {
+  if [[ "${FAKE_E2E_BLOCK:-0}" == 1 ]]; then
+    printf 'child_cleanup_start\\n' >>"${FAKE_COMMAND_LOG:?}"
+    "$(dirname "$0")/manage.sh" stop
+    sleep 0.1
+    printf 'child_cleanup_end\\n' >>"${FAKE_COMMAND_LOG:?}"
+  fi
+}
+trap cleanup EXIT
+trap 'exit 143' TERM
+if [[ "${FAKE_ASSERT_PLANNED:-0}" == 1 ]]; then
+  python3 - "$(dirname "$0")/../docs/plans/34-qwen-thinking-benchmark/validation/provenance.json" \
+    "${NEOCORTEX_E2E_RUN_ID:?}" <<'PY'
+import json, sys
+document = json.load(open(sys.argv[1], encoding="utf-8"))
+child_run_id = sys.argv[2]
+run_id = child_run_id.split(".e2e.", 1)[0]
+events = document["runs"][run_id]["events"]
+assert any(
+    event["status"] == "planned"
+    and event["action"] == "e2e_child_reset"
+    and event["target"] == child_run_id
+    for event in events
+)
+PY
+  printf 'child_saw_planned=%s\\n' "${NEOCORTEX_E2E_RUN_ID:?}" >>"${FAKE_COMMAND_LOG:?}"
+fi
 e2e_format='e2e child_run_id=%s dev_tokens_file=%s admin_set=%s mcp_set=%s '
 e2e_format+='alice_set=%s bob_set=%s eve_set=%s keep_pg=%s\\n'
 printf "$e2e_format" \\
@@ -232,6 +263,10 @@ printf "$e2e_format" \\
   "${NEOCORTEX_ADMIN_TOKEN+x}" "${NEOCORTEX_MCP_TOKEN+x}" \\
   "${NEOCORTEX_ALICE_TOKEN+x}" "${NEOCORTEX_BOB_TOKEN+x}" "${NEOCORTEX_EVE_TOKEN+x}" \\
   "${KEEP_POSTGRES_RUNNING:-}" >>"${FAKE_COMMAND_LOG:?}"
+if [[ "${FAKE_E2E_BLOCK:-0}" == 1 ]]; then
+  printf 'child_blocking\\n' >>"${FAKE_COMMAND_LOG:?}"
+  sleep 30
+fi
 status="${FAKE_E2E_STATUS:-0}"
 if [[ "${KEEP_POSTGRES_RUNNING:-}" != 1 ]]; then
   rm -f "${FAKE_PG_READY_MARKER:?}"
@@ -311,6 +346,279 @@ def _run_fake(project: Path, env: dict[str, str]) -> subprocess.CompletedProcess
         text=True,
         check=False,
     )
+
+
+def test_tuned_dry_run_orders_graph_evidence_before_child_resets_and_report_last() -> None:
+    completed = _dry_run(
+        arm="qwen-flash-next-compact-tuned",
+        NEOCORTEX_BAKEOFF_CORPUS_PROFILE="compact",
+        NEOCORTEX_ONTOLOGY_THINKING_EFFORT="false",
+        NEOCORTEX_EXTRACTOR_THINKING_EFFORT="false",
+        NEOCORTEX_LIBRARIAN_THINKING_EFFORT="false",
+        NEOCORTEX_DOMAIN_CLASSIFIER_THINKING_EFFORT="false",
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    output = completed.stdout
+    corpus_metrics = output.index("action=write_corpus_metrics")
+    skip_export = output.index("action=export_skip_events")
+    graph_export = output.index("action=export_graph_sample")
+    metrics_merge = output.index("action=merge_consistency_metrics")
+    first_child = output.index("+ e2e index=1")
+    manifest_build = output.index("action=build_e2e_manifest")
+    manifest_validate = output.index("e2e_manifest.py validate")
+    report = output.index("action=generate_tuned_report")
+    assert corpus_metrics < skip_export < graph_export < metrics_merge < first_child
+    assert metrics_merge < manifest_build < manifest_validate < report
+    assert "skip-events-qwen-flash-next-compact-tuned-test-run.json" in output
+    assert "quality-sample-qwen-flash-next-compact-tuned-test-run.json" in output
+    assert "effort_ontology=false" in output
+    assert "effort_extractor=false" in output
+    assert "effort_librarian=false" in output
+    assert "effort_domain_classifier=false" in output
+
+
+def test_tuned_run_records_safe_provenance_before_external_writes(
+    fake_bakeoff_project: tuple[Path, dict[str, str], Path],
+) -> None:
+    project, env, _log_path = fake_bakeoff_project
+    env.update(
+        {
+            "FAKE_INITIAL_PG_READY": "1",
+            "FAKE_ASSERT_PLANNED": "1",
+            "NEOCORTEX_BAKEOFF_RUN_ID": "tuned-provenance",
+        }
+    )
+
+    completed = subprocess.run(
+        [str(project / "scripts/model_bakeoff.sh"), "--arm", "qwen-flash-next-compact-tuned"],
+        cwd=project,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    provenance = json.loads((project / "docs/plans/34-qwen-thinking-benchmark/validation/provenance.json").read_text())
+    events = provenance["runs"]["tuned-provenance"]["events"]
+    actions = [(event["status"], event["action"]) for event in events]
+    for action in (
+        "preserve_existing_graph",
+        "reset_local_graph",
+        "load_corpus",
+        "save_measured_snapshot",
+        "write_corpus_metrics",
+        "export_skip_events",
+        "export_graph_sample",
+        "merge_consistency_metrics",
+        "write_recall_evidence",
+        "build_e2e_manifest",
+        "generate_tuned_report",
+        "restore_preserved_snapshot",
+    ):
+        assert actions.index(("planned", action)) < actions.index(("completed", action))
+    encoded = json.dumps(provenance)
+    assert "admin-token" not in encoded
+    assert "mcp-secret" not in encoded
+    assert any(event["action"] == "preserved_snapshot_identity" for event in events)
+    child_observations = [line for line in _log_path.read_text().splitlines() if line.startswith("child_saw_planned=")]
+    assert child_observations == [f"child_saw_planned=tuned-provenance.e2e.{index:02d}" for index in range(1, 6)]
+
+
+def test_tuned_run_refuses_historical_artifact_collision_before_destructive_actions(
+    fake_bakeoff_project: tuple[Path, dict[str, str], Path],
+) -> None:
+    project, env, log_path = fake_bakeoff_project
+    resources = project / "docs/plans/33-local-qwen-migration/resources"
+    resources.mkdir(parents=True)
+    historical = resources / "qwen-parsing-report-qwen-flash-next-compact-tuned-test-run.json"
+    historical.write_text('{"historical":true}\n')
+    env["FAKE_INITIAL_PG_READY"] = "1"
+
+    completed = subprocess.run(
+        [str(project / "scripts/model_bakeoff.sh"), "--arm", "qwen-flash-next-compact-tuned"],
+        cwd=project,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 2
+    assert "refusing to overwrite historical run artifact" in completed.stderr
+    assert historical.read_text() == '{"historical":true}\n'
+    assert "start --fresh" not in (log_path.read_text() if log_path.exists() else "")
+
+
+def test_tuned_provenance_records_the_actual_external_write_error(
+    fake_bakeoff_project: tuple[Path, dict[str, str], Path],
+) -> None:
+    project, env, _log_path = fake_bakeoff_project
+    env.update({"FAKE_INITIAL_PG_READY": "1", "FAKE_RECALL_STATUS": "19"})
+
+    completed = subprocess.run(
+        [str(project / "scripts/model_bakeoff.sh"), "--arm", "qwen-flash-next-compact-tuned"],
+        cwd=project,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 19
+    provenance = json.loads((project / "docs/plans/34-qwen-thinking-benchmark/validation/provenance.json").read_text())
+    failed = [
+        event
+        for event in provenance["runs"]["test-run"]["events"]
+        if event["status"] == "failed" and event["action"] == "write_recall_evidence"
+    ]
+    assert failed == [
+        {
+            "action": "write_recall_evidence",
+            "at": failed[0]["at"],
+            "exit_code": 19,
+            "status": "failed",
+            "target": "recall-results-qwen-flash-next-compact-tuned-test-run.json",
+        }
+    ]
+
+
+def test_supervisor_defaults_reserve_600_seconds_inside_7200(tmp_path: Path) -> None:
+    status_path = tmp_path / "supervisor.json"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SUPERVISOR),
+            "--status",
+            str(status_path),
+            "--run-id",
+            "test-run",
+            "--arm",
+            "test-arm",
+            "--",
+            "/usr/bin/true",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    status = json.loads(status_path.read_text())
+    assert status["workload_budget_seconds"] == 6_600
+    assert status["cleanup_reserve_seconds"] == 600
+    assert status["total_budget_seconds"] == 7_200
+
+
+def test_supervisor_timeout_waits_for_child_cleanup_then_restores_and_retains_diagnostics(
+    fake_bakeoff_project: tuple[Path, dict[str, str], Path], tmp_path: Path
+) -> None:
+    project, env, log_path = fake_bakeoff_project
+    private_parent = tmp_path / "private"
+    private_parent.mkdir(mode=0o700)
+    status_path = tmp_path / "supervisor.json"
+    env.update(
+        {
+            "FAKE_INITIAL_PG_READY": "1",
+            "FAKE_E2E_BLOCK": "1",
+            "NEOCORTEX_BAKEOFF_PRIVATE_DIR": str(private_parent),
+        }
+    )
+    sentinel = subprocess.Popen(["sleep", "30"], start_new_session=True)
+    try:
+        started = time.monotonic()
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(SUPERVISOR),
+                "--status",
+                str(status_path),
+                "--run-id",
+                "test-run",
+                "--arm",
+                "test",
+                "--workload-seconds",
+                "3",
+                "--total-seconds",
+                "6",
+                "--",
+                str(project / "scripts/model_bakeoff.sh"),
+                "--arm",
+                "test",
+            ],
+            cwd=project,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=8,
+        )
+        elapsed = time.monotonic() - started
+
+        assert completed.returncode == 124, completed.stderr
+        assert elapsed < 6
+        assert sentinel.poll() is None
+        assert "private_diagnostics_path=" in completed.stdout
+        commands = log_path.read_text().splitlines()
+        cleanup_end = commands.index("child_cleanup_end")
+        restore = next(index for index, line in enumerate(commands) if "snapshot" in line and "load" in line)
+        assert cleanup_end < restore
+        assert sum("snapshot" in line and "load" in line for line in commands) == 1
+        assert not any("start --fresh" in line for line in commands[restore + 1 :])
+        assert list(private_parent.glob("neocortex-bakeoff.test-run.*"))
+        status = json.loads(status_path.read_text())
+        assert status["status"] == "TIMEOUT"
+        assert status["run_id"] == "test-run"
+        assert status["arm"] == "test"
+        assert status["timed_out"] is True
+        assert status["return_code"] == 124
+        assert status["workload_wall_seconds"] >= 3
+        assert status["total_wall_seconds"] >= status["workload_wall_seconds"]
+    finally:
+        sentinel.terminate()
+        sentinel.wait(timeout=2)
+
+
+def test_supervisor_preserves_restore_failure_status_after_timeout(
+    fake_bakeoff_project: tuple[Path, dict[str, str], Path], tmp_path: Path
+) -> None:
+    project, env, _log_path = fake_bakeoff_project
+    env.update({"FAKE_INITIAL_PG_READY": "1", "FAKE_E2E_BLOCK": "1", "FAKE_RESTORE_STATUS": "41"})
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SUPERVISOR),
+            "--status",
+            str(tmp_path / "supervisor.json"),
+            "--run-id",
+            "test-run",
+            "--arm",
+            "test",
+            "--workload-seconds",
+            "3",
+            "--total-seconds",
+            "6",
+            "--",
+            str(project / "scripts/model_bakeoff.sh"),
+            "--arm",
+            "test",
+        ],
+        cwd=project,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=8,
+    )
+
+    assert completed.returncode == 3
+    assert "restoration failure status=3 (original status=124)" in completed.stderr
+    status = json.loads((tmp_path / "supervisor.json").read_text())
+    assert status["status"] == "FAILED"
+    assert status["return_code"] == 3
 
 
 def test_admin_credentials_are_not_passed_in_jq_or_curl_argv(
@@ -636,6 +944,48 @@ printf 'curl %s\\n' "$*" >>"${FAKE_COMMAND_LOG:?}"
     health_calls = [index for index, command in enumerate(commands) if command.startswith("curl -sf ")]
     assert len(health_calls) == 2
     assert all(index < test_index for index in health_calls)
+
+
+def test_run_e2e_term_cleans_up_once_and_exits_143(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    scripts = project / "scripts"
+    bin_dir = tmp_path / "bin"
+    scripts.mkdir(parents=True)
+    bin_dir.mkdir()
+    shutil.copy2(RUN_E2E_SCRIPT, scripts / "run_e2e.sh")
+    test_script = project / "test_script.py"
+    test_script.write_text("# fake blocking e2e\n")
+    log_path = tmp_path / "commands.log"
+    (scripts / "manage.sh").write_text('#!/usr/bin/env bash\nprintf \'manage %s\\n\' "$*" >>"${FAKE_COMMAND_LOG:?}"\n')
+    (bin_dir / "uv").write_text('#!/usr/bin/env bash\nprintf \'uv %s\\n\' "$*" >>"${FAKE_COMMAND_LOG:?}"\nsleep 30\n')
+    (bin_dir / "curl").write_text("#!/usr/bin/env bash\nexit 0\n")
+    for command in (scripts / "run_e2e.sh", scripts / "manage.sh", bin_dir / "uv", bin_dir / "curl"):
+        command.chmod(0o755)
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "FAKE_COMMAND_LOG": str(log_path),
+            "KEEP_POSTGRES_RUNNING": "1",
+        }
+    )
+    process = subprocess.Popen(
+        [str(scripts / "run_e2e.sh"), str(test_script)],
+        cwd=project,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    deadline = time.monotonic() + 2
+    while (not log_path.exists() or "uv run python" not in log_path.read_text()) and time.monotonic() < deadline:
+        time.sleep(0.01)
+    os.killpg(process.pid, signal.SIGTERM)
+    _stdout, stderr = process.communicate(timeout=2)
+
+    assert process.returncode == 143, stderr
+    assert log_path.read_text().splitlines().count("manage stop") == 1
 
 
 def test_bash_syntax_is_valid() -> None:

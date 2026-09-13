@@ -1,8 +1,8 @@
 # Commands and budgets
 
-Never print, log, or commit the value of `LITELLM_API_KEY`. Every live command below runs detached and
-writes incremental output under `.tmp/plan34/` (gitignored). Finished evidence is copied into this
-plan's `resources/` or Plan 33's `resources/`.
+Never print, log, or commit the value of `LITELLM_API_KEY`. Run each live command in the orchestrator's
+managed asynchronous session. A plain foreground shell is not a managed session. Live commands write
+incremental output under `.tmp/plan34/` (gitignored).
 
 ## Preflight (before any live stage)
 
@@ -19,80 +19,104 @@ mkdir -p .tmp/plan34/sweep .tmp/plan34/cache
 ```
 
 If the settings one-liner fails on `extraction_enabled`, the local `.env` has a trailing backslash on
-`NEOCORTEX_EXTRACTION_ENABLED` (Plan 33 backlog B1). Fix the untracked `.env`; do not commit it.
+`NEOCORTEX_EXTRACTION_ENABLED` (Plan 33 backlog B1). Fix the untracked `.env`. Do not commit it.
 
-## Probe pattern (Stages 4–6)
+## Effort sweep (Stage 6)
 
-Always the same command with `--test-model` first. `--max-wall-seconds` below is the Stage 6 per-cell
-value; Stage 4's `off` baseline uses `1200` to stay inside its 20-minute budget. Then:
+Use the finalized identity and the original `off` baseline. Do not run either measurement again.
+Use the same live cache directory for all cells.
 
 ```bash
-nohup uv run python scripts/qwen_speed_probe.py \
-  --corpus both \
+IDENTITY=docs/plans/34-qwen-thinking-benchmark/resources/effort-levels.json
+BASELINE=docs/plans/34-qwen-thinking-benchmark/resources/sweep/off.json
+SWEEP=docs/plans/34-qwen-thinking-benchmark/resources/sweep
+MOCK=.tmp/plan34/stage6-test
+mkdir -p "$MOCK/cache" "$MOCK/sweep"
+
+env -u GOOGLE_API_KEY -u GEMINI_API_KEY uv run python scripts/effort_level_probe.py \
+  --test-model --output "$MOCK/effort-levels.json"
+env -u GOOGLE_API_KEY -u GEMINI_API_KEY uv run python scripts/qwen_speed_probe.py \
+  --test-model --corpus both \
   --fixture docs/plans/34-qwen-thinking-benchmark/resources/fact-fixture.json \
-  --thinking off --thinking-extractor "${LEVEL}" \
-  --per-call-timeout 300 --episode-timeout 600 --max-wall-seconds 3600 \
+  --thinking off --per-call-timeout 300 --episode-timeout 600 --max-wall-seconds 1200 \
+  --cache-dir "$MOCK/cache" --output "$MOCK/off.json"
+env -u GOOGLE_API_KEY -u GEMINI_API_KEY \
+  uv run python docs/plans/34-qwen-thinking-benchmark/validation/effort_sweep_runner.py \
+  --test-model --output-dir "$MOCK/sweep" \
+  --identity-json "$MOCK/effort-levels.json" --baseline-json "$MOCK/off.json" \
+  --cache-dir "$MOCK/cache" --max-wall-seconds 14400
+
+env -u GOOGLE_API_KEY -u GEMINI_API_KEY \
+  uv run python docs/plans/34-qwen-thinking-benchmark/validation/effort_sweep_runner.py \
+  --output-dir "$SWEEP" \
+  --identity-json "$IDENTITY" --baseline-json "$BASELINE" \
   --cache-dir .tmp/plan34/cache \
-  --output ".tmp/plan34/sweep/extractor-${LEVEL}.json" \
-  > ".tmp/plan34/sweep/extractor-${LEVEL}.log" 2>&1 &
-echo $! > ".tmp/plan34/sweep/extractor-${LEVEL}.pid"
+  --max-wall-seconds 14400 \
+  > .tmp/plan34/stage6-runner.log 2>&1
 ```
 
-Poll: `jq '.episodes | length' .tmp/plan34/sweep/extractor-${LEVEL}.json` at intervals of five minutes
-or more. When the PID exits, copy the JSON to `docs/plans/34-qwen-thinking-benchmark/resources/sweep/`.
+Poll `resources/effort-sweep.json` and the managed session at intervals of five minutes or more. Do not
+restart the runner only because a quality score is low. A rerun requires a recorded root-cause change.
 
 Level to setting mapping: `off` → `false` (boolean), `low`/`medium`/`high` → the same string. There is
-no `none` literal in `ThinkingLevel`; `qwen_speed_probe.py --thinking off` performs the mapping.
-
-## Identity probe (Stage 5)
-
-```bash
-uv run python scripts/effort_level_probe.py --test-model
-nohup uv run python scripts/effort_level_probe.py --levels off,low,medium,high --repeats 3 \
-  --per-call-timeout 300 --max-wall-seconds 1200 \
-  --output docs/plans/34-qwen-thinking-benchmark/resources/effort-levels.json \
-  > .tmp/plan34/effort-levels.log 2>&1 &
-```
+no `none` literal in `ThinkingLevel`. `qwen_speed_probe.py --thinking off` performs the mapping.
 
 ## Tuned compact arm (Stage 7)
 
 ```bash
+ARM=qwen-flash-next-compact-tuned
+SWEEP=docs/plans/34-qwen-thinking-benchmark/resources/effort-sweep.json
+test -n "${NEOCORTEX_ADMIN_TOKEN:-}" || { echo 'NEOCORTEX_ADMIN_TOKEN is required' >&2; exit 1; }
+test -n "${GOOGLE_API_KEY:-}" || { echo 'GOOGLE_API_KEY is required' >&2; exit 1; }
+jq -e '.run.complete == true and
+  ([.selections.ontology, .selections.extractor, .selections.librarian, .selections.classifier]
+   | all(.status == "SELECTED" and (.level | IN("off", "low", "medium", "high"))))' "$SWEEP" >/dev/null
+L_ONT="$(jq -r '.selections.ontology.level' "$SWEEP")"
+L_EXT="$(jq -r '.selections.extractor.level' "$SWEEP")"
+L_LIB="$(jq -r '.selections.librarian.level' "$SWEEP")"
+L_CLS="$(jq -r '.selections.classifier.level' "$SWEEP")"
+level_setting() { case "$1" in off) printf 'false\n' ;; low|medium|high) printf '%s\n' "$1" ;; *) return 2 ;; esac; }
+
+unset DOCKER_HOST
+export DOCKER_CONTEXT=desktop-linux
 export NEOCORTEX_DEV_TOKENS_FILE=dev_tokens.json
-export NEOCORTEX_ADMIN_TOKEN=admin-token
 export NEOCORTEX_ONTOLOGY_MODEL=local:qwen3.8-flash-next
 export NEOCORTEX_EXTRACTOR_MODEL=local:qwen3.8-flash-next
 export NEOCORTEX_LIBRARIAN_MODEL=local:qwen3.8-flash-next
 export NEOCORTEX_DOMAIN_CLASSIFIER_MODEL=local:qwen3.8-flash-next
 export NEOCORTEX_EXTRACTION_ENABLED=true
 export NEOCORTEX_DOMAIN_ROUTING_ENABLED=true
-# Selected levels from resources/effort-sweep.json; "off" is the boolean false.
-export NEOCORTEX_ONTOLOGY_THINKING_EFFORT="${L_ONT}"
-export NEOCORTEX_EXTRACTOR_THINKING_EFFORT="${L_EXT}"
-export NEOCORTEX_LIBRARIAN_THINKING_EFFORT="${L_LIB}"
-export NEOCORTEX_DOMAIN_CLASSIFIER_THINKING_EFFORT="${L_CLS}"
+export NEOCORTEX_ONTOLOGY_THINKING_EFFORT="$(level_setting "$L_ONT")"
+export NEOCORTEX_EXTRACTOR_THINKING_EFFORT="$(level_setting "$L_EXT")"
+export NEOCORTEX_LIBRARIAN_THINKING_EFFORT="$(level_setting "$L_LIB")"
+export NEOCORTEX_DOMAIN_CLASSIFIER_THINKING_EFFORT="$(level_setting "$L_CLS")"
 export NEOCORTEX_WORKER_CONCURRENCY=2
 export NEOCORTEX_LOCAL_MODEL_TIMEOUT_S=300
 export NEOCORTEX_BAKEOFF_CORPUS_PROFILE=compact
-export NEOCORTEX_BAKEOFF_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-tuned1"
-./scripts/manage.sh snapshot save pre-plan34-tuned1
-./scripts/model_bakeoff.sh --arm qwen-flash-next-compact-tuned --corpus-profile compact --dry-run
-nohup ./scripts/model_bakeoff.sh --arm qwen-flash-next-compact-tuned --corpus-profile compact \
-  > .tmp/plan34/arm-tuned1.log 2>&1 &
+RUN="$(date -u +%Y%m%dT%H%M%SZ)-tuned1"
+export NEOCORTEX_BAKEOFF_RUN_ID="$RUN"
+STATUS=".tmp/plan34/stage7-${RUN}-supervisor.json"
+LOG=".tmp/plan34/stage7-${RUN}.log"
+
+./scripts/model_bakeoff.sh --arm "$ARM" --corpus-profile compact --dry-run
+uv run python docs/plans/34-qwen-thinking-benchmark/validation/stage7_arm_supervisor.py \
+  --status "$STATUS" --run-id "$RUN" --arm "$ARM" \
+  --workload-seconds 6600 --total-seconds 7200 -- \
+  ./scripts/model_bakeoff.sh --arm "$ARM" --corpus-profile compact \
+  > "$LOG" 2>&1
 ```
 
-Poll `curl -s -H "Authorization: Bearer $NEOCORTEX_ADMIN_TOKEN" http://127.0.0.1:8001/admin/jobs/summary`
-at intervals of five minutes or more. `GOOGLE_API_KEY` is still needed for embeddings.
+Run the supervisor command in a managed asynchronous session. The explicit `DOCKER_CONTEXT` does not
+change the global Docker configuration. Poll the status file and job summary at intervals of five
+minutes or more.
 
-After the arm:
+The harness saves the existing graph before the fresh reset. It restores that snapshot when the arm
+exits. The harness exports skip events and the graph sample before the first E2E child resets services.
+It merges consistency metrics before the manifest digest. It generates the report after the final
+manifest and recall evidence exist.
 
 ```bash
-RUN="$NEOCORTEX_BAKEOFF_RUN_ID"; ARM=qwen-flash-next-compact-tuned
-OUT=docs/plans/33-local-qwen-migration/resources
-uv run python scripts/export_skip_events.py --run-id "$RUN" --arm "$ARM" --output "$OUT/skip-events-$ARM-$RUN.json"
-uv run python scripts/export_graph_sample.py --run-id "$RUN" --arm "$ARM" --check-temporal "$OUT/skip-events-$ARM-$RUN.json" --sample 20 --output "$OUT/quality-sample-$ARM-$RUN.json"
-uv run python scripts/compute_metrics.py --arm "$ARM" --phase e2e --run-id "$RUN" --skip-events "$OUT/skip-events-$ARM-$RUN.json" --merge
-uv run python scripts/generate_qwen_parsing_report.py generate \
-  --plan-dir docs/plans/33-local-qwen-migration --output-dir "$OUT" --run-id "$RUN" --arm "$ARM"
+jq '{status,run_id,arm,timed_out,workload_wall_seconds,total_wall_seconds,cleanup_reserve_exceeded}' "$STATUS"
 ```
 
 ## Live budgets

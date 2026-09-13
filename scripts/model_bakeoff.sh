@@ -34,6 +34,14 @@ DIAGNOSTICS_INDEX_PUBLISHED=0
 E2E_STATUS_PATH=""
 E2E_MANIFEST_PATH=""
 RECALL_EVIDENCE_PATH=""
+ACTIVE_E2E_PID=""
+TUNED_ARM="qwen-flash-next-compact-tuned"
+PLAN34_DIR="$ROOT/docs/plans/34-qwen-thinking-benchmark"
+PLAN33_DIR="$ROOT/docs/plans/33-local-qwen-migration"
+PLAN33_RESOURCES="$PLAN33_DIR/resources"
+PROVENANCE_PATH="$PLAN34_DIR/validation/provenance.json"
+SKIP_EVENTS_PATH=""
+GRAPH_SAMPLE_PATH=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --arm) ARM="$2"; shift 2 ;;
@@ -225,6 +233,7 @@ print_configuration() {
     "effort_ontology=${NEOCORTEX_ONTOLOGY_THINKING_EFFORT:-low}" \
     "effort_extractor=${NEOCORTEX_EXTRACTOR_THINKING_EFFORT:-low}" \
     "effort_librarian=${NEOCORTEX_LIBRARIAN_THINKING_EFFORT:-low}" \
+    "effort_domain_classifier=${NEOCORTEX_DOMAIN_CLASSIFIER_THINKING_EFFORT:-low}" \
     "worker_concurrency=$WORKER_CONCURRENCY" \
     "domain_routing_enabled=$DOMAIN_ROUTING_ENABLED" \
     "initial_domain_count=$INITIAL_DOMAIN_COUNT" \
@@ -272,6 +281,86 @@ redact_endpoint() {
 
 run() { printf '+ '; printf '%q ' "$@"; printf '\n'; (( DRY_RUN )) || "$@"; }
 run_shell() { printf '+ %s\n' "$1"; (( DRY_RUN )) || bash -c "$1"; }
+is_tuned_arm() { [[ "$ARM" == "$TUNED_ARM" ]]; }
+provenance_event() {
+  local status="$1" action="$2" target="$3" exit_code="${4:-}"
+  is_tuned_arm || return 0
+  if (( DRY_RUN )); then
+    printf '+ provenance status=%q action=%q target=%q\n' "$status" "$action" "$target"
+    return 0
+  fi
+  python3 - "$PROVENANCE_PATH" "$RUN_ID" "$ARM" "$status" "$action" "$target" "$exit_code" <<'PY'
+import json, os, sys, tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+path = Path(sys.argv[1])
+run_id, arm, status, action, target, raw_code = sys.argv[2:]
+if status not in {"planned", "completed", "failed"}:
+    raise SystemExit("invalid provenance status")
+try:
+    document = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"schema_version": 1, "runs": {}}
+except (OSError, ValueError) as exc:
+    raise SystemExit(f"cannot read provenance: {exc}") from exc
+if not isinstance(document, dict) or document.get("schema_version") != 1 or not isinstance(document.get("runs"), dict):
+    raise SystemExit("invalid provenance document")
+runs = document["runs"]
+run = runs.setdefault(run_id, {"arm": arm, "events": []})
+if not isinstance(run, dict) or run.get("arm") != arm or not isinstance(run.get("events"), list):
+    raise SystemExit("provenance run identity mismatch")
+event = {
+    "at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "status": status,
+    "action": action,
+    "target": target,
+}
+if raw_code:
+    event["exit_code"] = int(raw_code)
+run["events"].append(event)
+path.parent.mkdir(parents=True, exist_ok=True)
+fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+try:
+    os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(document, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, path)
+finally:
+    try:
+        os.unlink(temporary)
+    except FileNotFoundError:
+        pass
+PY
+}
+run_external_write() {
+  local action="$1" target="$2" status
+  shift 2
+  provenance_event planned "$action" "$target"
+  if run "$@"; then
+    provenance_event completed "$action" "$target" 0
+    return 0
+  else
+    status=$?
+    provenance_event failed "$action" "$target" "$status" || true
+    return "$status"
+  fi
+}
+ensure_tuned_outputs_absent() {
+  is_tuned_arm || return 0
+  local path
+  for path in \
+    "$E2E_MANIFEST_PATH" \
+    "$RECALL_EVIDENCE_PATH" \
+    "$SKIP_EVENTS_PATH" \
+    "$GRAPH_SAMPLE_PATH" \
+    "$PLAN33_RESOURCES/qwen-parsing-inputs-${ARM}-${RUN_ID}.json" \
+    "$PLAN33_RESOURCES/qwen-parsing-report-${ARM}-${RUN_ID}.json" \
+    "$PLAN33_RESOURCES/qwen-parsing-report-${ARM}-${RUN_ID}.md"; do
+    [[ ! -e "$path" && ! -L "$path" ]] || die "refusing to overwrite historical run artifact: ${path#"$ROOT/"}"
+  done
+}
 poll_jobs() {
   local deadline state counts todo doing
   deadline=$(( $(date +%s) + POLL_TIMEOUT ))
@@ -327,7 +416,8 @@ run_e2e_with_test_tokens() {
   (( DRY_RUN )) && return 0
   secure_create_file "$stdout_path" stdout_fd
   secure_create_file "$stderr_path" stderr_fd
-  if (
+  provenance_event planned e2e_child_reset "$child_run_id"
+  (
     # The corpus arm uses the role-based admin map.  E2E scripts intentionally
     # exercise Alice/Bob/Eve isolation and therefore require their test map.
     export NEOCORTEX_DEV_TOKENS_FILE="$ROOT/dev_tokens_test.json"
@@ -337,11 +427,19 @@ run_e2e_with_test_tokens() {
     unset NEOCORTEX_ADMIN_TOKEN NEOCORTEX_MCP_TOKEN NEOCORTEX_RECALL_TOKEN
     unset NEOCORTEX_TOKEN NEOCORTEX_DEV_TOKEN
     unset NEOCORTEX_ALICE_TOKEN NEOCORTEX_BOB_TOKEN NEOCORTEX_EVE_TOKEN
-    "$ROOT/scripts/run_e2e.sh" "$ROOT/scripts/$test_script"
-  ) >&"$stdout_fd" 2>&"$stderr_fd"; then
+    exec "$ROOT/scripts/run_e2e.sh" "$ROOT/scripts/$test_script"
+  ) >&"$stdout_fd" 2>&"$stderr_fd" &
+  ACTIVE_E2E_PID=$!
+  if wait "$ACTIVE_E2E_PID"; then
     status=0
   else
     status=$?
+  fi
+  ACTIVE_E2E_PID=""
+  if (( status == 0 )); then
+    provenance_event completed e2e_child_reset "$child_run_id" 0
+  else
+    provenance_event failed e2e_child_reset "$child_run_id" "$status" || true
   fi
   exec {stdout_fd}>&-
   exec {stderr_fd}>&-
@@ -444,13 +542,19 @@ restore_preserved_snapshot() {
       snapshot_load_name="${PRE_SNAPSHOT_FILE##*/}"
       snapshot_load_name="${snapshot_load_name%.tar.gz}"
     fi
-    if ! "$ROOT/scripts/manage.sh" snapshot load "$snapshot_load_name" >/dev/null 2>&1; then
+    provenance_event planned restore_preserved_snapshot "$snapshot_load_name" || true
+    local load_status=0
+    if "$ROOT/scripts/manage.sh" snapshot load "$snapshot_load_name" >/dev/null 2>&1; then
+      provenance_event completed restore_preserved_snapshot "$snapshot_load_name" 0 || true
+    else
+      load_status=$?
       local restore_status="$RESTORE_FAILURE_STATUS"
       # Keep the restoration outcome distinguishable even if the command that
       # triggered EXIT happened to return the reserved status already.
       (( exit_code == restore_status )) && restore_status=4
       echo "model bake-off: failed to restore preserved snapshot $PRE_SNAPSHOT" >&2
       echo "model bake-off: restoration failure status=$restore_status (original status=$exit_code)" >&2
+      provenance_event failed restore_preserved_snapshot "$snapshot_load_name" "$load_status" || true
       cleanup_e2e_workdir
       exit "$restore_status"
     fi
@@ -459,6 +563,27 @@ restore_preserved_snapshot() {
   exit "$exit_code"
 }
 trap restore_preserved_snapshot EXIT
+interrupt_bakeoff() {
+  local exit_code="$1" signal_name="$2"
+  trap - INT TERM
+  PRIVATE_DIAGNOSTICS_RETAIN=1
+  provenance_event failed workload_deadline "$signal_name" "$exit_code" || true
+  if [[ -n "$ACTIVE_E2E_PID" ]]; then
+    wait "$ACTIVE_E2E_PID" 2>/dev/null || true
+    ACTIVE_E2E_PID=""
+  fi
+  if [[ -n "$PRIVATE_RUN_DIR" ]]; then
+    printf 'private_diagnostics_path=%s\n' "$PRIVATE_RUN_DIR"
+  fi
+  exit "$exit_code"
+}
+trap 'interrupt_bakeoff 130 INT' INT
+trap 'interrupt_bakeoff 124 TERM' TERM
+
+E2E_MANIFEST_PATH="$PLAN33_RESOURCES/e2e-manifest-${ARM}-${RUN_ID}.json"
+RECALL_EVIDENCE_PATH="$PLAN33_RESOURCES/recall-results-${ARM}-${RUN_ID}.json"
+SKIP_EVENTS_PATH="$PLAN33_RESOURCES/skip-events-${ARM}-${RUN_ID}.json"
+GRAPH_SAMPLE_PATH="$PLAN33_RESOURCES/quality-sample-${ARM}-${RUN_ID}.json"
 
 if (( DRY_RUN )); then
   print_configuration
@@ -475,6 +600,7 @@ else
     <<<"$NEOCORTEX_ADMIN_TOKEN" >/dev/null \
     || die "NEOCORTEX_ADMIN_TOKEN is not present in NEOCORTEX_DEV_TOKENS_FILE"
   [[ -n "${GOOGLE_API_KEY:-}" ]] || die "GOOGLE_API_KEY is required for embedding health; recall metrics are NOT MEASURED"
+  ensure_tuned_outputs_absent
   if [[ -n "${NEOCORTEX_BAKEOFF_PRIVATE_DIR:-}" ]]; then
     PRIVATE_PARENT_CANDIDATE="$NEOCORTEX_BAKEOFF_PRIVATE_DIR"
     [[ "$PRIVATE_PARENT_CANDIDATE" == /* ]] || PRIVATE_PARENT_CANDIDATE="$PWD/$PRIVATE_PARENT_CANDIDATE"
@@ -495,10 +621,19 @@ else
   DIAGNOSTIC_ROWS_PATH="$PRIVATE_RUN_DIR/.diagnostics.tsv"
   secure_create_file "$DIAGNOSTIC_ROWS_PATH" DIAGNOSTIC_ROWS_FD
   E2E_STATUS_PATH="$E2E_WORKDIR/status.tsv"
-  E2E_MANIFEST_PATH="$ROOT/docs/plans/33-local-qwen-migration/resources/e2e-manifest-${ARM}-${RUN_ID}.json"
-  RECALL_EVIDENCE_PATH="$ROOT/docs/plans/33-local-qwen-migration/resources/recall-results-${ARM}-${RUN_ID}.json"
   export NEOCORTEX_SNAPSHOT_PATH_FILE="$E2E_WORKDIR/snapshot-path"
-  quarantine_canonical_metrics
+  if is_tuned_arm; then
+    provenance_event planned quarantine_previous_metrics "metrics-${ARM}.json"
+    if quarantine_canonical_metrics; then
+      provenance_event completed quarantine_previous_metrics "metrics-${ARM}.json" 0
+    else
+      status=$?
+      provenance_event failed quarantine_previous_metrics "metrics-${ARM}.json" "$status" || true
+      exit "$status"
+    fi
+  else
+    quarantine_canonical_metrics
+  fi
 fi
 
 export NEOCORTEX_BAKEOFF_RUN_ID="$RUN_ID"
@@ -523,18 +658,19 @@ if (( ! DRY_RUN )); then
   if ! docker compose -f "$ROOT/docker-compose.yml" exec -T postgres \
     pg_isready -U neocortex -d neocortex >/dev/null 2>&1; then
     echo "model bake-off: PostgreSQL is stopped; starting non-destructively before snapshot" >&2
-    run "$ROOT/scripts/manage.sh" start
+    run_external_write start_postgres existing_development_graph "$ROOT/scripts/manage.sh" start
   fi
   docker compose -f "$ROOT/docker-compose.yml" exec -T postgres \
     pg_isready -U neocortex -d neocortex >/dev/null 2>&1 \
     || die "PostgreSQL is not ready; refusing destructive start --fresh without a recovery snapshot"
   PRE_SNAPSHOT_NAME="${ARM}-pre-${RUN_ID}"
-  run "$ROOT/scripts/manage.sh" snapshot save "$PRE_SNAPSHOT_NAME"
+  run_external_write preserve_existing_graph "$PRE_SNAPSHOT_NAME" "$ROOT/scripts/manage.sh" snapshot save "$PRE_SNAPSHOT_NAME"
   PRE_SNAPSHOT_FILE="$(resolve_saved_snapshot "$PRE_SNAPSHOT_NAME")"
   PRE_SNAPSHOT="$PRE_SNAPSHOT_NAME"
+  provenance_event completed preserved_snapshot_identity "${PRE_SNAPSHOT_FILE##*/}" 0
 fi
 
-run "$ROOT/scripts/manage.sh" start --fresh
+run_external_write reset_local_graph "$RUN_ID" "$ROOT/scripts/manage.sh" start --fresh
 if (( ! DRY_RUN )); then
   run uv run python -c 'import asyncio, os; from scripts.e2e_common import wait_for_ready; asyncio.run(wait_for_ready(os.environ.get("NEOCORTEX_INGESTION_BASE_URL", "http://127.0.0.1:8001"), os.environ.get("NEOCORTEX_ADMIN_TOKEN")))'
   uv run python -c 'import asyncio, os; from neocortex.embedding_service import EmbeddingService; from neocortex.mcp_settings import MCPSettings; assert os.environ.get("GOOGLE_API_KEY"), "GOOGLE_API_KEY is required; embedding health NOT MEASURED"; v=asyncio.run(EmbeddingService(model=MCPSettings().embedding_model).embed("bakeoff probe")); assert v is not None and len(v)==768, "EMBEDDINGS DEAD"; print("embeddings OK")'
@@ -543,26 +679,36 @@ if (( ! DRY_RUN )); then
     | grep -q 'ncx_shared__' || { echo 'seed schemas missing' >&2; exit 1; }
   run uv run python "$ROOT/scripts/auth_self_check.py"
 fi
-run uv run python "$ROOT/scripts/corpus_loader.py" --corpus-profile "$CORPUS_PROFILE"
+run_external_write load_corpus "$CORPUS_PROFILE" uv run python "$ROOT/scripts/corpus_loader.py" --corpus-profile "$CORPUS_PROFILE"
 run poll_jobs
 POST_SNAPSHOT_NAME="${ARM}-${RUN_ID}"
-run "$ROOT/scripts/manage.sh" snapshot save "$POST_SNAPSHOT_NAME"
+run_external_write save_measured_snapshot "$POST_SNAPSHOT_NAME" "$ROOT/scripts/manage.sh" snapshot save "$POST_SNAPSHOT_NAME"
 if (( DRY_RUN )); then
   POST_SNAPSHOT="$ROOT/backups/${POST_SNAPSHOT_NAME}-DRY-RUN.tar.gz"
 else
   POST_SNAPSHOT="$(resolve_saved_snapshot "$POST_SNAPSHOT_NAME")"
   POST_SNAPSHOT_SHA256="$(sha256_file "$POST_SNAPSHOT")"
+  provenance_event completed measured_snapshot_identity "${POST_SNAPSHOT##*/}" 0
 fi
-run uv run python "$ROOT/scripts/compute_metrics.py" --corpus-profile "$CORPUS_PROFILE" --arm "$ARM" --phase corpus --snapshot-path "$POST_SNAPSHOT" --snapshot-sha256 "$POST_SNAPSHOT_SHA256" --run-id "$RUN_ID"
+run_external_write write_corpus_metrics "metrics-${ARM}.json" uv run python "$ROOT/scripts/compute_metrics.py" --corpus-profile "$CORPUS_PROFILE" --arm "$ARM" --phase corpus --snapshot-path "$POST_SNAPSHOT" --snapshot-sha256 "$POST_SNAPSHOT_SHA256" --run-id "$RUN_ID"
+if is_tuned_arm; then
+  run_external_write export_skip_events "${SKIP_EVENTS_PATH##*/}" uv run python "$ROOT/scripts/export_skip_events.py" --run-id "$RUN_ID" --arm "$ARM" --output "$SKIP_EVENTS_PATH"
+  run_external_write export_graph_sample "${GRAPH_SAMPLE_PATH##*/}" uv run python "$ROOT/scripts/export_graph_sample.py" --run-id "$RUN_ID" --arm "$ARM" --check-temporal "$SKIP_EVENTS_PATH" --sample 20 --output "$GRAPH_SAMPLE_PATH"
+  run_external_write merge_consistency_metrics "metrics-${ARM}.json" uv run python "$ROOT/scripts/compute_metrics.py" --corpus-profile "$CORPUS_PROFILE" --arm "$ARM" --phase e2e --run-id "$RUN_ID" --skip-events "$SKIP_EVENTS_PATH" --merge
+fi
 if (( DRY_RUN )); then
-  run uv run python "$ROOT/scripts/recall_scorer.py" --corpus-profile "$CORPUS_PROFILE" --output "docs/plans/33-local-qwen-migration/resources/recall-results-${ARM}-${RUN_ID}.json"
+  run_external_write write_recall_evidence "${RECALL_EVIDENCE_PATH##*/}" uv run python "$ROOT/scripts/recall_scorer.py" --corpus-profile "$CORPUS_PROFILE" --output "$RECALL_EVIDENCE_PATH"
   index=0
   for test in e2e_extraction_pipeline_test.py e2e_plan15_scenarios_test.py e2e_plan17_validation.py e2e_episodic_memory_test.py e2e_cognitive_recall_test.py; do
     index=$((index + 1))
     run_e2e_with_test_tokens "$index" "$test"
   done
-  run uv run python "$ROOT/scripts/e2e_manifest.py" build --arm "$ARM" --run-id "$RUN_ID"
+  run_external_write build_e2e_manifest "${E2E_MANIFEST_PATH##*/}" uv run python "$ROOT/scripts/e2e_manifest.py" build --arm "$ARM" --run-id "$RUN_ID"
   run uv run python "$ROOT/scripts/e2e_manifest.py" validate --run-id "$RUN_ID"
+  if is_tuned_arm; then
+    run_external_write generate_tuned_report "qwen-parsing-report-${ARM}-${RUN_ID}" uv run python "$ROOT/scripts/generate_qwen_parsing_report.py" generate \
+      --plan-dir "$PLAN33_DIR" --output-dir "$PLAN33_RESOURCES" --run-id "$RUN_ID" --arm "$ARM"
+  fi
 else
 RECALL_STATUS=0
 recall_stdout="$E2E_WORKDIR/recall.stdout"
@@ -571,13 +717,18 @@ recall_stdout_fd=""
 recall_stderr_fd=""
 secure_create_file "$recall_stdout" recall_stdout_fd
 secure_create_file "$recall_stderr" recall_stderr_fd
+provenance_event planned write_recall_evidence "${RECALL_EVIDENCE_PATH##*/}"
 if uv run python "$ROOT/scripts/recall_scorer.py" --corpus-profile "$CORPUS_PROFILE" --output "$RECALL_EVIDENCE_PATH" \
   >&"$recall_stdout_fd" 2>&"$recall_stderr_fd"; then
   RECALL_STATUS=0
+  provenance_event completed write_recall_evidence "${RECALL_EVIDENCE_PATH##*/}" 0
 else
   RECALL_STATUS=$?
+  provenance_event failed write_recall_evidence "${RECALL_EVIDENCE_PATH##*/}" "$RECALL_STATUS" || true
+  provenance_event planned write_not_measured_recall "${RECALL_EVIDENCE_PATH##*/}"
   uv run python "$ROOT/scripts/e2e_manifest.py" write-not-measured-recall \
     --path "$RECALL_EVIDENCE_PATH" --run-id "$RUN_ID" --reason "recall_scorer_exit_${RECALL_STATUS}"
+  provenance_event completed write_not_measured_recall "${RECALL_EVIDENCE_PATH##*/}" 0
 fi
 exec {recall_stdout_fd}>&-
 exec {recall_stderr_fd}>&-
@@ -606,13 +757,17 @@ for test in e2e_extraction_pipeline_test.py e2e_plan15_scenarios_test.py e2e_pla
     printf 'e2e failure recorded index=%s exit_code=%s\n' "$index" "$e2e_status"
   fi
 done
-run uv run python "$ROOT/scripts/e2e_manifest.py" build \
+run_external_write build_e2e_manifest "${E2E_MANIFEST_PATH##*/}" uv run python "$ROOT/scripts/e2e_manifest.py" build \
   --arm "$ARM" --run-id "$RUN_ID" \
   --metrics-path "$ROOT/docs/plans/33-local-qwen-migration/resources/metrics-${ARM}.json" \
   --snapshot-path "$POST_SNAPSHOT" --snapshot-sha256 "$POST_SNAPSHOT_SHA256" \
   --recall-path "$RECALL_EVIDENCE_PATH" --statuses-path "$E2E_STATUS_PATH" --output-path "$E2E_MANIFEST_PATH"
 run uv run python "$ROOT/scripts/e2e_manifest.py" validate \
   --manifest-path "$E2E_MANIFEST_PATH" --run-id "$RUN_ID"
+if is_tuned_arm; then
+  run_external_write generate_tuned_report "qwen-parsing-report-${ARM}-${RUN_ID}" uv run python "$ROOT/scripts/generate_qwen_parsing_report.py" generate \
+    --plan-dir "$PLAN33_DIR" --output-dir "$PLAN33_RESOURCES" --run-id "$RUN_ID" --arm "$ARM"
+fi
 publish_diagnostics_index
 if (( PRIVATE_DIAGNOSTICS_RETAIN != 0 )); then
   printf 'private_diagnostics_path=%s\n' "$PRIVATE_RUN_DIR"

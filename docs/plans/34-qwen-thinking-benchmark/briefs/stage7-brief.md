@@ -65,6 +65,27 @@ metric finalization precedes digest capture. The service harness has --dry-run r
 than --test-model: the plan explicitly prescribes it for this service arm; all model
 paths must already have passed test-model checks in preceding stages.
 
+## Operational documentation correction
+
+Scope also includes resources/commands.md, now stale after D-16 and this stage's
+integrated exports. Correct operational reproduction instructions only. Do not
+declare validated defaults or MIGRATE. Read the complete simple-english skill
+at /Users/zbigniewtomanek/.agents/skills/simple-english/SKILL.md and use its
+structural rules and four self-checks for prose. Preserve identifiers exactly.
+Replace the obsolete nohup launch examples with managed asynchronous-session
+instructions and the current runner/supervisor commands. State that a plain
+foreground shell is not the orchestrator's managed session. Keep all budgets,
+no-rerun rule and five-minute polling limits. Show Stage6's finalized identity,
+original baseline and live cache inputs, with no baseline or identity rerun.
+For Stage7 show explicit selected-level inputs, local models, env-only credentials,
+300s calls, compact profile, supervisor6600/7200 and unique status/run paths.
+Remove the separate post-arm exporter procedure: tuned harness captures the
+corpus graph before child resets and restoration. Do not add a duplicate external
+snapshot operation. Explain the harness's automatic preservation and restoration.
+Mention explicit desktop-linux Docker context on this machine without changing
+global Docker configuration. Runtime selected levels remain unset until Stage6
+finishes. Correcting commands is not a change to product defaults or report rules.
+
 ## Live assignment, only after preparation is gated
 
 Owner authorized the pending Gemini embedding calls with "proceed" on 2026-09-13.
