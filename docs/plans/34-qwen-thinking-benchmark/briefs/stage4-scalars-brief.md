@@ -36,6 +36,11 @@ implementation returned `Retries 17, timeout 17.` Preserve the incoming descript
 and replace against the original old text in one non-cascading pass, or use an
 equivalent correct simultaneous policy. Keep the single-property S05 behavior.
 
+Post-review correction: stage4-fix1-brief.md additionally requires all scalar keys
+for host conflict detection, and property-aware handling when old values repeat.
+The bounded rendering projection and global value replacement cannot implement
+those correctness requirements. Keep unrelated existing facts and incoming text.
+
 ## Gates
 
 - Red S05 evidence before product fix: validation/stage4-s05-red-attempt1.txt.

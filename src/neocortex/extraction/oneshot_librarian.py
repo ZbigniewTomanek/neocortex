@@ -117,22 +117,65 @@ def _scalar_properties(properties: dict[str, Any] | None) -> dict[str, str | int
     return scalars
 
 
-def _replace_scalars(text: str, replacements: list[tuple[Any, Any]]) -> str:
-    """Apply scalar replacements simultaneously without touching larger values."""
-    by_old_value: dict[str, set[str]] = {}
-    for old_value, new_value in replacements:
-        old = str(old_value)
-        if old:
-            by_old_value.setdefault(old.casefold(), set()).add(str(new_value))
+def _host_scalar_properties(properties: dict[str, Any] | None) -> dict[str, str | int | float | bool | None]:
+    """Return every exact scalar used for deterministic host-side conflict detection."""
+    return {
+        str(key): value
+        for key, value in (properties or {}).items()
+        if key != "_source_episode" and not isinstance(value, (dict, list, tuple, set))
+    }
 
-    unambiguous = [(old, next(iter(new_values))) for old, new_values in by_old_value.items() if len(new_values) == 1]
-    ordered = sorted(unambiguous, key=lambda pair: len(pair[0]), reverse=True)
-    if not ordered:
-        return text
-    patterns = [rf"(?P<s{index}>(?<!\w)(?<!\d\.){re.escape(old)}(?!\w|\.\d))" for index, (old, _) in enumerate(ordered)]
-    replacements_by_group = {f"s{index}": new for index, (_, new) in enumerate(ordered)}
-    pattern = re.compile("|".join(patterns), flags=re.IGNORECASE)
-    return pattern.sub(lambda match: replacements_by_group[match.lastgroup or ""], text)
+
+def _scalar_token_pattern(value: Any) -> str:
+    """Match one complete scalar token, excluding numeric or word fragments."""
+    return rf"(?<!\w)(?<!\d\.){re.escape(str(value))}(?!\w|\.\d)"
+
+
+def _property_label(key: str) -> str:
+    """Return the complete human-readable label for a scalar property key."""
+    parts = [part for part in re.split(r"[^A-Za-z0-9]+", key) if part]
+    return r"\s+".join(re.escape(part) for part in parts)
+
+
+def _contextual_scalar_span(text: str, key: str, old_value: Any) -> tuple[int, int] | None:
+    """Locate a scalar when exactly one nearby property label identifies it."""
+    scalar = _scalar_token_pattern(old_value)
+    label = _property_label(key)
+    if not label:
+        return None
+    connector = r"(?:\s+(?:(?:is|was)\s+)?|\s*[:=]\s*)"
+    pattern = re.compile(rf"(?<!\w){label}(?!\w){connector}(?P<value>{scalar})", re.IGNORECASE)
+    spans = [match.span("value") for match in pattern.finditer(text)]
+    return spans[0] if len(spans) == 1 else None
+
+
+def _replace_conflicting_scalars(
+    text: str,
+    conflicts: list[tuple[str, Any, Any]],
+    existing_scalars: dict[str, Any],
+) -> str:
+    """Replace conflicts in one pass, using property labels when values repeat."""
+    edits: dict[tuple[int, int], str] = {}
+    unresolved: list[tuple[str, Any, Any]] = []
+    for key, old_value, new_value in conflicts:
+        span = _contextual_scalar_span(text, key, old_value)
+        if span is None or span in edits:
+            unresolved.append((key, old_value, new_value))
+        else:
+            edits[span] = str(new_value)
+
+    changed_keys = {key for key, _, _ in conflicts}
+    for _key, old_value, new_value in unresolved:
+        owners = [key for key, value in existing_scalars.items() if str(value).casefold() == str(old_value).casefold()]
+        shared_with_unchanged = any(key not in changed_keys for key in owners)
+        spans = [match.span() for match in re.finditer(_scalar_token_pattern(old_value), text, re.IGNORECASE)]
+        available = [span for span in spans if span not in edits]
+        if len(owners) == 1 and not shared_with_unchanged and len(available) == 1:
+            edits[available[0]] = str(new_value)
+
+    for (start, end), replacement in sorted(edits.items(), reverse=True):
+        text = f"{text[:start]}{replacement}{text[end:]}"
+    return text
 
 
 def _merge_content(
@@ -144,15 +187,15 @@ def _merge_content(
     """Host default merge, replacing stale shared scalars before appending."""
     old = (existing or "").strip()
     new = (description or "").strip()
-    old_scalars = _scalar_properties(existing_properties)
-    new_scalars = _scalar_properties(incoming_properties)
-    replacements: list[tuple[Any, Any]] = []
+    old_scalars = _host_scalar_properties(existing_properties)
+    new_scalars = _host_scalar_properties(incoming_properties)
+    conflicts: list[tuple[str, Any, Any]] = []
     for key in sorted(old_scalars.keys() & new_scalars.keys()):
         old_value = old_scalars[key]
         new_value = new_scalars[key]
         if old_value != new_value:
-            replacements.append((old_value, new_value))
-    old = _replace_scalars(old, replacements)
+            conflicts.append((key, old_value, new_value))
+    old = _replace_conflicting_scalars(old, conflicts, old_scalars)
     if not old:
         return new[-MERGE_CONTENT_CHARS:]
     if not new or new.casefold() in old.casefold():

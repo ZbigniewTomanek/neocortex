@@ -126,9 +126,14 @@ Granted by the owner on 2026-09-11. The settings message listed five items and t
   plan's `backlog.md` and `journal.md`. Plan 33's `state.json` stays untouched.
 - **Replacing `PROTOCOL.md`** with the goal-execution-loop render; the previous file is kept as
   `PROTOCOL.previous.md`.
+- **Stage 7 Gemini embedding calls**, including their API cost, for the bounded service
+  benchmark using the existing key. Owner replied "proceed" on 2026-09-13 after
+  the pending embedding approval was explicitly identified. No external embedding
+  calls in the in-memory Stage4–6 probes.
 
-Not granted, and stopping actions under PROTOCOL: pushing anywhere, tagging, deploying, sending anything
-to a person or an external service, spending money, deleting data outside the local dev estate.
+Not granted, and stopping actions under PROTOCOL: pushing anywhere, tagging, deploying,
+sending anything to a person, external service calls or spending beyond the Stage7
+embedding grant, deleting data outside the local dev estate.
 
 ## Invariants
 

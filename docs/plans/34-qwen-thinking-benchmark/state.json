@@ -87,14 +87,14 @@
       "id": 3,
       "title": "E2E harness reliability and recall formatter",
       "file": "stages/03-e2e-harness-reliability.md",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "depends_on": [],
       "commit": null,
-      "note": "briefs/stage3-brief.md is written and ready to dispatch. Could not run in parallel with stage 2: both briefs touch scripts/model_bakeoff.sh.",
+      "note": "Paused with helper9 tests and three children integrated; four children/orchestrators/gates remain. Formatter not reproduced. Resume after Stage4 fix1.",
       "blocked_by": [],
-      "step": null,
+      "step": "WRITING",
       "writer": null,
-      "implementer": null,
+      "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": null,
       "preReview": {
         "used": false
@@ -121,10 +121,10 @@
       "depends_on": [
         1
       ],
-      "commit": null,
-      "note": "Deterministic gates pass: 1429/7, 118 focused, 14 hosted, exact mock11/11. Implementation commit/review next; live baseline pending.",
+      "commit": ["2f199a3"],
+      "note": "Fix1 accepted: F1/F2 regressions green, focused125/full1445/7/lint/mock11 pass. Single repair consumed; live baseline next.",
       "blocked_by": [],
-      "step": "WRITING",
+      "step": "REVIEWED",
       "writer": null,
       "implementer": "codex/gpt-5.6-sol, effort high",
       "reviewer": "codex/gpt-5.6-sol, effort high",
@@ -132,12 +132,14 @@
         "used": false
       },
       "review": {
-        "used": false
+        "used": true,
+        "blocking": 2,
+        "file": "validation/stage4-review.md"
       },
       "gateFixes": 2,
       "repair": {
-        "used": false,
-        "rounds": 0
+        "used": true,
+        "rounds": 1
       },
       "repairReview": {
         "used": false

@@ -32,11 +32,10 @@ paths must already have passed test-model checks in preceding stages.
 
 ## Live assignment, only after preparation is gated
 
-Pending authority: model_bakeoff.sh requires Gemini embeddings (key check at
-line477 and real embedding health call at line539). The saved grant excludes
-paid external calls. Owner clarification is pending. Do not launch this service
-arm until the coordinator records the additional grant. Do not bypass embedding
-health or silently replace embeddings to avoid this boundary.
+Owner authorized the pending Gemini embedding calls with "proceed" on 2026-09-13.
+The grant covers the bounded Stage7 service benchmark and its embedding API cost,
+using the existing key. Keep embedding health checks intact. This does not authorize
+hosted reasoning models or embeddings in the in-memory Stage4–6 probes.
 
 Use mechanically selected levels from `resources/effort-sweep.json`; off becomes
 boolean false. Preflight authenticated local model listing and settings without

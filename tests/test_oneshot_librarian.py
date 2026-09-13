@@ -450,6 +450,96 @@ def test_scalar_replacements_do_not_cascade_into_another_new_value() -> None:
     )
 
 
+def test_host_conflict_detection_includes_a_ninth_scalar_property() -> None:
+    """F1: display limits must not hide a host-side deadline correction."""
+    old_properties = {key: key for key in "abcdefgh"}
+    old_properties["z_deadline"] = "April 15, 2026"
+    new_properties = dict(old_properties)
+    new_properties["z_deadline"] = "May 1, 2026"
+
+    merged = _merge_content(
+        "The deadline is April 15, 2026.",
+        "The deadline is May 1, 2026.",
+        old_properties,
+        new_properties,
+    )
+
+    assert merged == "The deadline is May 1, 2026."
+    assert "April 15" not in merged
+
+
+def test_repeated_value_correction_preserves_the_unchanged_property_fact() -> None:
+    """F2: correcting retry threshold must not rewrite equal team size."""
+    merged = _merge_content(
+        "Retry threshold 15; team size 15.",
+        "Retry threshold 16; team size 15.",
+        {"retry_threshold": 15, "team_size": 15},
+        {"retry_threshold": 16, "team_size": 15},
+    )
+
+    assert merged == "Retry threshold 16; team size 15."
+
+
+def test_two_changed_properties_with_the_same_old_value_use_their_own_labels() -> None:
+    """F2: equal old values are attributed by their property labels."""
+    merged = _merge_content(
+        "Retries 15, timeout 15.",
+        "Retries 16, timeout 17.",
+        {"retries": 15, "timeout": 15},
+        {"retries": 16, "timeout": 17},
+    )
+
+    assert merged == "Retries 16, timeout 17."
+
+
+def test_unlabeled_repeated_values_are_preserved_as_ambiguous_context() -> None:
+    """Ambiguous old text stays intact; the exact incoming description is appended."""
+    merged = _merge_content(
+        "The two recorded values are 15 and 15.",
+        "Retries are 16 and timeout is 17.",
+        {"retries": 15, "timeout": 15},
+        {"retries": 16, "timeout": 17},
+    )
+
+    assert merged == "The two recorded values are 15 and 15. Retries are 16 and timeout is 17."
+
+
+def test_one_unlabeled_value_with_two_property_owners_stays_ambiguous() -> None:
+    """One text occurrence is not attributable when two changed properties owned it."""
+    merged = _merge_content(
+        "The recorded value is 15.",
+        "Retries are 16 and timeout is 17.",
+        {"retries": 15, "timeout": 15},
+        {"retries": 16, "timeout": 17},
+    )
+
+    assert merged == "The recorded value is 15. Retries are 16 and timeout is 17."
+
+
+def test_mixed_type_owners_of_one_unlabeled_value_stay_ambiguous() -> None:
+    """Integer 15 and string '15' own the same token representation."""
+    merged = _merge_content(
+        "The recorded value is 15.",
+        "Retries are 16 and timeout is 17.",
+        {"retries": 15, "timeout": "15"},
+        {"retries": 16, "timeout": "17"},
+    )
+
+    assert merged == "The recorded value is 15. Retries are 16 and timeout is 17."
+
+
+def test_property_label_does_not_fall_back_to_an_unrelated_suffix() -> None:
+    """An error-threshold update must not bind to the retry-threshold fact."""
+    merged = _merge_content(
+        "Retry threshold 15.",
+        "Error threshold 16.",
+        {"retry_threshold": 15, "error_threshold": 15},
+        {"retry_threshold": 15, "error_threshold": 16},
+    )
+
+    assert merged == "Retry threshold 15. Error threshold 16."
+
+
 @pytest.mark.asyncio
 async def test_host_default_truncation_keeps_the_newest_text(repo: InMemoryRepository) -> None:
     """When merged content exceeds the cap, the incoming fact remains."""

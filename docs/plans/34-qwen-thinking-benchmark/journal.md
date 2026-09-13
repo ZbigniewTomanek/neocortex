@@ -379,3 +379,45 @@ question -- whether the local endpoint honours `reasoning_effort` at all -- is S
 - Exact TestModel baseline: 11/11 units ok in 0.08 s, embeddings none. Eight synthetic fact scores 0/56; triplets have new_present=false and old_absent=true. This proves the instrument, not model quality. Coordinator runs the final same-command mock with its own durable JSON.
 - Promoted backlog6/7/8/10/11 resolved; Stage1 stays DONE. Formatter non-reproduction and hook observation limits recorded as backlog13/14.
 - Commit/review precede live proof per protocol. Stage3 can write during committed Stage4 review because their source scopes are disjoint; neither stage may change the other's files.
+
+## 2026-09-13 -- Stage 4 committed/reviewing; Stage 3 writes
+
+- Stage4 implementation commit 2f199a3 exists. Commit hook added only the missing final newline to the mock JSON, then all hooks passed; numeric/artifact values unchanged.
+- Single independent codex/gpt-5.6-sol/high post-review dispatched with a ten-minute scope budget. Live baseline remains deferred until findings are triaged/fixed.
+- Stage3 starts on codex/gpt-5.6-sol/high under its existing brief while review reads committed Stage4. Source scopes do not intersect; no second feature writer. This is the protocol's committed-review exception.
+
+## 2026-09-13 -- Owner proceeds and grants Stage7 embeddings
+
+- Owner: "proceed", after the status response explicitly named the pending Stage7 Gemini embedding approval. Coordinator announced the bounded interpretation and recorded it in goal.md and the Stage7 brief.
+- Authorized: Gemini embedding calls and their API cost for the bounded Stage7 service benchmark, existing key only. No hosted reasoning calls or in-memory-probe embeddings. All other limits and review budgets unchanged.
+- Existing Stage3 writer and Stage4 reviewer remain active; no duplicate dispatch or spent-ledger reset.
+
+## 2026-09-13 -- Stage4 review spent; two findings accepted
+
+- Complete review saved before triage in validation/stage4-review.md; ledger spent. F1 display projection omits ninth conflict key; F2 value-only replacement corrupts unchanged same-valued facts or leaves stale ambiguous values.
+- Coordinator independently reproduced all three concrete examples and accepted F1/F2. New fix1 brief is self-contained and corrects the scalar brief. One fix, no re-review; no hosted/model-authored scope expansion.
+- Stage3 asked to pause after its current atomic edit and preserve its work. Stage4 fix waits for its write-lock release; no concurrent feature writer.
+
+## 2026-09-13 -- Stage3 checkpoint; Stage4 fix1 starts
+
+- Stage3 released lock with e2e_common and its tests saved (9 passed/0.02s), plus cognitive, episodic and weight child integrations. Formatter reproduction green (1 passed/0.43s), no product change or retained never-red test.
+- Remaining Stage3: Plan15/17, content-update, extraction child; shell readiness; final gates. Failed combined Plan15/17 patch was atomic and left both unchanged.
+- Dispatch Stage4 fix1 under its frozen brief, sole codex/gpt-5.6-sol/high writer. Resume Stage3 checkpoint afterward.
+
+## 2026-09-13 -- Stage4 fix verification, same F2 round
+
+- Initial fix1 passes all reviewed examples, 122 focused/14 hosted, full1442/7 and fresh mock11/11. Full lint identifies only paused Stage3's Mapping import; Stage4 owner does not edit it.
+- Coordinator's F2 fallback check finds one unlabeled occurrence shared by two changed properties is arbitrarily rewritten to the first new value. This contradicts the claimed conservative fallback; exact input added to fix brief.
+- Same F2 verification correction dispatched, no new finding/review/repair round. Require unique property ownership for unlabeled fallback. Final full suite waits until the sequential Stage3 import correction.
+
+## 2026-09-13 -- F2 attribution verification and checkpoint lint
+
+- Stage3 owner moved Mapping to collections.abc, helper9 tests and scoped ruff pass, then released lock. No broader Stage3 edits.
+- F2 verification continues within the same fix: mixed int/string owners are identical in text, and generic threshold suffix matching still changes Retry threshold15 when only error_threshold changes. Coordinator reproduced the latter as Retry threshold16/Error threshold16.
+- Tightened fix brief to string-based owner identity, full property labels and direct label/value association. These enforce the original unchanged-fact guarantee; no new review round, live call, or expanded feature scope.
+
+## 2026-09-13 -- Stage4 single fix accepted on final evidence
+
+- Complete fix diff inspected against F1/F2; reproduced corrected ninth-property, unchanged-team-size, two-property update and ambiguous-owner values. Conservative ambiguous text remains, with incoming description appended; no false attribution.
+- Coordinator final focused125 pass/0.92s, full1445 pass/7 skipped/44.18s, whole-tree lint pass. Exact fresh mock11/11 ok, no critical defects, embeddings none, 0.08s. Evidence uses new stage4-fix1-*-coordinator-attempt1 files.
+- Review and one repair consumed. No re-review. Stage3 checkpoint import lint corrected by its owner; unrelated source files stay unstaged for Stage4 fix commit.
